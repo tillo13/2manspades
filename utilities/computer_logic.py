@@ -174,6 +174,44 @@ def should_bid_nil(hand, game_state):
     # Very conservative probability - only when truly desperate with perfect nil hand
     return computer_score < player_score - 80
 
+def should_bid_blind(hand, game_state):
+    """
+    Determine if computer should bid blind when eligible
+    Returns tuple: (should_blind, blind_bid_amount)
+    """
+    player_score = game_state.get('player_score', 0)
+    computer_score = game_state.get('computer_score', 0)
+    
+    # Check eligibility
+    blind_eligibility = check_blind_bidding_eligibility(player_score, computer_score)
+    if not blind_eligibility['computer_eligible']:
+        return False, 0
+    
+    deficit = blind_eligibility['computer_deficit']
+    
+    # Only consider blind when really desperate (120+ points behind)
+    if deficit < 120:
+        return False, 0
+    
+    # Analyze hand strength
+    sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
+    total_expectation = sure_tricks + probable_tricks + special_bonus
+    
+    # Only go blind with reasonable hands (can realistically make 5-8 tricks)
+    if total_expectation < 4.0 or total_expectation > 7.5:
+        return False, 0
+    
+    # Calculate blind bid (conservative)
+    blind_bid = max(5, min(8, round(total_expectation)))
+    
+    # More likely to go blind when further behind
+    blind_probability = min(0.7, (deficit - 100) / 200)  # 70% max chance
+    
+    if random.random() < blind_probability:
+        return True, blind_bid
+    
+    return False, 0
+
 def computer_bidding_brain(computer_hand, player_bid, game_state):
     """
     Main computer bidding function with enhanced AI - targeting 3-4 average bids
