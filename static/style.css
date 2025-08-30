@@ -768,3 +768,22 @@ button:disabled {
         grid-template-columns: repeat(3, 1fr);
     }
 }
+
+.bottom-rules-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    margin-left: 10px;
+}
+
+.bottom-rules-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
