@@ -288,9 +288,14 @@ function updateActionButtons() {
         actionButton.style.display = 'none';
         nextHandButton.style.display = 'inline-block';
     } else if (gameState.phase === 'discard') {
-        actionButton.textContent = 'Discard Selected';
-        actionButton.onclick = discardCard;
-        actionButton.style.display = 'inline-block';
+        // Hide discard button if blind bidding is available and no bid made yet
+        if (gameState.blind_bidding_available && !gameState.player_bid && !gameState.blind_bid) {
+            actionButton.style.display = 'none';
+        } else {
+            actionButton.textContent = 'Discard Selected';
+            actionButton.onclick = discardCard;
+            actionButton.style.display = 'inline-block';
+        }
         nextHandButton.style.display = 'none';
     } else if (gameState.phase === 'playing') {
         actionButton.textContent = 'Play Selected';
@@ -302,7 +307,7 @@ function updateActionButtons() {
         nextHandButton.style.display = 'none';
     }
 
-    // Disable action button if no card selected (mobile-friendly feedback)
+    // Disable action button if no card selected (only when button is visible)
     if (selectedCard === null && actionButton.style.display !== 'none') {
         actionButton.disabled = true;
         actionButton.textContent = gameState.phase === 'discard' ? 'Select Card to Discard' : 'Select Card to Play';
@@ -359,6 +364,12 @@ function updatePlayerHand() {
     const handEl = document.getElementById('playerHand');
     handEl.innerHTML = '';
 
+    // Hide cards if blind bidding is available and no bid has been made yet
+    if (gameState.blind_bidding_available && !gameState.player_bid && !gameState.blind_bid) {
+        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px;">Cards hidden until you make a bid</div>';
+        return;
+    }
+
     gameState.player_hand.forEach((card, index) => {
         const cardEl = document.createElement('div');
         cardEl.className = `card ${getSuitClass(card.suit)}`;
@@ -382,7 +393,6 @@ function updatePlayerHand() {
         handEl.appendChild(cardEl);
     });
 }
-
 function updateComputerHand() {
     const handEl = document.getElementById('computerHand');
     handEl.innerHTML = '';
