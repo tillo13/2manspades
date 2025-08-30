@@ -1,0 +1,186 @@
+# System files
+.DS_Store
+
+#venv
+
+#json keys
+/json_keys
+
+# Deployment script
+gcloud_deploy.py
+
+#deploy data
+*_files_within.txt
+
+/tmp
+/archive_versions
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+bin/
+Build/
+Develop-eggs/
+Distribution/
+Develop-eggs/
+Dist/
+Eggs/
+.eggs/
+Lib/
+Egankf/
+Include/
+Lib/
+bin/
+lib64/
+Parts/
+Scripts/
+Fake-eggs-distribution-freeia/
+Init/
+Scripts/
+
+Include/
+Pip-wheel-metadata/
+
+wheel-metadata/
+Wheelhouse/
+
+# PyInstaller
+#  Normally this directory shouldn't be there but check it just in case
+Build/
+Dist/
+
+# Installer logs
+Pip-log.txt
+Pip-delete-this-directory.txt
+
+# Coverage results
+Htmlcov/
+.tox/
+.nox/
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+hypothesis/
+.Python-version
+
+# MYPy
+.mypy_cache/
+.dmypy.json
+.dmypy-hints
+
+# Django stuff:
+*.log
+Local-settings.py
+
+# Flask stuff:
+Instance
+__pycache__/
+.python-history
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+.docs/
+
+# Peol-cache
+.Pytest-cache/
+
+# Unit test / coverage reports
+.tox/
+.nox/
+.coverage
+''.coverage.*
+.cache
+Nose2,*.xml
+unittest2.xml
+Nose2,*.xml
+Coverage.xml
+.Htmlcov/
+.Cache
+Coverage.xml
+
+# Jupyter notebooks
+.ipynb-checkpoints
+
+# IPython
+profile_default/
+.ipynb_checkpoints
+.ipython/
+
+# PyCharm
+/.idea/
+
+Pycharm-filelists/
+.Pycharm
+.Navicat
+
+# Environments
+.env
+.venv
+env/
+build/
+Xcode,
+#.ipython
+.vscode
+Build/
+
+#  Local SQLLite DB
+*.sqlite3
+*.sqlite
+
+# C extensions
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging:
+pythonvm.cache
+
+__pycache__/
+Virtenv/
+venv/
+Identify-eggs/
+Binaries/
+HERP/
+local-eggs/
+
+? .vs/
+*.swp
+
+Migration/
+Coverage/
+Htmlcov/
+*.log
+
+# .env file for environment variables
+.env
+
+# IDE directories
+.idea/
+.vscode/
+
+# Log files
+*.log
+
+# Development directories
+__pycache__/
+
+*.m4a
+*.mp3
+*.wav

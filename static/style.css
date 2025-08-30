@@ -1,0 +1,770 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    padding-top: 130px;
+    /* More space for floating headers */
+    padding-bottom: 80px;
+    /* Space for bottom new game button */
+}
+
+.container {
+    max-width: 600px;
+    /* Better desktop centering */
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Floating score headers - positioned lower */
+.floating-game-score {
+    position: fixed;
+    top: 20px;
+    /* Moved down from 10px */
+    left: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 999;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.floating-hand-score {
+    position: fixed;
+    top: 70px;
+    /* Moved down from 55px */
+    left: 10px;
+    right: 10px;
+    background: rgba(248, 249, 250, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 6px 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 998;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #495057;
+}
+
+.game-score-item {
+    text-align: center;
+    flex: 1;
+}
+
+.game-score-label {
+    font-size: 10px;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.game-score-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.hand-score-item {
+    text-align: center;
+    flex: 1;
+    font-size: 11px;
+}
+
+.hand-score-item .label {
+    color: #6c757d;
+    margin-bottom: 1px;
+}
+
+.hand-score-item .value {
+    font-weight: 600;
+    color: #333;
+}
+
+/* Hide the old score boards */
+.game-score-board,
+.score-board {
+    display: none;
+}
+
+/* Simplified score display - just essential info */
+.score-board {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.score-item {
+    text-align: center;
+    flex: 1;
+}
+
+.score-item:nth-child(2) {
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    margin: 0 10px;
+    padding: 0 10px;
+}
+
+.score-label {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.score-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+.bid-display,
+.bags-display {
+    font-size: 10px;
+    color: #999;
+    margin-top: 1px;
+}
+
+/* Clean results section with better line spacing */
+.results-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 15px;
+    display: none;
+    font-size: 13px;
+    color: #495057;
+    border: 1px solid #e9ecef;
+}
+
+.results-section.show {
+    display: block;
+}
+
+.results-header {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.result-line {
+    padding: 4px 0;
+    border-bottom: 1px solid #f1f3f4;
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.result-line:last-child {
+    border-bottom: none;
+}
+
+.result-line.highlight {
+    background: #e8f5e9;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin: 2px 0;
+    border-bottom: none;
+}
+
+.result-line.penalty {
+    background: #ffebee;
+    color: #c62828;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin: 2px 0;
+    border-bottom: none;
+}
+
+.result-line.bonus {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin: 2px 0;
+    border-bottom: none;
+}
+
+/* Minimal play area */
+.play-area {
+    padding: 20px 10px;
+    margin-bottom: 15px;
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.trick-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.trick-card {
+    background: white;
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 15px 10px;
+    width: 100px;
+    height: 130px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.trick-card .player-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.trick-card .card-content {
+    font-size: 28px;
+    font-weight: bold;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.trick-card-placeholder {
+    width: 100px;
+    height: 130px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* Trick card suit colors */
+.trick-card.spade {
+    color: #000;
+}
+
+.trick-card.heart {
+    color: #ff0000;
+}
+
+.trick-card.diamond {
+    color: #ff6200;
+}
+
+.trick-card.club {
+    color: #333;
+}
+
+/* Clean, minimal message display */
+.message {
+    text-align: center;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    font-weight: 400;
+    background: #f8f9fa;
+    color: #495057;
+    font-size: 13px;
+    line-height: 1.3;
+    border-left: 3px solid #6c757d;
+}
+
+.message.success {
+    background: #f8f9fa;
+    color: #28a745;
+    border-left-color: #28a745;
+}
+
+.message.error {
+    background: #f8f9fa;
+    color: #dc3545;
+    border-left-color: #dc3545;
+}
+
+/* Mobile-optimized hands */
+.hand-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.hand-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.card {
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 12px 8px;
+    min-width: 60px;
+    min-height: 80px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.card:hover:not(.disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.card.selected {
+    border-color: #4CAF50;
+    background: #e8f5e9;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.card.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Card suit colors */
+.card.spade {
+    color: #000;
+}
+
+.card.heart {
+    color: #ff0000;
+}
+
+.card.diamond {
+    color: #ff6200;
+}
+
+.card.club {
+    color: #333;
+}
+
+/* Better button layout for mobile */
+.controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Bottom New Game section */
+.bottom-section {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 999;
+    text-align: center;
+}
+
+.bottom-new-game-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.bottom-new-game-btn:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Cleaner bidding interface */
+.bidding-section {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.bid-buttons {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-top: 10px;
+    max-width: 350px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.bid-buttons button {
+    padding: 10px 4px;
+    font-size: 14px;
+    background: #6c757d;
+    color: white;
+    font-weight: 500;
+    min-width: 40px;
+    border-radius: 4px;
+}
+
+.bid-buttons button:hover {
+    background: #5a6268;
+}
+
+/* Much simpler blind bidding - tone down the drama */
+.blind-bidding-section {
+    background: #fff2f2;
+    border: 1px solid #e57373;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.blind-header h3 {
+    color: #d32f2f;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.blind-header p {
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.blind-warning {
+    background: #ffcdd2;
+    color: #d32f2f;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.blind-buttons {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.blind-bid-btn {
+    background: #d32f2f;
+    color: white;
+    font-weight: 500;
+    padding: 8px 6px;
+    font-size: 12px;
+}
+
+.blind-bid-btn:hover {
+    background: #c62828;
+}
+
+.regular-bid-prompt {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #ccc;
+}
+
+.regular-bid-prompt p {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+/* Improved discards display */
+.discards-section {
+    background: #e8f5e9;
+    border: 2px solid #4caf50;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.discards-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.discard-item {
+    text-align: center;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.discard-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+/* Game over styling */
+.game-over {
+    text-align: center;
+    padding: 25px 15px;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    border-radius: 15px;
+    margin-top: 15px;
+}
+
+.winner-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
+    line-height: 1.2;
+}
+
+/* Better bid and bag displays */
+.bid-display {
+    font-size: 11px;
+    color: #666;
+    margin-top: 3px;
+}
+
+.bags-display {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+}
+
+/* Mobile toggle button */
+#toggleComputerHand {
+    font-size: 12px;
+    padding: 6px 12px;
+    background: #6c757d;
+    border-radius: 6px;
+}
+
+#toggleComputerHand:hover {
+    background: #5a6268;
+}
+
+/* Responsive adjustments for larger screens */
+@media (min-width: 768px) {
+    body {
+        padding-top: 140px;
+    }
+
+    .container {
+        max-width: 700px;
+        padding: 25px;
+        margin: 0 auto;
+    }
+
+    .floating-game-score,
+    .floating-hand-score {
+        max-width: 700px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+    }
+
+    .bottom-section {
+        max-width: 700px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        border-radius: 10px 10px 0 0;
+    }
+
+    .cards {
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 12px;
+        max-width: 600px;
+        margin: 0 auto 15px auto;
+    }
+
+    .card {
+        min-width: 70px;
+        min-height: 90px;
+        font-size: 20px;
+        padding: 15px 10px;
+    }
+
+    .trick-card {
+        width: 120px;
+        height: 150px;
+        padding: 20px 15px;
+    }
+
+    .trick-card .card-content {
+        font-size: 32px;
+    }
+
+    .bid-buttons {
+        grid-template-columns: repeat(11, 1fr);
+        max-width: 600px;
+        margin: 15px auto 0;
+    }
+
+    .blind-buttons {
+        grid-template-columns: repeat(6, 1fr);
+        max-width: 400px;
+        margin: 0 auto;
+    }
+}
+
+/* Extra small screens (phones in portrait) */
+@media (max-width: 480px) {
+    body {
+        padding: 0;
+        padding-top: 130px;
+        padding-bottom: 70px;
+    }
+
+    .container {
+        margin: 0 5px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .floating-game-score,
+    .floating-hand-score {
+        left: 5px;
+        right: 5px;
+    }
+
+    .cards {
+        grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+        gap: 6px;
+    }
+
+    .card {
+        min-width: 50px;
+        min-height: 70px;
+        font-size: 16px;
+        padding: 8px 4px;
+    }
+
+    .trick-card {
+        width: 90px;
+        height: 120px;
+        padding: 12px 8px;
+    }
+
+    .trick-card .card-content {
+        font-size: 24px;
+    }
+
+    .bid-buttons {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+
+    .bid-buttons button {
+        padding: 12px 5px;
+        font-size: 14px;
+        min-width: 40px;
+    }
+
+    .blind-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .message {
+        font-size: 13px;
+        padding: 10px;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 320px) {
+    .cards {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .card {
+        min-width: 45px;
+        min-height: 65px;
+        font-size: 14px;
+    }
+
+    .bid-buttons {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
