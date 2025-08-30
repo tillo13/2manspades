@@ -111,13 +111,21 @@ function updateUI() {
     lastHandNumber = gameState.hand_number;
 }
 
+
 function updateFloatingScores() {
-    // Update floating game score
+    // Update floating game score with parity indicators
     const gameScoreEl = document.getElementById('floatingGameScore');
     if (gameScoreEl) {
         document.getElementById('floatingPlayerScore').textContent = gameState.player_score;
         document.getElementById('floatingComputerScore').textContent = gameState.computer_score;
         document.getElementById('floatingHandNumber').textContent = gameState.hand_number;
+
+        // Update parity displays
+        const playerParityText = `(${gameState.player_parity.toUpperCase()})`;
+        const computerParityText = `(${gameState.computer_parity.toUpperCase()})`;
+
+        document.getElementById('floatingPlayerParity').textContent = playerParityText;
+        document.getElementById('floatingComputerParity').textContent = computerParityText;
     }
 
     // Update floating hand score
@@ -163,7 +171,6 @@ function updateFloatingScores() {
         document.getElementById('floatingSpadesStatus').textContent = gameState.spades_broken ? 'Broken' : 'Not Broken';
     }
 }
-
 function updateBagsDisplay(elementId, bags) {
     const bagsEl = document.getElementById(elementId);
     if (!bagsEl) return;

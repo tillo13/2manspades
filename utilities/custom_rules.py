@@ -20,13 +20,20 @@ def get_discard_value(card):
 def assign_even_odd_at_game_start():
     """
     Randomly assign even/odd to players at the start of a new game.
-    Returns tuple: (player_parity, computer_parity)
+    Also determines who leads the first trick - if player is odd, they lead first.
+    Returns tuple: (player_parity, computer_parity, first_leader)
     """
     coin_flip = random.choice(['even', 'odd'])
     if coin_flip == 'even':
-        return ('even', 'odd')
+        player_parity = 'even'
+        computer_parity = 'odd'
+        first_leader = 'computer'  # Computer (odd) leads first trick
     else:
-        return ('odd', 'even')
+        player_parity = 'odd'
+        computer_parity = 'even'
+        first_leader = 'player'   # Player (odd) leads first trick
+    
+    return (player_parity, computer_parity, first_leader)
 
 def is_special_card(card):
     """

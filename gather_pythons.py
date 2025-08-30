@@ -31,7 +31,7 @@ EXCLUDED_DIRECTORIES = [
     "tools",
     "revisions_app",
     "venv_de",
-    "youtube_market_analyzer",
+    ".git",
     "archives"
 
 ]

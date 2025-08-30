@@ -37,13 +37,16 @@ app.secret_key = 'your-secret-key-change-this'
 
 DEBUG_MODE = False  # Set to False to hide Marta's cards completely
 
+# In the index() route:
 @app.route('/')
 def index():
     # Always start completely fresh
     session.clear()
-    player_parity, computer_parity = assign_even_odd_at_game_start()
-    session['game'] = init_game(player_parity, computer_parity)
+    player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
+    session['game'] = init_game(player_parity, computer_parity, first_player)
     return render_template('index.html')
+
+
 
 
 # In the get_state() route, modify the safe_state dict:
@@ -204,14 +207,24 @@ def make_bid():
     if computer_is_blind:
         game['computer_blind_bid'] = computer_bid
     
-    # Start playing phase
+    # Start playing phase with the designated first leader
     game['phase'] = 'playing'
-    game['turn'] = 'player'
-    game['trick_leader'] = 'player'
+    first_leader = game.get('first_leader', 'player')
+    game['turn'] = first_leader
+    game['trick_leader'] = first_leader
     
-    # Create message with blind indicators
+    # Create message indicating who leads first
+    player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
     computer_blind_text = " (BLIND)" if computer_is_blind else ""
-    game['message'] = f'You bid {bid}, Marta bid {computer_bid}{computer_blind_text}. Your turn to lead the first trick.'
+    
+    if first_leader == 'player':
+        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Your turn to lead the first trick.'
+    else:
+        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta leads the first trick.'
+        # If computer leads, make the computer play immediately
+        computer_lead(game)
+        game['turn'] = 'player'
+        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta led. Your turn to follow.'
     
     session.modified = True
     return jsonify({'success': True})
@@ -458,9 +471,9 @@ def next_hand():
 
 @app.route('/new_game', methods=['POST'])
 def new_game():
-    # Assign new even/odd for the new game
-    player_parity, computer_parity = assign_even_odd_at_game_start()
-    session['game'] = init_game(player_parity, computer_parity)
+    # Assign new even/odd and first player for the new game
+    player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
+    session['game'] = init_game(player_parity, computer_parity, first_player)
     return jsonify({'success': True})
 
 if __name__ == '__main__':

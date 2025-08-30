@@ -28,7 +28,7 @@ def sort_hand(hand):
     suit_order = {'♣': 0, '♦': 1, '♥': 2, '♠': 3}
     return sorted(hand, key=lambda x: (suit_order[x['suit']], x['value']))
 
-def init_game(player_parity='even', computer_parity='odd'):
+def init_game(player_parity='even', computer_parity='odd', first_leader='player'):
     """Initialize a new game"""
     deck = create_deck()
     random.shuffle(deck)
@@ -41,7 +41,7 @@ def init_game(player_parity='even', computer_parity='odd'):
         'computer_tricks': 0,
         'spades_broken': False,
         'phase': 'discard',
-        'turn': 'player',
+        'turn': 'player',  # Both players can discard simultaneously
         'trick_leader': None,
         'hand_over': False,
         'game_over': False,
@@ -64,19 +64,25 @@ def init_game(player_parity='even', computer_parity='odd'):
         'target_score': 300,
         'player_parity': player_parity,
         'computer_parity': computer_parity,
+        'first_leader': first_leader,  # Who leads the first trick of each hand
         'discard_bonus_explanation': None,
         'pending_discard_result': None,
         'pending_special_discard_result': None,
         'blind_bidding_available': False,
         'blind_bid': None,
-        'computer_blind_bid': None,  # Track computer blind bids
+        'computer_blind_bid': None,
         'blind_multiplier': 2
     }
 
+# Update init_new_hand() to alternate who leads the first trick
 def init_new_hand(game):
     """Start a new hand while preserving scores, bags, and parity assignments"""
     deck = create_deck()
     random.shuffle(deck)
+    
+    # Alternate who leads the first trick each hand
+    current_first_leader = game.get('first_leader', 'player')
+    next_first_leader = 'computer' if current_first_leader == 'player' else 'player'
     
     game.update({
         'player_hand': sort_hand(deck[:11]),
@@ -86,7 +92,7 @@ def init_new_hand(game):
         'computer_tricks': 0,
         'spades_broken': False,
         'phase': 'discard',
-        'turn': 'player',
+        'turn': 'player',  # Always player can discard first (simultaneous)
         'trick_leader': None,
         'hand_over': False,
         'message': f'Hand #{game["hand_number"]} - Select a card to discard',
@@ -104,7 +110,8 @@ def init_new_hand(game):
         'pending_special_discard_result': None,
         'blind_bidding_available': False,
         'blind_bid': None,
-        'computer_blind_bid': None  # Reset computer blind bid
+        'computer_blind_bid': None,
+        'first_leader': next_first_leader  # Alternate who leads first trick
     })
 
 def computer_bidding_brain(computer_hand, player_bid, game_state=None):
@@ -212,7 +219,7 @@ def resolve_trick_with_delay(game):
         base_message = 'You won the trick!'
     else:
         game['computer_tricks'] += 1
-        base_message = 'Computer won the trick!'
+        base_message = 'Marta won the trick!'
     
     # Add special card info to message if present
     if special_result['explanation']:
@@ -293,19 +300,36 @@ def computer_lead(game):
 
 def check_game_over(game):
     """
-    Check if the game is over (someone reached target score)
+    Check if the game is over (someone reached target score OR down by 300+ points)
     Updates game state with winner information if game is over
     """
-    if game['player_score'] >= game['target_score'] or game['computer_score'] >= game['target_score']:
+    player_score = game['player_score']
+    computer_score = game['computer_score']
+    target_score = game['target_score']
+    
+    # Check for 300-point deficit rule (mercy rule)
+    if player_score - computer_score >= 300:
         game['game_over'] = True
-        if game['player_score'] > game['computer_score']:
+        game['winner'] = 'player'
+        game['message'] = f"GAME OVER! You WIN by mercy rule {player_score} to {computer_score}! (300+ point lead)"
+        return True
+    elif computer_score - player_score >= 300:
+        game['game_over'] = True
+        game['winner'] = 'computer'
+        game['message'] = f"GAME OVER! Marta WINS by mercy rule {computer_score} to {player_score}! (300+ point lead)"
+        return True
+    
+    # Check for regular target score (300 points)
+    if player_score >= target_score or computer_score >= target_score:
+        game['game_over'] = True
+        if player_score > computer_score:
             game['winner'] = 'player'
-            game['message'] = f"GAME OVER! You WIN {game['player_score']} to {game['computer_score']}!"
-        elif game['computer_score'] > game['player_score']:
+            game['message'] = f"GAME OVER! You WIN {player_score} to {computer_score}!"
+        elif computer_score > player_score:
             game['winner'] = 'computer'
-            game['message'] = f"GAME OVER! Marta WINS {game['computer_score']} to {game['player_score']}!"
+            game['message'] = f"GAME OVER! Marta WINS {computer_score} to {player_score}!"
         else:
             game['winner'] = 'tie'
-            game['message'] = f"GAME OVER! TIE at {game['player_score']} points each!"
+            game['message'] = f"GAME OVER! TIE at {player_score} points each!"
         return True
     return False
