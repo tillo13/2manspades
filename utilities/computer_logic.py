@@ -34,55 +34,95 @@ def analyze_hand_strength(hand):
     for card in other_suits:
         suits[card['suit']].append(card)
     
-    # Analyze spades
+    # ENHANCED SPADES ANALYSIS
     spade_values = sorted([card['value'] for card in spades], reverse=True)
+    spade_count = len(spades)
     
-    # High spades analysis
-    if 14 in spade_values:  # Ace of spades
-        sure_tricks += 0.95
-    if 13 in spade_values:  # King of spades
-        sure_tricks += 0.8 if 14 in spade_values else 0.65  # Protected vs unprotected
-    if 12 in spade_values:  # Queen of spades
-        if len([v for v in spade_values if v >= 11]) >= 2:
-            probable_tricks += 0.6
-        else:
-            probable_tricks += 0.3
+    # Apply your spade count expectations
+    if spade_count >= 5:
+        sure_tricks += 3.0  # Expect 5 tricks from 5+ spades
+        probable_tricks += 2.0
+    elif spade_count == 4:
+        sure_tricks += 2.0  # Expect 3 tricks from 4 spades  
+        probable_tricks += 1.0
+    elif spade_count == 3:
+        sure_tricks += 1.5  # Expect 2 tricks from 3 spades
+        probable_tricks += 0.5
+    elif spade_count == 2:
+        sure_tricks += 0.8  # Modest expectation from 2 spades
+        probable_tricks += 0.4
+    elif spade_count == 1:
+        sure_tricks += 0.3  # Low expectation from 1 spade
     
-    # Long spade suits
-    if len(spades) >= 5:
-        probable_tricks += (len(spades) - 4) * 0.4
-    elif len(spades) >= 3:
-        probable_tricks += (len(spades) - 2) * 0.25
+    # High spades get additional value on top of count-based expectations
+    ace_spades = sum(1 for v in spade_values if v == 14)
+    king_spades = sum(1 for v in spade_values if v == 13)
+    queen_spades = sum(1 for v in spade_values if v == 12)
     
-    # Analyze other suits
+    if ace_spades > 0:
+        sure_tricks += 0.3 * ace_spades  # Ace of spades is nearly guaranteed
+    if king_spades > 0:
+        sure_tricks += 0.2 * king_spades  # King of spades very likely
+    if queen_spades > 0:
+        probable_tricks += 0.2 * queen_spades  # Queen adds some value
+    
+    # ENHANCED OTHER SUITS ANALYSIS
+    aces_other_suits = 0
+    kings_other_suits = 0
+    
     for suit, cards in suits.items():
         if not cards:
             continue
             
         values = sorted([card['value'] for card in cards], reverse=True)
         
-        # Aces in other suits (can be trumped)
+        # Count high cards for overall hand strength
+        aces_in_suit = sum(1 for v in values if v == 14)
+        kings_in_suit = sum(1 for v in values if v == 13)
+        
+        aces_other_suits += aces_in_suit
+        kings_other_suits += kings_in_suit
+        
+        # Aces in other suits (can be trumped but still strong)
         if 14 in values:
-            sure_tricks += 0.75
+            sure_tricks += 0.8 * aces_in_suit  # High but not guaranteed
         
-        # Protected kings
-        if 13 in values:
-            if 14 in values:  # Protected king
-                probable_tricks += 0.5
-            elif len(cards) >= 3:  # King in long suit
-                probable_tricks += 0.4
+        # Protected kings (with ace)
+        if 13 in values and 14 in values:
+            sure_tricks += 0.6 * kings_in_suit  # Protected kings are strong
+        elif 13 in values:
+            if len(cards) >= 3:  # King in long suit has protection
+                probable_tricks += 0.5 * kings_in_suit
             else:  # Unprotected king
-                probable_tricks += 0.25
+                probable_tricks += 0.3 * kings_in_suit
         
-        # Long suits can generate tricks
+        # Long suits can generate tricks through length
         if len(cards) >= 4:
-            probable_tricks += (len(cards) - 3) * 0.2
+            probable_tricks += (len(cards) - 3) * 0.25
+    
+    # MULTIPLE HIGH CARDS BONUS
+    # Your request: more aces/kings should increase expectations
+    total_high_cards = aces_other_suits + kings_other_suits + ace_spades + king_spades
+    
+    if total_high_cards >= 4:
+        sure_tricks += 0.5  # Multiple high cards create synergy
+        probable_tricks += 0.3
+    elif total_high_cards >= 3:
+        sure_tricks += 0.3
+        probable_tricks += 0.2
+    elif total_high_cards >= 2:
+        probable_tricks += 0.2
+    
+    # VOID SUITS (can trump)
+    void_suits = sum(1 for cards in suits.values() if len(cards) == 0)
+    if void_suits > 0 and spade_count >= 2:
+        probable_tricks += void_suits * 0.4  # Void + spades = trumping opportunities
     
     return sure_tricks, probable_tricks, special_card_bonus
 
 def should_bid_nil(hand, game_state):
     """
-    Determine if computer should bid nil (very conservative)
+    Determine if computer should bid nil (much more restrictive)
     """
     player_score = game_state.get('player_score', 0)
     computer_score = game_state.get('computer_score', 0)
@@ -92,80 +132,58 @@ def should_bid_nil(hand, game_state):
     sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
     total_expectation = sure_tricks + probable_tricks + special_bonus
     
-    # Only consider nil with very weak hands
-    if total_expectation > 1.2:
+    # Much stricter - only consider nil with truly weak hands
+    if total_expectation > 0.8:  # Lowered from 1.2
         return False
     
-    # Must have very few spades
+    # Must have very few spades and they must be low
     spades = [card for card in hand if card['suit'] == '♠']
-    if len(spades) > 2:
+    if len(spades) > 3:  # At most 3 spades
         return False
     
-    # Must have mostly low cards in other suits
+    # No high spades allowed
+    for spade in spades:
+        if spade['value'] >= 11:  # No J, Q, K, A of spades
+            return False
+    
+    # CRITICAL: Must have at least 2 twos for safety
+    twos = [card for card in hand if card['rank'] == '2']
+    if len(twos) < 2:
+        return False
+    
+    # Must have mostly very low cards (2-7) in other suits
     other_suits = [card for card in hand if card['suit'] != '♠']
-    weak_hand = all(card['value'] <= 8 for card in other_suits)
-    if not weak_hand:
+    low_cards = [card for card in other_suits if card['value'] <= 7]
+    
+    if len(low_cards) < len(other_suits) - 1:  # Almost all non-spades must be low
+        return False
+    
+    # No aces or kings in other suits
+    high_other_suits = [card for card in other_suits if card['value'] >= 13]
+    if len(high_other_suits) > 0:
         return False
     
     # Don't nil if player already bid nil
     if player_bid == 0:
         return False
     
-    # Only nil when behind in score (nil is worth 100 points)
-    if computer_score >= player_score:
+    # Only nil when significantly behind (at least 50 points)
+    if computer_score >= player_score - 50:
         return False
     
-    # Very conservative - only nil when desperate and hand is truly weak
-    return computer_score < player_score - 30
-
-def should_bid_blind(hand, game_state):
-    """
-    Determine if computer should bid blind when eligible
-    Returns tuple: (should_blind, blind_bid_amount)
-    """
-    player_score = game_state.get('player_score', 0)
-    computer_score = game_state.get('computer_score', 0)
-    
-    # Check eligibility
-    blind_eligibility = check_blind_bidding_eligibility(player_score, computer_score)
-    if not blind_eligibility['computer_eligible']:
-        return False, 0
-    
-    deficit = blind_eligibility['computer_deficit']
-    
-    # Only consider blind when really desperate (120+ points behind)
-    if deficit < 120:
-        return False, 0
-    
-    # Analyze hand strength
-    sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
-    total_expectation = sure_tricks + probable_tricks + special_bonus
-    
-    # Only go blind with reasonable hands (can realistically make 5-8 tricks)
-    if total_expectation < 4.0 or total_expectation > 7.5:
-        return False, 0
-    
-    # Calculate blind bid (conservative)
-    blind_bid = max(5, min(8, round(total_expectation)))
-    
-    # More likely to go blind when further behind
-    blind_probability = min(0.7, (deficit - 100) / 200)  # 70% max chance
-    
-    if random.random() < blind_probability:
-        return True, blind_bid
-    
-    return False, 0
+    # Very conservative probability - only when truly desperate with perfect nil hand
+    return computer_score < player_score - 80
 
 def computer_bidding_brain(computer_hand, player_bid, game_state):
     """
-    Main computer bidding function with enhanced AI
+    Main computer bidding function with enhanced AI - targeting 3-4 average bids
     Returns tuple: (bid_amount, is_blind)
     """
     player_score = game_state.get('player_score', 0)
     computer_score = game_state.get('computer_score', 0)
     computer_bags = game_state.get('computer_bags', 0)
     
-    # Check for nil opportunity first
+    # Check for nil opportunity first (now much more restrictive)
     if should_bid_nil(computer_hand, game_state):
         return 0, False
     
@@ -174,41 +192,53 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     if should_blind:
         return blind_amount, True
     
-    # Regular bidding logic
+    # Regular bidding logic - aim for 3-4 average
     sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(computer_hand)
     base_expectation = sure_tricks + probable_tricks + special_bonus
     
-    # Score-based adjustments
-    if computer_score > player_score + 30:  # Ahead - be conservative
-        base_expectation *= 0.92
+    # BOOST BASE EXPECTATION to target 3-4 range instead of 2
+    # The current system was too conservative
+    base_expectation += 0.8  # Add almost 1 full trick to expectations
+    
+    # Score-based adjustments (smaller now since we boosted base)
+    if computer_score > player_score + 30:  # Ahead - be slightly conservative
+        base_expectation *= 0.95
     elif computer_score < player_score - 30:  # Behind - be slightly aggressive
-        base_expectation *= 1.08
+        base_expectation *= 1.05
     
-    # Bag avoidance when close to penalty
+    # Bag avoidance when close to penalty (smaller effect)
     if computer_bags >= 5:
-        base_expectation *= 0.88
+        base_expectation *= 0.92
     
-    # Strategic response to player's bid
+    # Strategic response to player's bid (reduced impact)
     if player_bid == 0:  # Player nil - be aggressive to set them
-        base_expectation += 0.4
+        base_expectation += 0.3
     elif player_bid <= 2:  # Player bid low
-        base_expectation += 0.2
+        base_expectation += 0.15
     elif player_bid >= 7:  # Player bid high
-        base_expectation -= 0.3
+        base_expectation -= 0.2
     
     # Convert to bid
     raw_bid = max(0, min(10, round(base_expectation)))
     
-    # Enforce 2-5 preference for reasonable hands (as requested)
-    if 1.8 <= base_expectation <= 6.2:
-        raw_bid = max(2, min(5, raw_bid))
+    # REVISED BID RANGE PREFERENCES
+    # Remove the 2-5 constraint that was keeping bids too low
+    # Instead, nudge toward 3-4 range when reasonable
+    if 2.5 <= base_expectation <= 5.5:
+        if raw_bid < 3:
+            raw_bid = 3  # Minimum reasonable bid is 3
+        elif raw_bid == 5 and random.random() < 0.4:
+            raw_bid = 4  # Sometimes prefer 4 over 5
     
-    # Avoid obvious total-10 scenarios
-    if abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.4:
-        if raw_bid > 2:
+    # Avoid obvious total-10 scenarios (reduced probability)
+    if abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
+        if raw_bid > 3:  # Changed from 2 to 3
             raw_bid -= 1
-        elif raw_bid < 8:
+        elif raw_bid < 7:
             raw_bid += 1
+    
+    # Final bounds check
+    raw_bid = max(1, min(10, raw_bid))  # Minimum bid is now 1, not 0
     
     return raw_bid, False
 
