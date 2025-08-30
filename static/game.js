@@ -288,8 +288,12 @@ function updateActionButtons() {
         actionButton.style.display = 'none';
         nextHandButton.style.display = 'inline-block';
     } else if (gameState.phase === 'discard') {
-        // Hide discard button if blind bidding is available and no bid made yet
-        if (gameState.blind_bidding_available && !gameState.player_bid && !gameState.blind_bid) {
+        // Hide discard button if player is blind eligible and no bid made yet
+        const deficit = gameState.computer_score - gameState.player_score;
+        const isBlindEligible = deficit >= 100;
+        const noBidMadeYet = !gameState.player_bid && !gameState.blind_bid;
+
+        if (isBlindEligible && noBidMadeYet) {
             actionButton.style.display = 'none';
         } else {
             actionButton.textContent = 'Discard Selected';
@@ -307,7 +311,6 @@ function updateActionButtons() {
         nextHandButton.style.display = 'none';
     }
 
-    // Disable action button if no card selected (only when button is visible)
     if (selectedCard === null && actionButton.style.display !== 'none') {
         actionButton.disabled = true;
         actionButton.textContent = gameState.phase === 'discard' ? 'Select Card to Discard' : 'Select Card to Play';
@@ -364,9 +367,13 @@ function updatePlayerHand() {
     const handEl = document.getElementById('playerHand');
     handEl.innerHTML = '';
 
-    // Hide cards if blind bidding is available and no bid has been made yet
-    if (gameState.blind_bidding_available && !gameState.player_bid && !gameState.blind_bid) {
-        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px;">Cards hidden until you make a bid</div>';
+    // Hide cards if in discard phase, no bid made yet, and player is down by 100+ points
+    const deficit = gameState.computer_score - gameState.player_score;
+    const isBlindEligible = deficit >= 100;
+    const noBidMadeYet = !gameState.player_bid && !gameState.blind_bid;
+
+    if (gameState.phase === 'discard' && isBlindEligible && noBidMadeYet) {
+        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">Cards hidden - make blind bid decision first!</div>';
         return;
     }
 
@@ -375,7 +382,6 @@ function updatePlayerHand() {
         cardEl.className = `card ${getSuitClass(card.suit)}`;
         cardEl.textContent = `${card.rank}${card.suit}`;
 
-        // Add touch-friendly interaction
         cardEl.onclick = () => selectCard(index);
         cardEl.ontouchstart = (e) => {
             e.preventDefault();
@@ -393,6 +399,7 @@ function updatePlayerHand() {
         handEl.appendChild(cardEl);
     });
 }
+
 function updateComputerHand() {
     const handEl = document.getElementById('computerHand');
     handEl.innerHTML = '';
