@@ -210,6 +210,14 @@ def resolve_trick_with_delay(game):
         'winner': winner
     })
     
+    # LOG EACH TRICK TO CONSOLE
+    p_text = f"{player_card['rank']}{player_card['suit']}" if player_card else "?"
+    c_text = f"{computer_card['rank']}{computer_card['suit']}" if computer_card else "?"
+    winner_name = "Tom" if winner == 'player' else "Marta"
+    print(f"TRICK {trick_number}: {p_text} vs {c_text} -> {winner_name} wins")
+    
+    # ... rest of existing function stays the same
+    
     # Check for special cards in the trick and apply bag reduction IMMEDIATELY
     from utilities.custom_rules import check_special_cards_in_trick, reduce_bags_safely
     special_result = check_special_cards_in_trick(game['current_trick'], winner)
