@@ -392,22 +392,8 @@ def calculate_hand_scores_with_bags(game):
     if final_player_bags != 0 or final_computer_bags != 0:
         explanation_parts.append(f"Bags: Tom {final_player_bags}/7, Marta {final_computer_bags}/7")
 
-
-    # Add trick history to explanation
-    if 'trick_history' in game and game['trick_history']:
-        history_lines = []
-        for trick in game['trick_history']:
-            p_card = trick['player_card']
-            c_card = trick['computer_card']
-            winner_name = "Tom" if trick['winner'] == 'player' else "Marta"
-            
-            p_text = f"{p_card['rank']}{p_card['suit']}" if p_card else "?"
-            c_text = f"{c_card['rank']}{c_card['suit']}" if c_card else "?"
-            
-            history_lines.append(f"T{trick['number']}: {p_text} vs {c_text} ({winner_name} wins)")
-        
-        if history_lines:
-            explanation_parts.append("TRICK HISTORY: " + " | ".join(history_lines))
+    # REMOVED: The trick history section that was causing duplication
+    # The trick history is now only shown in the structured frontend display
     
     return {
         'player_hand_points': player_hand_points,

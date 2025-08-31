@@ -81,7 +81,8 @@ def get_state():
     # Prepare safe state
     safe_state = {
         'player_hand': game['player_hand'],
-        'computer_hand_count': len(game['computer_hand']),
+        # Only include computer_hand_count if DEBUG_MODE is True
+        'computer_hand_count': len(game['computer_hand']) if DEBUG_MODE else 0,
         'current_trick': game['current_trick'],
         'player_tricks': game['player_tricks'],
         'computer_tricks': game['computer_tricks'],
@@ -114,7 +115,7 @@ def get_state():
         'blind_bid': game.get('blind_bid'),
         'computer_blind_bid': game.get('computer_blind_bid'),
         'debug_mode': DEBUG_MODE,
-        'hand_results': game.get('hand_results')  # ADD THIS LINE
+        'hand_results': game.get('hand_results')
     }
     
     # Include computer hand only if debug mode is on AND showing
@@ -489,45 +490,74 @@ if __name__ == '__main__':
     import time
     import socket
     
-    # Kill existing processes on port 5000
-    try:
-        result = subprocess.run(['lsof', '-ti:5000'], capture_output=True, text=True)
-        if result.stdout.strip():
-            pids = result.stdout.strip().split('\n')
-            for pid in pids:
-                if pid.strip():
-                    subprocess.run(['kill', '-9', pid.strip()])
-                    print(f"Killed process {pid.strip()} on port 5000")
-            time.sleep(1)
-    except FileNotFoundError:
+    def kill_process_on_port(port):
+        """Kill any process using the specified port"""
         try:
-            result = subprocess.run(['netstat', '-ano'], capture_output=True, text=True)
-            for line in result.stdout.split('\n'):
-                if ':5000' in line and 'LISTENING' in line:
-                    parts = line.split()
-                    pid = parts[-1]
-                    subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
-                    print(f"Killed process {pid} on port 5000")
-                    time.sleep(1)
-        except:
-            pass
-    except Exception as e:
-        print(f"Could not check for existing processes: {e}")
+            # macOS/Linux approach
+            result = subprocess.run(['lsof', '-ti:' + str(port)], capture_output=True, text=True)
+            if result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        subprocess.run(['kill', '-9', pid.strip()], capture_output=True)
+                        print(f"Killed process {pid.strip()} on port {port}")
+                time.sleep(1)
+                return True
+        except FileNotFoundError:
+            try:
+                # Windows approach
+                result = subprocess.run(['netstat', '-ano'], capture_output=True, text=True)
+                for line in result.stdout.split('\n'):
+                    if f':{port}' in line and 'LISTENING' in line:
+                        parts = line.split()
+                        if parts:
+                            pid = parts[-1]
+                            subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
+                            print(f"Killed process {pid} on port {port}")
+                time.sleep(1)
+                return True
+            except:
+                pass
+        except Exception as e:
+            print(f"Could not kill processes on port {port}: {e}")
+        return False
     
-    # Check if port is still in use and find an alternative
-    port = 5000
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
+    def is_port_available(port):
+        """Check if a port is available"""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex(('localhost', port))
+        sock.close()
+        return result != 0
     
-    for p in range(5000, 5011):
-        result = sock.connect_ex(('localhost', p))
-        if result != 0:
-            port = p
-            break
-    sock.close()
+    def find_available_port(start_port=5000, max_attempts=10):
+        """Find an available port, killing processes if needed"""
+        for port in range(start_port, start_port + max_attempts):
+            if is_port_available(port):
+                print(f"Port {port} is available")
+                return port
+            else:
+                print(f"Port {port} is in use, attempting to kill process...")
+                if kill_process_on_port(port):
+                    # Check again after killing
+                    time.sleep(0.5)
+                    if is_port_available(port):
+                        print(f"Successfully freed port {port}")
+                        return port
+                    else:
+                        print(f"Port {port} still in use after kill attempt")
+                else:
+                    print(f"Could not kill process on port {port}")
+        
+        raise RuntimeError(f"Could not find an available port in range {start_port}-{start_port + max_attempts - 1}")
     
-    if port != 5000:
-        print(f"Port 5000 is in use, using port {port} instead")
+    # Find and secure a port
+    try:
+        port = find_available_port(5000, 10)
+    except RuntimeError as e:
+        print(f"Error: {e}")
+        print("Please manually kill processes or restart your computer")
+        exit(1)
     
     def open_browser():
         time.sleep(1.5)

@@ -505,6 +505,16 @@ function updatePlayerHand() {
 
 function updateComputerHand() {
     const handEl = document.getElementById('computerHand');
+    const computerHandSection = handEl.closest('.hand-section');
+
+    // Hide entire computer hand section if debug mode is off
+    if (!gameState.debug_mode) {
+        computerHandSection.style.display = 'none';
+        return;
+    }
+
+    // Show computer hand section if debug mode is on
+    computerHandSection.style.display = 'block';
     handEl.innerHTML = '';
 
     // Only show cards if debug mode is on AND show_computer_hand is true
@@ -518,8 +528,8 @@ function updateComputerHand() {
             handEl.appendChild(cardEl);
         });
     } else {
-        // Show hidden cards with count
-        const cardCount = gameState.computer_hand_count;
+        // Show hidden cards with count (only in debug mode)
+        const cardCount = gameState.computer_hand_count || 0;
         for (let i = 0; i < cardCount; i++) {
             const cardEl = document.createElement('div');
             cardEl.className = 'card';
