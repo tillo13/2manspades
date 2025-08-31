@@ -111,7 +111,6 @@ function updateUI() {
     lastHandNumber = gameState.hand_number;
 }
 
-
 function updateFloatingScores() {
     // Update floating game score with parity indicators
     const gameScoreEl = document.getElementById('floatingGameScore');
@@ -171,6 +170,7 @@ function updateFloatingScores() {
         document.getElementById('floatingSpadesStatus').textContent = gameState.spades_broken ? 'Broken' : 'Not Broken';
     }
 }
+
 function updateBagsDisplay(elementId, bags) {
     const bagsEl = document.getElementById(elementId);
     if (!bagsEl) return;
@@ -204,15 +204,18 @@ function updateBagsDisplay(elementId, bags) {
     }
 }
 
+// NEW: Clean structured results display
 function handleResultsDisplay() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContent = document.getElementById('resultsContent');
 
-    if (gameState.hand_over && gameState.discard_bonus_explanation) {
-        // Show results section with formatted content
+    if (gameState.hand_over && gameState.hand_results) {
+        // Show results section with clean structured content
         resultsSection.classList.add('show');
-
-        // Parse and format the explanation for better mobile readability
+        resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
+    } else if (gameState.hand_over && gameState.discard_bonus_explanation) {
+        // Fallback to old formatting for backward compatibility
+        resultsSection.classList.add('show');
         const explanation = gameState.discard_bonus_explanation;
         const formattedExplanation = formatResultsForMobile(explanation);
         resultsContent.innerHTML = formattedExplanation;
@@ -221,7 +224,95 @@ function handleResultsDisplay() {
     }
 }
 
+// NEW: Clean formatting function
+function formatCleanResults(results) {
+    let html = '';
 
+    // Parity Assignment
+    html += `
+        <div class="result-section">
+            <div class="result-header">Players</div>
+            <div class="result-content">Tom (${results.parity.player}) vs Marta (${results.parity.computer})</div>
+        </div>
+    `;
+
+    // Discard Information
+    if (results.discard_info && results.discard_info !== 'No discards to score') {
+        html += `
+            <div class="result-section">
+                <div class="result-header">Discard Pile</div>
+                <div class="result-content highlight">${results.discard_info}</div>
+            </div>
+        `;
+    }
+
+    // Scoring Breakdown
+    html += `
+        <div class="result-section">
+            <div class="result-header">Scoring</div>
+            <div class="result-content">${formatScoring(results.scoring)}</div>
+        </div>
+    `;
+
+    // Trick History
+    if (results.trick_history && results.trick_history.length > 0) {
+        html += `
+            <div class="result-section">
+                <div class="result-header">Trick History</div>
+                <div class="trick-history">
+        `;
+
+        results.trick_history.forEach(trick => {
+            html += `
+                <div class="trick-line">
+                    <span class="trick-number">T${trick.number}:</span>
+                    <span class="trick-cards">${trick.player_card} vs ${trick.computer_card}</span>
+                    <span class="trick-winner">→ ${trick.winner}</span>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    }
+
+    // Game Totals
+    html += `
+        <div class="result-section">
+            <div class="result-header">Game Totals</div>
+            <div class="result-content totals">
+                <span>Tom: ${results.totals.player_score}</span>
+                <span>Marta: ${results.totals.computer_score}</span>
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
+function formatScoring(scoringText) {
+    // Split by " | " and format each piece nicely
+    const parts = scoringText.split(' | ');
+    return parts.map(part => {
+        part = part.trim();
+
+        if (part.includes('BAG PENALTY')) {
+            return `<div class="penalty-line">${part.replace('BAG PENALTY!', 'Bag Penalty')}</div>`;
+        } else if (part.includes('NEGATIVE BAG BONUS')) {
+            return `<div class="bonus-line">${part.replace('NEGATIVE BAG BONUS!', 'Bag Bonus')}</div>`;
+        } else if (part.includes('special cards')) {
+            return `<div class="special-line">${part}</div>`;
+        } else if (part.includes('Bags:')) {
+            return `<div class="bags-line">${part}</div>`;
+        } else {
+            return `<div class="score-line">${part}</div>`;
+        }
+    }).join('');
+}
+
+// OLD: Legacy formatting function - keeping for fallback compatibility
 function formatResultsForMobile(explanation) {
     if (!explanation || explanation === 'No discards to score') {
         return '<div class="result-line" style="color: #666; font-style: italic;">No special scoring this hand</div>';
@@ -289,7 +380,6 @@ function formatResultsForMobile(explanation) {
 
     return formatted;
 }
-
 
 function updateActionButtons() {
     const actionButton = document.getElementById('actionButton');

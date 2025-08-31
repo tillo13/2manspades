@@ -156,11 +156,11 @@ body {
     margin-top: 1px;
 }
 
-/* Clean results section with better line spacing */
+/* Clean results section with better structure */
 .results-section {
     background: #f8f9fa;
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 15px;
     margin-bottom: 15px;
     display: none;
     font-size: 13px;
@@ -175,11 +175,143 @@ body {
 .results-header {
     font-weight: 600;
     color: #495057;
-    margin-bottom: 8px;
-    font-size: 14px;
+    margin-bottom: 10px;
+    font-size: 16px;
     text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef;
 }
 
+/* NEW: Structured results display */
+.result-section {
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 8px;
+}
+
+.result-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.result-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.result-content {
+    font-size: 13px;
+    color: #495057;
+    line-height: 1.4;
+}
+
+.result-content.highlight {
+    background: #e8f5e9;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: #2e7d32;
+}
+
+.result-content.totals {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    background: #f8f9fa;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.trick-history {
+    font-family: monospace;
+    font-size: 11px;
+    max-height: 100px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    padding: 6px;
+    border-radius: 4px;
+}
+
+.trick-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.trick-line:last-child {
+    border-bottom: none;
+}
+
+.trick-number {
+    color: #6c757d;
+    font-weight: 600;
+    min-width: 25px;
+}
+
+.trick-cards {
+    flex: 1;
+    text-align: center;
+    color: #495057;
+}
+
+.trick-winner {
+    color: #28a745;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: right;
+}
+
+.score-line {
+    padding: 2px 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.score-line:last-child {
+    border-bottom: none;
+}
+
+.penalty-line {
+    background: #ffebee;
+    color: #c62828;
+    padding: 4px 6px;
+    border-radius: 3px;
+    margin: 2px 0;
+    font-size: 12px;
+}
+
+.bonus-line {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 4px 6px;
+    border-radius: 3px;
+    margin: 2px 0;
+    font-size: 12px;
+}
+
+.special-line {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 4px 6px;
+    border-radius: 3px;
+    margin: 2px 0;
+    font-size: 12px;
+}
+
+.bags-line {
+    color: #6c757d;
+    font-size: 11px;
+    text-align: center;
+    padding: 4px 0;
+    border-top: 1px solid #e9ecef;
+    margin-top: 4px;
+}
+
+/* OLD: Legacy result line styles - keeping for fallback */
 .result-line {
     padding: 4px 0;
     border-bottom: 1px solid #f1f3f4;
@@ -633,6 +765,111 @@ button:disabled {
     background: #5a6268;
 }
 
+.bottom-rules-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    margin-left: 10px;
+}
+
+.bottom-rules-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+/* Mobile adjustments for trick history */
+@media (max-width: 480px) {
+    body {
+        padding: 0;
+        padding-top: 130px;
+        padding-bottom: 70px;
+    }
+
+    .container {
+        margin: 0 5px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .floating-game-score,
+    .floating-hand-score {
+        left: 5px;
+        right: 5px;
+    }
+
+    .cards {
+        grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+        gap: 6px;
+    }
+
+    .card {
+        min-width: 50px;
+        min-height: 70px;
+        font-size: 16px;
+        padding: 8px 4px;
+    }
+
+    .trick-card {
+        width: 90px;
+        height: 120px;
+        padding: 12px 8px;
+    }
+
+    .trick-card .card-content {
+        font-size: 24px;
+    }
+
+    .bid-buttons {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+
+    .bid-buttons button {
+        padding: 12px 5px;
+        font-size: 14px;
+        min-width: 40px;
+    }
+
+    .blind-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .message {
+        font-size: 13px;
+        padding: 10px;
+    }
+
+    .trick-line {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 4px 0;
+    }
+
+    .trick-number,
+    .trick-cards,
+    .trick-winner {
+        min-width: auto;
+        text-align: left;
+        width: 100%;
+    }
+
+    .trick-cards {
+        margin: 2px 0;
+    }
+
+    .trick-winner {
+        font-size: 10px;
+        color: #666;
+    }
+}
+
 /* Responsive adjustments for larger screens */
 @media (min-width: 768px) {
     body {
@@ -698,69 +935,6 @@ button:disabled {
     }
 }
 
-/* Extra small screens (phones in portrait) */
-@media (max-width: 480px) {
-    body {
-        padding: 0;
-        padding-top: 130px;
-        padding-bottom: 70px;
-    }
-
-    .container {
-        margin: 0 5px;
-        padding: 12px;
-        border-radius: 10px;
-    }
-
-    .floating-game-score,
-    .floating-hand-score {
-        left: 5px;
-        right: 5px;
-    }
-
-    .cards {
-        grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
-        gap: 6px;
-    }
-
-    .card {
-        min-width: 50px;
-        min-height: 70px;
-        font-size: 16px;
-        padding: 8px 4px;
-    }
-
-    .trick-card {
-        width: 90px;
-        height: 120px;
-        padding: 12px 8px;
-    }
-
-    .trick-card .card-content {
-        font-size: 24px;
-    }
-
-    .bid-buttons {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px;
-    }
-
-    .bid-buttons button {
-        padding: 12px 5px;
-        font-size: 14px;
-        min-width: 40px;
-    }
-
-    .blind-buttons {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .message {
-        font-size: 13px;
-        padding: 10px;
-    }
-}
-
 /* Very small screens */
 @media (max-width: 320px) {
     .cards {
@@ -776,23 +950,4 @@ button:disabled {
     .bid-buttons {
         grid-template-columns: repeat(3, 1fr);
     }
-}
-
-.bottom-rules-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    margin-left: 10px;
-}
-
-.bottom-rules-btn:hover {
-    background: #218838;
-    transform: translateY(-1px);
 }

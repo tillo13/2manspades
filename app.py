@@ -408,47 +408,36 @@ def clear_trick():
         # Calculate scoring with bags system
         scoring_result = calculate_hand_scores_with_bags(game)
         
-        # Build comprehensive final message
-        message_parts = []
-        
-        # Hand completion header
-        message_parts.append(f"Hand #{game['hand_number']} complete!")
-        
-        # Show parity assignments
-        player_parity = game.get('player_parity', 'even').title()
-        computer_parity = game.get('computer_parity', 'odd').title()
-        message_parts.append(f"Tom ({player_parity}) vs Marta ({computer_parity})")
-        
-        # Show discard bonus details
-        discard_explanation = game.get('discard_bonus_explanation')
-        if discard_explanation and discard_explanation != 'No discards to score':
-            message_parts.append(f"DISCARD PILE REVEALS: {discard_explanation}")
-        
-        # Add the comprehensive scoring explanation
-        message_parts.append(scoring_result['explanation'])
-        
-        # Add trick history
+        # Create structured hand results for cleaner display
         trick_history = game.get('trick_history', [])
-        if trick_history:
-            history_parts = []
-            for trick in trick_history:
-                p_card = f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?"
-                c_card = f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?"
-                winner_name = "Tom" if trick['winner'] == 'player' else "Marta"
-                history_parts.append(f"T{trick['number']}: {p_card} vs {c_card} -> {winner_name}")
-            
-            trick_history_text = " | ".join(history_parts)
-            message_parts.append(f"TRICK HISTORY: {trick_history_text}")
+        hand_results = {
+            'hand_number': game['hand_number'],
+            'parity': {
+                'player': game.get('player_parity', 'even').title(),
+                'computer': game.get('computer_parity', 'odd').title()
+            },
+            'discard_info': game.get('discard_bonus_explanation', ''),
+            'scoring': scoring_result['explanation'],
+            'trick_history': [
+                {
+                    'number': trick['number'],
+                    'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?",
+                    'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?",
+                    'winner': "Tom" if trick['winner'] == 'player' else "Marta"
+                }
+                for trick in trick_history
+            ],
+            'totals': {
+                'player_score': game['player_score'],
+                'computer_score': game['computer_score']
+            }
+        }
         
-        # Show running totals
-        totals = f"Game totals: Tom {game['player_score']}, Marta {game['computer_score']}"
-        message_parts.append(totals)
+        # Store structured results for frontend
+        game['hand_results'] = hand_results
         
-        # Add instruction
-        message_parts.append("Click 'Next Hand' to continue")
-        
-        # Join all parts with separators
-        game['message'] = " | ".join(message_parts)
+        # Simple message for basic display
+        game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
         
         # Check if game is over
         check_game_over(game)
