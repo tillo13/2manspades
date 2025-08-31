@@ -42,9 +42,15 @@ def get_display_score(base_score, bags):
     """Convert base score and bags to display score (bags in ones column)"""
     # Only modify ones digit if bags are non-negative
     if bags >= 0:
-        # Remove the current ones digit and replace with bags
-        tens_and_higher = (base_score // 10) * 10
-        return tens_and_higher + bags
+        # For negative scores, we need to handle the ones digit differently
+        if base_score < 0:
+            # Remove ones digit from negative number and subtract bags
+            tens_and_higher = (base_score // 10) * 10
+            return tens_and_higher - bags
+        else:
+            # For positive scores, remove ones digit and add bags
+            tens_and_higher = (base_score // 10) * 10
+            return tens_and_higher + bags
     else:
         # If bags are negative, show base score unchanged
         return base_score
