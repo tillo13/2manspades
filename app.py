@@ -41,11 +41,24 @@ DEBUG_MODE = False  # Set to False to hide Marta's cards completely
 # In the index() route:
 @app.route('/')
 def index():
-    # Always start completely fresh
-    session.clear()
+    # Check if we should force a new game (via query parameter)
+    force_new = request.args.get('new', '').lower() == 'true'
+    
+    # Only start fresh if explicitly requested or no existing game
+    if force_new or 'game' not in session:
+        session.clear()
+        player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
+        session['game'] = init_game(player_parity, computer_parity, first_player)
+    
+    # If there's an existing game, preserve it
+    return render_template('index.html')
+
+@app.route('/new_game', methods=['POST'])
+def new_game():
+    # Assign new even/odd and first player for the new game
     player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
     session['game'] = init_game(player_parity, computer_parity, first_player)
-    return render_template('index.html')
+    return jsonify({'success': True})
 
 @app.route('/state')
 def get_state():
@@ -469,12 +482,6 @@ def next_hand():
     session.modified = True
     return jsonify({'success': True})
 
-@app.route('/new_game', methods=['POST'])
-def new_game():
-    # Assign new even/odd and first player for the new game
-    player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
-    session['game'] = init_game(player_parity, computer_parity, first_player)
-    return jsonify({'success': True})
 
 if __name__ == '__main__':
     import subprocess

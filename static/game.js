@@ -754,6 +754,7 @@ async function toggleComputerHand() {
     }
 }
 
+
 async function startNewGame() {
     try {
         if (trickDisplayTimeout) {
@@ -768,6 +769,11 @@ async function startNewGame() {
         console.error('Error starting new game:', error);
         showMessage('Error starting new game', 'error');
     }
+}
+
+// Option 2: Alternative - redirect to force new game
+async function startNewGameWithRedirect() {
+    window.location.href = '/?new=true';
 }
 
 function showMessage(text, type = '') {
