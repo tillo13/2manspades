@@ -40,7 +40,14 @@ DEBUG_MODE = False  # Set to False to hide Marta's cards completely
 
 def get_display_score(base_score, bags):
     """Convert base score and bags to display score (bags in ones column)"""
-    return base_score + bags
+    # Only modify ones digit if bags are non-negative
+    if bags >= 0:
+        # Remove the current ones digit and replace with bags
+        tens_and_higher = (base_score // 10) * 10
+        return tens_and_higher + bags
+    else:
+        # If bags are negative, show base score unchanged
+        return base_score
 
 def get_base_score_from_display(display_score, bags):
     """Convert display score back to base score (removing bags from ones column)"""
