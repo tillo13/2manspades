@@ -246,6 +246,7 @@ def reduce_bags_safely(current_bags, reduction):
     """Reduce bags by the specified amount. Bags can go negative."""
     return current_bags - reduction
 
+
 def calculate_hand_scores_with_bags(game):
     """
     Calculate hand scoring including bags system, nil bids, and blind bidding for both players.
@@ -266,10 +267,10 @@ def calculate_hand_scores_with_bags(game):
     # Calculate player points
     if player_bid == 0:
         if player_actual == 0:
-            player_hand_points = 100
+            player_hand_points = 200  # Changed from 100 to 200
             player_bags_added = 0
         else:
-            player_hand_points = -100
+            player_hand_points = -200  # Changed from -100 to -200
             player_bags_added = player_actual
     elif player_actual >= player_bid:
         player_hand_points = (player_bid * 10)
@@ -285,10 +286,10 @@ def calculate_hand_scores_with_bags(game):
     # Calculate computer points (now with blind support!)
     if computer_bid == 0:
         if computer_actual == 0:
-            computer_hand_points = 100
+            computer_hand_points = 200  # Changed from 100 to 200
             computer_bags_added = 0
         else:
-            computer_hand_points = -100
+            computer_hand_points = -200  # Changed from -100 to -200
             computer_bags_added = computer_actual
     elif computer_actual >= computer_bid:
         computer_hand_points = (computer_bid * 10)
@@ -332,9 +333,9 @@ def calculate_hand_scores_with_bags(game):
     # Player explanation
     if player_bid == 0:
         if player_actual == 0:
-            explanation_parts.append(f"Tom: NIL SUCCESS! 0 bid, 0 tricks (+100 pts)")
+            explanation_parts.append(f"Tom: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")  # Changed from +100
         else:
-            explanation_parts.append(f"Tom: NIL FAILED! 0 bid, {player_actual} tricks (-100 pts, +{player_bags_added} bags)")
+            explanation_parts.append(f"Tom: NIL FAILED! 0 bid, {player_actual} tricks (-200 pts, +{player_bags_added} bags)")  # Changed from -100
     elif is_player_blind:
         if player_actual >= player_bid:
             explanation_parts.append(f"Tom: BLIND {player_bid} SUCCESS! {player_actual} tricks (DOUBLE POINTS: +{player_hand_points} pts)")
@@ -350,9 +351,9 @@ def calculate_hand_scores_with_bags(game):
     # Computer explanation with blind support
     if computer_bid == 0:
         if computer_actual == 0:
-            explanation_parts.append(f"Marta: NIL SUCCESS! 0 bid, 0 tricks (+100 pts)")
+            explanation_parts.append(f"Marta: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")  # Changed from +100
         else:
-            explanation_parts.append(f"Marta: NIL FAILED! 0 bid, {computer_actual} tricks (-100 pts, +{computer_bags_added} bags)")
+            explanation_parts.append(f"Marta: NIL FAILED! 0 bid, {computer_actual} tricks (-200 pts, +{computer_bags_added} bags)")  # Changed from -100
     elif is_computer_blind:
         if computer_actual >= computer_bid:
             explanation_parts.append(f"Marta: BLIND {computer_bid} SUCCESS! {computer_actual} tricks (DOUBLE POINTS: +{computer_hand_points} pts)")
@@ -391,9 +392,6 @@ def calculate_hand_scores_with_bags(game):
     # Show current bag counts
     if final_player_bags != 0 or final_computer_bags != 0:
         explanation_parts.append(f"Bags: Tom {final_player_bags}/7, Marta {final_computer_bags}/7")
-
-    # REMOVED: The trick history section that was causing duplication
-    # The trick history is now only shown in the structured frontend display
     
     return {
         'player_hand_points': player_hand_points,
