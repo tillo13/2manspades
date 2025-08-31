@@ -47,10 +47,6 @@ def index():
     session['game'] = init_game(player_parity, computer_parity, first_player)
     return render_template('index.html')
 
-
-
-
-# In the get_state() route, modify the safe_state dict:
 @app.route('/state')
 def get_state():
     if 'game' not in session:
@@ -86,7 +82,7 @@ def get_state():
         'message': game['message'],
         'player_discarded': game.get('player_discarded'),
         'computer_discarded': game.get('computer_discarded'),
-        'show_computer_hand': game.get('show_computer_hand', False) and DEBUG_MODE,  # Hide if DEBUG_MODE=False
+        'show_computer_hand': game.get('show_computer_hand', False) and DEBUG_MODE,
         'player_bid': game.get('player_bid'),
         'computer_bid': game.get('computer_bid'),
         'total_tricks': game.get('total_tricks', 10),
@@ -104,7 +100,8 @@ def get_state():
         'blind_bidding_available': game.get('blind_bidding_available', False),
         'blind_bid': game.get('blind_bid'),
         'computer_blind_bid': game.get('computer_blind_bid'),
-        'debug_mode': DEBUG_MODE  # Send debug mode state to frontend
+        'debug_mode': DEBUG_MODE,
+        'hand_results': game.get('hand_results')  # ADD THIS LINE
     }
     
     # Include computer hand only if debug mode is on AND showing
