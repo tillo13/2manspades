@@ -66,6 +66,12 @@
                     <div id="trickDisplay"></div>
                 </div>
 
+                <!-- Game Over section moved here, right below play area -->
+                <div class="game-over" id="gameOver" style="display: none;">
+                    <div class="winner-text" id="winnerText"></div>
+                    <button onclick="startNewGame()">Play Again</button>
+                </div>
+
                 <div class="message" id="message">Loading game...</div>
 
                 <!-- Clean Results Section -->
@@ -160,10 +166,7 @@
                     </div>
                 </div>
 
-                <div class="game-over" id="gameOver" style="display: none;">
-                    <div class="winner-text" id="winnerText"></div>
-                    <button onclick="startNewGame()">Play Again</button>
-                </div>
+                <!-- Game over section removed from here since it's now above -->
             </div>
 
             <!-- Bottom New Game Section -->

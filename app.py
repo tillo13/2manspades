@@ -38,6 +38,14 @@ app.secret_key = 'your-secret-key-change-this'
 
 DEBUG_MODE = False  # Set to False to hide Marta's cards completely
 
+def get_display_score(base_score, bags):
+    """Convert base score and bags to display score (bags in ones column)"""
+    return base_score + bags
+
+def get_base_score_from_display(display_score, bags):
+    """Convert display score back to base score (removing bags from ones column)"""
+    return display_score - bags
+
 # In the index() route:
 @app.route('/')
 def index():
@@ -78,6 +86,15 @@ def get_state():
     show_discard_explanation = game.get('hand_over', False)
     discard_explanation = game.get('discard_bonus_explanation') if show_discard_explanation else None
     
+    # Calculate display scores (base score + bags)
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    player_bags = game.get('player_bags', 0)
+    computer_bags = game.get('computer_bags', 0)
+    
+    player_display_score = get_display_score(player_base_score, player_bags)
+    computer_display_score = get_display_score(computer_base_score, computer_bags)
+    
     # Prepare safe state
     safe_state = {
         'player_hand': game['player_hand'],
@@ -100,10 +117,12 @@ def get_state():
         'player_bid': game.get('player_bid'),
         'computer_bid': game.get('computer_bid'),
         'total_tricks': game.get('total_tricks', 10),
-        'player_score': game.get('player_score', 0),
-        'computer_score': game.get('computer_score', 0),
-        'player_bags': game.get('player_bags', 0),
-        'computer_bags': game.get('computer_bags', 0),
+        'player_score': player_display_score,  # Display score with bags
+        'computer_score': computer_display_score,  # Display score with bags
+        'player_base_score': player_base_score,  # Keep base score for internal calculations
+        'computer_base_score': computer_base_score,  # Keep base score for internal calculations
+        'player_bags': player_bags,
+        'computer_bags': computer_bags,
         'hand_number': game.get('hand_number', 1),
         'target_score': game.get('target_score', 300),
         'player_parity': game.get('player_parity', 'even'),
@@ -153,11 +172,10 @@ def make_blind_bid():
     if game['phase'] != 'discard':
         return jsonify({'error': 'Can only make blind bid before discard'}), 400
     
-    # Check blind bidding eligibility
-    blind_eligibility = check_blind_bidding_eligibility(
-        game.get('player_score', 0),
-        game.get('computer_score', 0)
-    )
+    # Check blind bidding eligibility using base scores
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
     
     if not blind_eligibility['player_eligible']:
         return jsonify({'error': 'Not eligible for blind bidding'}), 400
@@ -294,11 +312,10 @@ def discard_card():
         computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
         game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
     else:
-        # Normal flow - check if player is eligible for blind bidding
-        blind_eligibility = check_blind_bidding_eligibility(
-            game.get('player_score', 0),
-            game.get('computer_score', 0)
-        )
+        # Normal flow - check if player is eligible for blind bidding using base scores
+        player_base_score = game.get('player_score', 0)
+        computer_base_score = game.get('computer_score', 0)
+        blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
         
         if blind_eligibility['player_eligible']:
             game['blind_bidding_available'] = True
@@ -421,6 +438,11 @@ def clear_trick():
         
         # Create structured hand results for cleaner display
         trick_history = game.get('trick_history', [])
+        
+        # Calculate display scores for hand results
+        player_display_score = get_display_score(game['player_score'], game.get('player_bags', 0))
+        computer_display_score = get_display_score(game['computer_score'], game.get('computer_bags', 0))
+        
         hand_results = {
             'hand_number': game['hand_number'],
             'parity': {
@@ -439,8 +461,8 @@ def clear_trick():
                 for trick in trick_history
             ],
             'totals': {
-                'player_score': game['player_score'],
-                'computer_score': game['computer_score']
+                'player_score': player_display_score,  # Display score with bags
+                'computer_score': computer_display_score  # Display score with bags
             }
         }
         
@@ -450,7 +472,7 @@ def clear_trick():
         # Simple message for basic display
         game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
         
-        # Check if game is over
+        # Check if game is over using base scores for comparison
         check_game_over(game)
         
     elif winner == 'computer':
