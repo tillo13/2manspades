@@ -10,6 +10,38 @@ from .custom_rules import (
     apply_blind_scoring
 )
 
+# =============================================================================
+# GLOBAL AI DIFFICULTY SETTINGS
+# =============================================================================
+
+# Discard Strategy Settings
+SINGLETON_SPECIAL_PRIORITY = 1000    # How much to prioritize discarding singleton 7♦/10♣
+VOID_CREATION_PRIORITY = 500         # How much to value creating voids
+SPECIAL_CARD_PROTECTION = -100       # Penalty for discarding protected special cards
+SPADE_DISCARD_PENALTY = 3           # Multiplier for avoiding spade discards
+PARITY_CONSIDERATION = 1            # Small bonus for parity-favorable discards
+
+# Bidding Strategy Settings  
+BID_ACCURACY_BOOST = 0.8            # How much to boost base expectations (higher = more aggressive)
+NIL_RISK_TOLERANCE = 0.8            # Threshold for nil bidding (lower = more nil attempts)
+BLIND_DESPERATION_THRESHOLD = 120   # Points behind before considering blind bids
+SCORE_BASED_ADJUSTMENT = 0.05       # How much score differential affects bidding
+NIL_STRICTNESS = 0.8                # Lower = more likely to nil (minimum expectation for non-nil)
+
+# Playing Strategy Settings
+BAG_AVOIDANCE_STRENGTH = 0.92       # Multiplier when trying to avoid bags (lower = more avoidance)
+SPECIAL_CARD_FOLLOWING_PROTECTION = True  # Whether to avoid playing special cards when following
+LEAD_SAFETY_CONSIDERATION = True     # Whether to avoid leading into dangerous suits
+
+# Meta-Strategy Settings
+OPPONENT_MODELING = False            # Whether to try predicting opponent plays (future feature)
+RISK_TAKING_PERSONALITY = 0.5       # 0.0 = very conservative, 1.0 = very aggressive
+DEFAULT_BLIND_BID = 5
+
+# =============================================================================
+# HAND ANALYSIS FUNCTIONS
+# =============================================================================
+
 def analyze_hand_strength(hand):
     """
     Analyze hand strength and return expected trick count
@@ -38,7 +70,7 @@ def analyze_hand_strength(hand):
     spade_values = sorted([card['value'] for card in spades], reverse=True)
     spade_count = len(spades)
     
-    # Apply your spade count expectations
+    # Apply spade count expectations
     if spade_count >= 5:
         sure_tricks += 3.0  # Expect 5 tricks from 5+ spades
         probable_tricks += 2.0
@@ -101,7 +133,6 @@ def analyze_hand_strength(hand):
             probable_tricks += (len(cards) - 3) * 0.25
     
     # MULTIPLE HIGH CARDS BONUS
-    # Your request: more aces/kings should increase expectations
     total_high_cards = aces_other_suits + kings_other_suits + ace_spades + king_spades
     
     if total_high_cards >= 4:
@@ -120,9 +151,95 @@ def analyze_hand_strength(hand):
     
     return sure_tricks, probable_tricks, special_card_bonus
 
+def analyze_suit_distribution(hand):
+    """Analyze suit distribution and identify singleton/void opportunities"""
+    suits = {'♥': [], '♦': [], '♣': [], '♠': []}
+    
+    for card in hand:
+        suits[card['suit']].append(card)
+    
+    distribution = {}
+    for suit, cards in suits.items():
+        distribution[suit] = {
+            'count': len(cards),
+            'cards': cards,
+            'is_void': len(cards) == 0,
+            'is_singleton': len(cards) == 1
+        }
+    
+    return distribution
+
+# =============================================================================
+# DISCARD STRATEGY
+# =============================================================================
+
+def computer_discard_strategy(computer_hand, game_state):
+    """
+    Enhanced discard strategy prioritizing singleton special cards and void creation
+    Returns index of card to discard
+    """
+    player_parity = game_state.get('player_parity', 'even')
+    computer_parity = game_state.get('computer_parity', 'odd')
+    
+    # Analyze suit distribution
+    suit_distribution = analyze_suit_distribution(computer_hand)
+    
+    discard_candidates = []
+    
+    for i, card in enumerate(computer_hand):
+        score = 0
+        suit_info = suit_distribution[card['suit']]
+        
+        # PRIORITY 1: Singleton special cards - MUST discard these
+        if suit_info['is_singleton'] and card['suit'] != '♠':
+            is_special, _ = is_special_card(card)
+            if is_special:
+                score += SINGLETON_SPECIAL_PRIORITY
+                discard_candidates.append((i, score))
+                continue  # Don't apply other penalties to singleton specials
+        
+        # PRIORITY 2: Void creation (singleton non-specials in non-spade suits)
+        elif suit_info['is_singleton'] and card['suit'] != '♠':
+            spade_count = suit_distribution['♠']['count']
+            # More spades = void is more valuable
+            void_value = (spade_count * VOID_CREATION_PRIORITY) // 10
+            if spade_count >= 4:  # Strong spade holding
+                void_value += (VOID_CREATION_PRIORITY // 4)
+            void_value -= card['value']  # Prefer discarding low cards
+            score += void_value
+        
+        # PRIORITY 3: Normal special card protection (protected specials)
+        else:
+            is_special, _ = is_special_card(card)
+            if is_special:
+                score += SPECIAL_CARD_PROTECTION  # Negative score
+        
+        # PRIORITY 4: Avoid discarding spades
+        if card['suit'] == '♠':
+            score -= card['value'] * SPADE_DISCARD_PENALTY
+        else:
+            # Prefer discarding low cards from other suits
+            score += (15 - card['value'])
+        
+        # PRIORITY 5: Light parity consideration
+        discard_value = get_discard_value(card)
+        if computer_parity == 'even' and discard_value % 2 == 1:
+            score += PARITY_CONSIDERATION
+        elif computer_parity == 'odd' and discard_value % 2 == 0:
+            score += PARITY_CONSIDERATION
+        
+        discard_candidates.append((i, score))
+    
+    # Return index of card with highest discard score
+    return max(discard_candidates, key=lambda x: x[1])[0]
+
+# =============================================================================
+# BIDDING STRATEGY
+# =============================================================================
+
 def should_bid_nil(hand, game_state):
     """
-    Determine if computer should bid nil (much more restrictive)
+    Determine if computer should bid nil (using configurable strictness)
     """
     player_score = game_state.get('player_score', 0)
     computer_score = game_state.get('computer_score', 0)
@@ -132,8 +249,8 @@ def should_bid_nil(hand, game_state):
     sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
     total_expectation = sure_tricks + probable_tricks + special_bonus
     
-    # Much stricter - only consider nil with truly weak hands
-    if total_expectation > 0.8:  # Lowered from 1.2
+    # Use configurable nil threshold
+    if total_expectation > NIL_STRICTNESS:
         return False
     
     # Must have very few spades and they must be low
@@ -146,7 +263,7 @@ def should_bid_nil(hand, game_state):
         if spade['value'] >= 11:  # No J, Q, K, A of spades
             return False
     
-    # CRITICAL: Must have at least 2 twos for safety
+    # Must have at least 2 twos for safety
     twos = [card for card in hand if card['rank'] == '2']
     if len(twos) < 2:
         return False
@@ -155,7 +272,7 @@ def should_bid_nil(hand, game_state):
     other_suits = [card for card in hand if card['suit'] != '♠']
     low_cards = [card for card in other_suits if card['value'] <= 7]
     
-    if len(low_cards) < len(other_suits) - 1:  # Almost all non-spades must be low
+    if len(low_cards) < len(other_suits) - 1:
         return False
     
     # No aces or kings in other suits
@@ -167,11 +284,11 @@ def should_bid_nil(hand, game_state):
     if player_bid == 0:
         return False
     
-    # Only nil when significantly behind (at least 50 points)
+    # Only nil when significantly behind
     if computer_score >= player_score - 50:
         return False
     
-    # Very conservative probability - only when truly desperate with perfect nil hand
+    # Conservative probability - only when truly desperate
     return computer_score < player_score - 80
 
 def should_bid_blind(hand, game_state):
@@ -187,41 +304,19 @@ def should_bid_blind(hand, game_state):
     if not blind_eligibility['computer_eligible']:
         return False, 0
     
-    deficit = blind_eligibility['computer_deficit']
-    
-    # Only consider blind when really desperate (120+ points behind)
-    if deficit < 120:
-        return False, 0
-    
-    # Analyze hand strength
-    sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
-    total_expectation = sure_tricks + probable_tricks + special_bonus
-    
-    # Only go blind with reasonable hands (can realistically make 5-8 tricks)
-    if total_expectation < 4.0 or total_expectation > 7.5:
-        return False, 0
-    
-    # Calculate blind bid (conservative)
-    blind_bid = max(5, min(8, round(total_expectation)))
-    
-    # More likely to go blind when further behind
-    blind_probability = min(0.7, (deficit - 100) / 200)  # 70% max chance
-    
-    if random.random() < blind_probability:
-        return True, blind_bid
-    
-    return False, 0
+    # If down by 100+, just go blind 5 (simplest aggressive strategy)
+    return True, DEFAULT_BLIND_BID
 
 def computer_bidding_brain(computer_hand, player_bid, game_state):
     """
-    Main computer bidding function with enhanced AI - targeting 3-4 average bids
+    Main computer bidding function with configurable AI settings
     Returns tuple: (bid_amount, is_blind)
     """
     player_score = game_state.get('player_score', 0)
     computer_score = game_state.get('computer_score', 0)
     computer_bags = game_state.get('computer_bags', 0)
     
-    # Check for nil opportunity first (now much more restrictive)
+    # Check for nil opportunity first
     if should_bid_nil(computer_hand, game_state):
         return 0, False
     
@@ -230,26 +325,25 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     if should_blind:
         return blind_amount, True
     
-    # Regular bidding logic - aim for 3-4 average
+    # Regular bidding logic
     sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(computer_hand)
     base_expectation = sure_tricks + probable_tricks + special_bonus
     
-    # BOOST BASE EXPECTATION to target 3-4 range instead of 2
-    # The current system was too conservative
-    base_expectation += 0.8  # Add almost 1 full trick to expectations
+    # Apply configurable accuracy boost
+    base_expectation += BID_ACCURACY_BOOST
     
-    # Score-based adjustments (smaller now since we boosted base)
-    if computer_score > player_score + 30:  # Ahead - be slightly conservative
-        base_expectation *= 0.95
-    elif computer_score < player_score - 30:  # Behind - be slightly aggressive
-        base_expectation *= 1.05
+    # Score-based adjustments (using configurable multiplier)
+    score_diff = computer_score - player_score
+    if score_diff > 30:  # Ahead - be slightly conservative
+        base_expectation *= (1 - SCORE_BASED_ADJUSTMENT)
+    elif score_diff < -30:  # Behind - be slightly aggressive
+        base_expectation *= (1 + SCORE_BASED_ADJUSTMENT)
     
-    # Bag avoidance when close to penalty (smaller effect)
+    # Bag avoidance when close to penalty
     if computer_bags >= 5:
-        base_expectation *= 0.92
+        base_expectation *= BAG_AVOIDANCE_STRENGTH
     
-    # Strategic response to player's bid (reduced impact)
-    # FIX: Check if player_bid is None (Martha bids first scenario)
+    # Strategic response to player's bid
     if player_bid is not None:
         if player_bid == 0:  # Player nil - be aggressive to set them
             base_expectation += 0.3
@@ -257,68 +351,32 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
             base_expectation += 0.15
         elif player_bid >= 7:  # Player bid high
             base_expectation -= 0.2
-    # If player_bid is None (Martha bids first), skip player-based adjustments
     
     # Convert to bid
     raw_bid = max(0, min(10, round(base_expectation)))
     
-    # REVISED BID RANGE PREFERENCES
-    # Remove the 2-5 constraint that was keeping bids too low
-    # Instead, nudge toward 3-4 range when reasonable
+    # Bid range preferences
     if 2.5 <= base_expectation <= 5.5:
         if raw_bid < 3:
             raw_bid = 3  # Minimum reasonable bid is 3
         elif raw_bid == 5 and random.random() < 0.4:
             raw_bid = 4  # Sometimes prefer 4 over 5
     
-    # Avoid obvious total-10 scenarios (reduced probability)
-    # Only apply this if we know the player's bid
+    # Avoid obvious total-10 scenarios
     if player_bid is not None and abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
-        if raw_bid > 3:  # Changed from 2 to 3
+        if raw_bid > 3:
             raw_bid -= 1
         elif raw_bid < 7:
             raw_bid += 1
     
     # Final bounds check
-    raw_bid = max(1, min(10, raw_bid))  # Minimum bid is now 1, not 0
+    raw_bid = max(1, min(10, raw_bid))
     
     return raw_bid, False
 
-def computer_discard_strategy(computer_hand, game_state):
-    """
-    Enhanced discard strategy considering special cards and parity
-    Returns index of card to discard
-    """
-    player_parity = game_state.get('player_parity', 'even')
-    computer_parity = game_state.get('computer_parity', 'odd')
-    
-    discard_candidates = []
-    
-    for i, card in enumerate(computer_hand):
-        score = 0
-        
-        # Heavily avoid discarding special cards
-        is_special, _ = is_special_card(card)
-        if is_special:
-            score -= 100  # Almost never discard special cards
-        
-        # Prefer discarding weak cards, avoid spades
-        if card['suit'] == '♠':
-            score -= card['value'] * 3  # Really avoid discarding spades
-        else:
-            score += (15 - card['value'])  # Prefer discarding low cards
-        
-        # Light parity consideration for discard scoring
-        discard_value = get_discard_value(card)
-        if computer_parity == 'even' and discard_value % 2 == 1:
-            score += 3  # Odd values might help create even totals
-        elif computer_parity == 'odd' and discard_value % 2 == 0:
-            score += 3  # Even values might help create odd totals
-        
-        discard_candidates.append((i, score))
-    
-    # Return index of card with highest discard score
-    return max(discard_candidates, key=lambda x: x[1])[0]
+# =============================================================================
+# PLAYING STRATEGY
+# =============================================================================
 
 def computer_lead_strategy(computer_hand, spades_broken):
     """
@@ -337,46 +395,47 @@ def computer_lead_strategy(computer_hand, spades_broken):
     if not valid_leads:
         return None
     
-    # Categorize leads by danger level
-    safe_leads = []
-    risky_leads = []
-    dangerous_leads = []
-    
-    for i, card in valid_leads:
-        suit = card['suit']
-        rank = card['rank']
+    # Categorize leads by danger level (if safety consideration is enabled)
+    if LEAD_SAFETY_CONSIDERATION:
+        safe_leads = []
+        risky_leads = []
+        dangerous_leads = []
         
-        # Check if leading this suit could give opponent special cards
-        if suit == '♣':
-            # Leading clubs could set up 10♣ for opponent
-            if rank in ['J', 'Q', 'K', 'A']:  # High clubs are dangerous
-                dangerous_leads.append((i, card))
-            elif rank in ['8', '9', '10']:  # Medium clubs are risky
-                risky_leads.append((i, card))
-            else:  # Low clubs are safer
+        for i, card in valid_leads:
+            suit = card['suit']
+            rank = card['rank']
+            
+            # Check if leading this suit could give opponent special cards
+            if suit == '♣':
+                # Leading clubs could set up 10♣ for opponent
+                if rank in ['J', 'Q', 'K', 'A']:
+                    dangerous_leads.append((i, card))
+                elif rank in ['8', '9', '10']:
+                    risky_leads.append((i, card))
+                else:
+                    safe_leads.append((i, card))
+            elif suit == '♦':
+                # Leading diamonds could set up 7♦ for opponent  
+                if rank in ['J', 'Q', 'K', 'A']:
+                    dangerous_leads.append((i, card))
+                elif rank in ['6', '7', '8']:
+                    risky_leads.append((i, card))
+                else:
+                    safe_leads.append((i, card))
+            else:
+                # Hearts and spades are generally safer
                 safe_leads.append((i, card))
-        elif suit == '♦':
-            # Leading diamonds could set up 7♦ for opponent  
-            if rank in ['J', 'Q', 'K', 'A']:  # High diamonds are dangerous
-                dangerous_leads.append((i, card))
-            elif rank in ['6', '7', '8']:  # Around 7♦ is risky
-                risky_leads.append((i, card))
-            else:  # Other diamonds are safer
-                safe_leads.append((i, card))
+        
+        # Choose lead in order of preference: safe > risky > dangerous
+        if safe_leads:
+            chosen = min(safe_leads, key=lambda x: x[1]['value'])
+        elif risky_leads:
+            chosen = min(risky_leads, key=lambda x: x[1]['value'])
         else:
-            # Hearts and spades are generally safer for special card purposes
-            safe_leads.append((i, card))
-    
-    # Choose lead in order of preference: safe > risky > dangerous
-    if safe_leads:
-        # From safe leads, choose lowest card
-        chosen = min(safe_leads, key=lambda x: x[1]['value'])
-    elif risky_leads:
-        # From risky leads, choose lowest card
-        chosen = min(risky_leads, key=lambda x: x[1]['value'])
+            chosen = min(dangerous_leads, key=lambda x: x[1]['value'])
     else:
-        # Must lead dangerous card - choose lowest
-        chosen = min(dangerous_leads, key=lambda x: x[1]['value'])
+        # Simple strategy - just lead lowest valid card
+        chosen = min(valid_leads, key=lambda x: x[1]['value'])
     
     return chosen[0]
 
@@ -390,7 +449,6 @@ def computer_follow_strategy(computer_hand, current_trick, game_state):
     
     computer_bid = game_state.get('computer_bid', 0)
     computer_tricks = game_state.get('computer_tricks', 0)
-    spades_broken = game_state.get('spades_broken', False)
     
     # Check if computer has already made their bid
     bid_already_made = computer_tricks >= computer_bid and computer_bid > 0
@@ -426,94 +484,135 @@ def computer_follow_strategy(computer_hand, current_trick, game_state):
             else:
                 other.append((i, card))
     
-    # Combine same suit cards (prioritize non-special)
-    all_same_suit = same_suit + same_suit_special
-    all_spades = spades + spades_special
-    all_other = other + other_special
+    # Combine same suit cards (prioritize non-special if protection is enabled)
+    if SPECIAL_CARD_FOLLOWING_PROTECTION:
+        all_same_suit = same_suit + same_suit_special
+        all_spades = spades + spades_special
+        all_other = other + other_special
+    else:
+        all_same_suit = same_suit_special + same_suit
+        all_spades = spades_special + spades
+        all_other = other_special + other
     
     if all_same_suit:
         # Must follow suit
         winners = [(i, c) for i, c in all_same_suit if c['value'] > lead_value]
         losers = [(i, c) for i, c in all_same_suit if c['value'] <= lead_value]
         
-        # Separate special cards from regular cards in each category
-        winners_regular = [(i, c) for i, c in winners if not is_special_card(c)[0]]
-        winners_special = [(i, c) for i, c in winners if is_special_card(c)[0]]
-        losers_regular = [(i, c) for i, c in losers if not is_special_card(c)[0]]
-        losers_special = [(i, c) for i, c in losers if is_special_card(c)[0]]
-        
-        if bid_already_made:
-            # Bid made - try to avoid winning (avoid bags), protect special cards
-            if losers_regular:
-                # Play highest regular losing card
-                return max(losers_regular, key=lambda x: x[1]['value'])[0]
-            elif losers_special:
-                # Must play special losing card (better than winning)
-                return max(losers_special, key=lambda x: x[1]['value'])[0]
-            elif winners_regular:
-                # Must win but avoid special cards
-                return min(winners_regular, key=lambda x: x[1]['value'])[0]
+        if SPECIAL_CARD_FOLLOWING_PROTECTION:
+            # Separate special cards from regular cards in each category
+            winners_regular = [(i, c) for i, c in winners if not is_special_card(c)[0]]
+            winners_special = [(i, c) for i, c in winners if is_special_card(c)[0]]
+            losers_regular = [(i, c) for i, c in losers if not is_special_card(c)[0]]
+            losers_special = [(i, c) for i, c in losers if is_special_card(c)[0]]
+            
+            if bid_already_made:
+                # Try to avoid winning (avoid bags), protect special cards
+                if losers_regular:
+                    return max(losers_regular, key=lambda x: x[1]['value'])[0]
+                elif losers_special:
+                    return max(losers_special, key=lambda x: x[1]['value'])[0]
+                elif winners_regular:
+                    return min(winners_regular, key=lambda x: x[1]['value'])[0]
+                else:
+                    return min(winners_special, key=lambda x: x[1]['value'])[0]
             else:
-                # Only special winning cards left - play lowest
-                return min(winners_special, key=lambda x: x[1]['value'])[0]
+                # Still need tricks - try to win, avoid wasting special cards
+                if winners_regular:
+                    return min(winners_regular, key=lambda x: x[1]['value'])[0]
+                elif winners_special:
+                    return min(winners_special, key=lambda x: x[1]['value'])[0]
+                elif losers_regular:
+                    return min(losers_regular, key=lambda x: x[1]['value'])[0]
+                else:
+                    return min(losers_special, key=lambda x: x[1]['value'])[0]
         else:
-            # Still need tricks - try to win, but avoid wasting special cards unless necessary
-            if winners_regular:
-                # Win with regular card
-                return min(winners_regular, key=lambda x: x[1]['value'])[0]
-            elif winners_special:
-                # Must win with special card
-                return min(winners_special, key=lambda x: x[1]['value'])[0]
-            elif losers_regular:
-                # Can't win - lose with regular card
-                return min(losers_regular, key=lambda x: x[1]['value'])[0]
+            # Simple strategy without special card protection
+            if bid_already_made:
+                if losers:
+                    return max(losers, key=lambda x: x[1]['value'])[0]
+                else:
+                    return min(winners, key=lambda x: x[1]['value'])[0]
             else:
-                # Must lose with special card
-                return min(losers_special, key=lambda x: x[1]['value'])[0]
+                if winners:
+                    return min(winners, key=lambda x: x[1]['value'])[0]
+                else:
+                    return min(losers, key=lambda x: x[1]['value'])[0]
                 
     elif lead_suit != '♠' and all_spades:
         # Can trump with spade
         if bid_already_made:
-            # Bid made - avoid trumping unless forced, protect special cards
+            # Try to avoid trumping unless forced
             if all_other:
-                # Discard from other suits - prefer non-special
-                non_special_other = [x for x in all_other if not is_special_card(x[1])[0]]
-                if non_special_other:
-                    return min(non_special_other, key=lambda x: x[1]['value'])[0]
+                if SPECIAL_CARD_FOLLOWING_PROTECTION:
+                    non_special_other = [x for x in all_other if not is_special_card(x[1])[0]]
+                    if non_special_other:
+                        return min(non_special_other, key=lambda x: x[1]['value'])[0]
+                    else:
+                        return min(all_other, key=lambda x: x[1]['value'])[0]
                 else:
-                    # Must discard special card from other suits
                     return min(all_other, key=lambda x: x[1]['value'])[0]
             else:
-                # Must trump - avoid special spades if possible
+                # Must trump
+                if SPECIAL_CARD_FOLLOWING_PROTECTION:
+                    non_special_spades = [x for x in all_spades if not is_special_card(x[1])[0]]
+                    if non_special_spades:
+                        return min(non_special_spades, key=lambda x: x[1]['value'])[0]
+                    else:
+                        return min(all_spades, key=lambda x: x[1]['value'])[0]
+                else:
+                    return min(all_spades, key=lambda x: x[1]['value'])[0]
+        else:
+            # Still need tricks - trump but protect special cards if possible
+            if SPECIAL_CARD_FOLLOWING_PROTECTION:
                 non_special_spades = [x for x in all_spades if not is_special_card(x[1])[0]]
                 if non_special_spades:
                     return min(non_special_spades, key=lambda x: x[1]['value'])[0]
                 else:
-                    # Must trump with special spade
                     return min(all_spades, key=lambda x: x[1]['value'])[0]
-        else:
-            # Still need tricks - trump but avoid special cards unless necessary
-            non_special_spades = [x for x in all_spades if not is_special_card(x[1])[0]]
-            if non_special_spades:
-                return min(non_special_spades, key=lambda x: x[1]['value'])[0]
             else:
-                # Must trump with special spade
                 return min(all_spades, key=lambda x: x[1]['value'])[0]
     else:
-        # Can't follow or trump - discard lowest non-special card if possible
-        non_special_other = [x for x in all_other if not is_special_card(x[1])[0]]
-        if non_special_other:
-            return min(non_special_other, key=lambda x: x[1]['value'])[0]
+        # Can't follow or trump - discard lowest
+        if SPECIAL_CARD_FOLLOWING_PROTECTION:
+            non_special_other = [x for x in all_other if not is_special_card(x[1])[0]]
+            if non_special_other:
+                return min(non_special_other, key=lambda x: x[1]['value'])[0]
+            else:
+                all_cards = [(i, c) for i, c in enumerate(computer_hand)]
+                return min(all_cards, key=lambda x: x[1]['value'])[0]
         else:
-            # Must discard special card
             all_cards = [(i, c) for i, c in enumerate(computer_hand)]
             return min(all_cards, key=lambda x: x[1]['value'])[0]
 
-def computer_play_strategy(game_state):
-    """
-    Enhanced playing strategy for computer
-    This can be expanded later for more sophisticated play decisions
-    """
-    # For now, this just returns to the existing play logic
-    # But provides a centralized place to enhance computer play strategy later
-    pass
+# =============================================================================
+# DIFFICULTY ADJUSTMENT FUNCTIONS (Future Enhancement)
+# =============================================================================
+
+def set_difficulty_easy():
+    """Set all AI parameters for easy difficulty"""
+    global SINGLETON_SPECIAL_PRIORITY, VOID_CREATION_PRIORITY, BID_ACCURACY_BOOST
+    global NIL_RISK_TOLERANCE, SPECIAL_CARD_FOLLOWING_PROTECTION
+    
+    # Make poor decisions
+    SINGLETON_SPECIAL_PRIORITY = 50  # Sometimes keeps singleton specials
+    VOID_CREATION_PRIORITY = 100     # Doesn't prioritize voids much
+    BID_ACCURACY_BOOST = 0.2         # Under-bids frequently
+    NIL_RISK_TOLERANCE = 1.5         # Rarely goes nil
+    SPECIAL_CARD_FOLLOWING_PROTECTION = False  # Doesn't protect specials
+
+def set_difficulty_hard():
+    """Set all AI parameters for hard difficulty"""
+    global SINGLETON_SPECIAL_PRIORITY, VOID_CREATION_PRIORITY, BID_ACCURACY_BOOST
+    global NIL_RISK_TOLERANCE, SPECIAL_CARD_FOLLOWING_PROTECTION
+    
+    # Optimal play
+    SINGLETON_SPECIAL_PRIORITY = 1000
+    VOID_CREATION_PRIORITY = 500
+    BID_ACCURACY_BOOST = 0.8
+    NIL_RISK_TOLERANCE = 0.8
+    SPECIAL_CARD_FOLLOWING_PROTECTION = True
+
+def set_difficulty_custom(settings_dict):
+    """Set AI parameters from a dictionary"""
+    globals().update(settings_dict)
