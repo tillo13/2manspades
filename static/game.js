@@ -205,6 +205,7 @@ function updateBagsDisplay(elementId, bags) {
 }
 
 // NEW: Clean structured results display
+// Replace the handleResultsDisplay function in your game.js with this:
 function handleResultsDisplay() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContent = document.getElementById('resultsContent');
@@ -213,13 +214,8 @@ function handleResultsDisplay() {
         // Show results section with clean structured content
         resultsSection.classList.add('show');
         resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
-    } else if (gameState.hand_over && gameState.discard_bonus_explanation) {
-        // Fallback to old formatting for backward compatibility
-        resultsSection.classList.add('show');
-        const explanation = gameState.discard_bonus_explanation;
-        const formattedExplanation = formatResultsForMobile(explanation);
-        resultsContent.innerHTML = formattedExplanation;
     } else {
+        // Don't show results if no structured data available
         resultsSection.classList.remove('show');
     }
 }
