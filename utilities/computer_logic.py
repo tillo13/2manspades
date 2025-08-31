@@ -376,6 +376,69 @@ def computer_lead_strategy(computer_hand, spades_broken):
     
     return chosen[0]
 
+def computer_follow_strategy(computer_hand, current_trick, game_state):
+    """
+    Enhanced strategy for when computer must follow suit - includes bag avoidance
+    Returns index of best card to play
+    """
+    if not current_trick or not computer_hand:
+        return None
+    
+    computer_bid = game_state.get('computer_bid', 0)
+    computer_tricks = game_state.get('computer_tricks', 0)
+    spades_broken = game_state.get('spades_broken', False)
+    
+    # Check if computer has already made their bid
+    bid_already_made = computer_tricks >= computer_bid and computer_bid > 0
+    
+    lead_card = current_trick[0]['card']
+    lead_suit = lead_card['suit']
+    lead_value = lead_card['value']
+    
+    # Find valid plays
+    same_suit = [(i, c) for i, c in enumerate(computer_hand) if c['suit'] == lead_suit]
+    spades = [(i, c) for i, c in enumerate(computer_hand) if c['suit'] == '♠']
+    other = [(i, c) for i, c in enumerate(computer_hand) if c['suit'] != lead_suit and c['suit'] != '♠']
+    
+    if same_suit:
+        # Must follow suit
+        winners = [(i, c) for i, c in same_suit if c['value'] > lead_value]
+        losers = [(i, c) for i, c in same_suit if c['value'] <= lead_value]
+        
+        if bid_already_made:
+            # Bid made - try to avoid winning (avoid bags)
+            if losers:
+                # Play highest losing card (closest to winning without winning)
+                return max(losers, key=lambda x: x[1]['value'])[0]
+            else:
+                # Must win - play lowest winning card
+                return min(winners, key=lambda x: x[1]['value'])[0]
+        else:
+            # Still need tricks - try to win with lowest winning card
+            if winners:
+                return min(winners, key=lambda x: x[1]['value'])[0]
+            else:
+                # Can't win - play lowest losing card
+                return min(losers, key=lambda x: x[1]['value'])[0]
+                
+    elif lead_suit != '♠' and spades:
+        # Can trump with spade
+        if bid_already_made:
+            # Bid made - avoid trumping unless forced (no other suits)
+            if other:
+                # Discard from other suits instead of trumping
+                return min(other, key=lambda x: x[1]['value'])[0]
+            else:
+                # Must trump - use lowest spade
+                return min(spades, key=lambda x: x[1]['value'])[0]
+        else:
+            # Still need tricks - trump with lowest spade
+            return min(spades, key=lambda x: x[1]['value'])[0]
+    else:
+        # Can't follow or trump - discard
+        all_cards = [(i, c) for i, c in enumerate(computer_hand)]
+        return min(all_cards, key=lambda x: x[1]['value'])[0]
+
 def computer_play_strategy(game_state):
     """
     Enhanced playing strategy for computer

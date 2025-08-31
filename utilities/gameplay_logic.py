@@ -245,40 +245,45 @@ def resolve_trick_with_delay(game):
     game['trick_winner'] = winner
 
 def computer_follow(game):
-    """Computer plays a card when following"""
+    """Computer plays a card when following - now uses bag avoidance strategy"""
     hand = game['computer_hand']
     trick = game['current_trick']
     
     if not trick or not hand:
         return
     
-    lead_card = trick[0]['card']
-    lead_suit = lead_card['suit']
-    lead_value = lead_card['value']
+    # Use enhanced following strategy from computer_logic
+    from .computer_logic import computer_follow_strategy
+    chosen_idx = computer_follow_strategy(hand, trick, game)
     
-    # Find valid plays
-    same_suit = [(i, c) for i, c in enumerate(hand) if c['suit'] == lead_suit]
-    spades = [(i, c) for i, c in enumerate(hand) if c['suit'] == '♠']
-    other = [(i, c) for i, c in enumerate(hand) if c['suit'] != lead_suit and c['suit'] != '♠']
-    
-    if same_suit:
-        # Must follow suit - try to win with lowest winning card
-        winners = [(i, c) for i, c in same_suit if c['value'] > lead_value]
-        if winners:
-            chosen = min(winners, key=lambda x: x[1]['value'])
+    if chosen_idx is None:
+        # Fallback to original simple logic if strategy fails
+        lead_card = trick[0]['card']
+        lead_suit = lead_card['suit']
+        lead_value = lead_card['value']
+        
+        # Find valid plays
+        same_suit = [(i, c) for i, c in enumerate(hand) if c['suit'] == lead_suit]
+        spades = [(i, c) for i, c in enumerate(hand) if c['suit'] == '♠']
+        
+        if same_suit:
+            # Must follow suit - try to win with lowest winning card
+            winners = [(i, c) for i, c in same_suit if c['value'] > lead_value]
+            if winners:
+                chosen_idx = min(winners, key=lambda x: x[1]['value'])[0]
+            else:
+                # Can't win, play lowest
+                chosen_idx = min(same_suit, key=lambda x: x[1]['value'])[0]
+        elif lead_suit != '♠' and spades:
+            # Can't follow suit, can trump with spade
+            chosen_idx = min(spades, key=lambda x: x[1]['value'])[0]
         else:
-            # Can't win, play lowest
-            chosen = min(same_suit, key=lambda x: x[1]['value'])
-    elif lead_suit != '♠' and spades:
-        # Can't follow suit, can trump with spade
-        chosen = min(spades, key=lambda x: x[1]['value'])
-    else:
-        # Can't follow or trump, discard lowest
-        all_cards = [(i, c) for i, c in enumerate(hand)]
-        chosen = min(all_cards, key=lambda x: x[1]['value'])
+            # Can't follow or trump, discard lowest
+            all_cards = [(i, c) for i, c in enumerate(hand)]
+            chosen_idx = min(all_cards, key=lambda x: x[1]['value'])[0]
     
-    idx, card = chosen
-    game['computer_hand'].pop(idx)
+    # Play the chosen card
+    card = hand.pop(chosen_idx)
     game['current_trick'].append({'player': 'computer', 'card': card})
     
     if card['suit'] == '♠':
