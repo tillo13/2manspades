@@ -272,26 +272,31 @@ def computer_follow(game):
         game['spades_broken'] = True
 
 def computer_lead(game):
-    """Computer plays a card when leading"""
+    """Computer plays a card when leading - now uses enhanced strategy"""
     hand = game['computer_hand']
     
     if not hand:
         return
     
-    # Find valid leads
-    valid = []
-    for i, card in enumerate(hand):
-        if card['suit'] != '♠' or game['spades_broken'] or all(c['suit'] == '♠' for c in hand):
-            valid.append((i, card))
+    # Use enhanced leading strategy from computer_logic
+    from .computer_logic import computer_lead_strategy
+    chosen_idx = computer_lead_strategy(hand, game['spades_broken'])
     
-    if not valid:
-        return
+    if chosen_idx is None:
+        # Fallback to original simple logic if strategy fails
+        valid = []
+        for i, card in enumerate(hand):
+            if card['suit'] != '♠' or game['spades_broken'] or all(c['suit'] == '♠' for c in hand):
+                valid.append((i, card))
+        
+        if valid:
+            chosen = min(valid, key=lambda x: (x[1]['suit'] == '♠', x[1]['value']))
+            chosen_idx = chosen[0]
+        else:
+            return
     
-    # Lead lowest valid card
-    chosen = min(valid, key=lambda x: (x[1]['suit'] == '♠', x[1]['value']))
-    idx, card = chosen
-    
-    game['computer_hand'].pop(idx)
+    # Play the chosen card
+    card = hand.pop(chosen_idx)
     game['current_trick'] = [{'player': 'computer', 'card': card}]
     game['trick_leader'] = 'computer'
     

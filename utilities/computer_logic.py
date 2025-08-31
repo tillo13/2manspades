@@ -316,6 +316,66 @@ def computer_discard_strategy(computer_hand, game_state):
     # Return index of card with highest discard score
     return max(discard_candidates, key=lambda x: x[1])[0]
 
+def computer_lead_strategy(computer_hand, spades_broken):
+    """
+    Enhanced leading strategy - avoid leading into special cards when possible
+    Returns index of best card to lead, or None if no valid leads
+    """
+    if not computer_hand:
+        return None
+    
+    # Find all valid leads
+    valid_leads = []
+    for i, card in enumerate(computer_hand):
+        if card['suit'] != '♠' or spades_broken or all(c['suit'] == '♠' for c in computer_hand):
+            valid_leads.append((i, card))
+    
+    if not valid_leads:
+        return None
+    
+    # Categorize leads by danger level
+    safe_leads = []
+    risky_leads = []
+    dangerous_leads = []
+    
+    for i, card in valid_leads:
+        suit = card['suit']
+        rank = card['rank']
+        
+        # Check if leading this suit could give opponent special cards
+        if suit == '♣':
+            # Leading clubs could set up 10♣ for opponent
+            if rank in ['J', 'Q', 'K', 'A']:  # High clubs are dangerous
+                dangerous_leads.append((i, card))
+            elif rank in ['8', '9', '10']:  # Medium clubs are risky
+                risky_leads.append((i, card))
+            else:  # Low clubs are safer
+                safe_leads.append((i, card))
+        elif suit == '♦':
+            # Leading diamonds could set up 7♦ for opponent  
+            if rank in ['J', 'Q', 'K', 'A']:  # High diamonds are dangerous
+                dangerous_leads.append((i, card))
+            elif rank in ['6', '7', '8']:  # Around 7♦ is risky
+                risky_leads.append((i, card))
+            else:  # Other diamonds are safer
+                safe_leads.append((i, card))
+        else:
+            # Hearts and spades are generally safer for special card purposes
+            safe_leads.append((i, card))
+    
+    # Choose lead in order of preference: safe > risky > dangerous
+    if safe_leads:
+        # From safe leads, choose lowest card
+        chosen = min(safe_leads, key=lambda x: x[1]['value'])
+    elif risky_leads:
+        # From risky leads, choose lowest card
+        chosen = min(risky_leads, key=lambda x: x[1]['value'])
+    else:
+        # Must lead dangerous card - choose lowest
+        chosen = min(dangerous_leads, key=lambda x: x[1]['value'])
+    
+    return chosen[0]
+
 def computer_play_strategy(game_state):
     """
     Enhanced playing strategy for computer
