@@ -221,6 +221,7 @@ function handleResultsDisplay() {
     }
 }
 
+
 function formatResultsForMobile(explanation) {
     if (!explanation || explanation === 'No discards to score') {
         return '<div class="result-line" style="color: #666; font-style: italic;">No special scoring this hand</div>';
@@ -268,6 +269,15 @@ function formatResultsForMobile(explanation) {
         } else if (section.includes('Game totals:')) {
             // Game totals - make prominent but clean
             formatted += `<div class="result-line" style="font-weight: 600; text-align: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e9ecef;">${section}</div>`;
+        } else if (section.includes('TRICK HISTORY:')) {
+            // Format trick history nicely
+            const clean = section.replace('TRICK HISTORY: ', '');
+            const tricks = clean.split(' | ');
+            let historyHtml = '<div class="result-line" style="font-weight: 500; margin-top: 8px; color: #495057;">Trick History:</div>';
+            tricks.forEach(trick => {
+                historyHtml += `<div class="result-line" style="font-size: 11px; color: #495057; padding-left: 8px; font-family: monospace;">${trick}</div>`;
+            });
+            formatted += historyHtml;
         } else if (section.includes('Click') || section.includes('continue')) {
             // Skip instructions - handled by button
             return;
@@ -279,6 +289,7 @@ function formatResultsForMobile(explanation) {
 
     return formatted;
 }
+
 
 function updateActionButtons() {
     const actionButton = document.getElementById('actionButton');

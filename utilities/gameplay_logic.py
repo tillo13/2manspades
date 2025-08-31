@@ -71,10 +71,10 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
         'blind_bidding_available': False,
         'blind_bid': None,
         'computer_blind_bid': None,
-        'blind_multiplier': 2
+        'blind_multiplier': 2,
+        'trick_history': []  # Track all tricks played this hand
     }
 
-# Update init_new_hand() to alternate who leads the first trick
 def init_new_hand(game):
     """Start a new hand while preserving scores, bags, and parity assignments"""
     deck = create_deck()
@@ -111,7 +111,8 @@ def init_new_hand(game):
         'blind_bidding_available': False,
         'blind_bid': None,
         'computer_blind_bid': None,
-        'first_leader': next_first_leader  # Alternate who leads first trick
+        'first_leader': next_first_leader,  # Alternate who leads first trick
+        'trick_history': []  # Reset trick history for new hand
     })
 
 def computer_bidding_brain(computer_hand, player_bid, game_state=None):
@@ -196,6 +197,18 @@ def resolve_trick_with_delay(game):
         return
     
     winner = determine_trick_winner(game['current_trick'])
+    
+    # SAVE TRICK TO HISTORY BEFORE PROCESSING
+    trick_number = len(game.get('trick_history', [])) + 1
+    player_card = next((play['card'] for play in game['current_trick'] if play['player'] == 'player'), None)
+    computer_card = next((play['card'] for play in game['current_trick'] if play['player'] == 'computer'), None)
+    
+    game.setdefault('trick_history', []).append({
+        'number': trick_number,
+        'player_card': player_card,
+        'computer_card': computer_card,
+        'winner': winner
+    })
     
     # Check for special cards in the trick and apply bag reduction IMMEDIATELY
     from utilities.custom_rules import check_special_cards_in_trick, reduce_bags_safely
