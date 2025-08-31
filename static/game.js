@@ -55,8 +55,14 @@ function updateUI() {
     // Handle results display for completed hands
     handleResultsDisplay();
 
-    // Update message
-    showMessage(gameState.message, gameState.message.includes('WIN') ? 'success' : '');
+    // Update message - AVOID showing detailed results if structured results are shown
+    let messageToShow = gameState.message;
+    if (gameState.hand_over && gameState.hand_results) {
+        // If we have structured results, show only a simple message
+        messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue`;
+    }
+
+    showMessage(messageToShow, messageToShow.includes('WIN') ? 'success' : '');
 
     // Update play area
     updatePlayArea();
@@ -770,8 +776,11 @@ function showMessage(text, type = '') {
         messageEl.textContent = text;
         messageEl.className = 'message ' + type;
 
-        // Auto-scroll to message on mobile for better visibility
-        if (window.innerWidth < 768) {
+        // Only auto-scroll on mobile if NOT showing hand results
+        // Let users review results freely without page jumping
+        const isShowingResults = gameState && gameState.hand_over && gameState.hand_results;
+
+        if (window.innerWidth < 768 && !isShowingResults) {
             messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
