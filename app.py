@@ -427,6 +427,19 @@ def clear_trick():
         # Add the comprehensive scoring explanation
         message_parts.append(scoring_result['explanation'])
         
+        # Add trick history
+        trick_history = game.get('trick_history', [])
+        if trick_history:
+            history_parts = []
+            for trick in trick_history:
+                p_card = f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?"
+                c_card = f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?"
+                winner_name = "Tom" if trick['winner'] == 'player' else "Marta"
+                history_parts.append(f"T{trick['number']}: {p_card} vs {c_card} -> {winner_name}")
+            
+            trick_history_text = " | ".join(history_parts)
+            message_parts.append(f"TRICK HISTORY: {trick_history_text}")
+        
         # Show running totals
         totals = f"Game totals: Tom {game['player_score']}, Marta {game['computer_score']}"
         message_parts.append(totals)
