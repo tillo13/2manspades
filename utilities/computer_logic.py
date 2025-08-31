@@ -249,12 +249,15 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
         base_expectation *= 0.92
     
     # Strategic response to player's bid (reduced impact)
-    if player_bid == 0:  # Player nil - be aggressive to set them
-        base_expectation += 0.3
-    elif player_bid <= 2:  # Player bid low
-        base_expectation += 0.15
-    elif player_bid >= 7:  # Player bid high
-        base_expectation -= 0.2
+    # FIX: Check if player_bid is None (Martha bids first scenario)
+    if player_bid is not None:
+        if player_bid == 0:  # Player nil - be aggressive to set them
+            base_expectation += 0.3
+        elif player_bid <= 2:  # Player bid low
+            base_expectation += 0.15
+        elif player_bid >= 7:  # Player bid high
+            base_expectation -= 0.2
+    # If player_bid is None (Martha bids first), skip player-based adjustments
     
     # Convert to bid
     raw_bid = max(0, min(10, round(base_expectation)))
@@ -269,7 +272,8 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
             raw_bid = 4  # Sometimes prefer 4 over 5
     
     # Avoid obvious total-10 scenarios (reduced probability)
-    if abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
+    # Only apply this if we know the player's bid
+    if player_bid is not None and abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
         if raw_bid > 3:  # Changed from 2 to 3
             raw_bid -= 1
         elif raw_bid < 7:

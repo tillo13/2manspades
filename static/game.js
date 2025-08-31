@@ -55,8 +55,16 @@ function updateUI() {
     // Handle results display for completed hands
     handleResultsDisplay();
 
-    // Update message - AVOID showing detailed results if structured results are shown
+    // Update message with Martha-first bidding support
     let messageToShow = gameState.message;
+
+    // Special case: Martha bid first during bidding phase
+    if (gameState.phase === 'bidding' && gameState.computer_bid !== null && gameState.player_bid === null) {
+        const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
+        messageToShow = `Martha bid ${gameState.computer_bid}${computerBlindText} tricks. Now make your bid: How many tricks will you take? (0-10)`;
+    }
+
+    // AVOID showing detailed results if structured results are shown
     if (gameState.hand_over && gameState.hand_results) {
         // If we have structured results, show only a simple message
         messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue`;
@@ -160,14 +168,36 @@ function updateFloatingScores() {
         const computerBlindText = gameState.computer_blind_bid === gameState.computer_bid ? 'B' : '';
         document.getElementById('floatingComputerBid').textContent = `${computerBid}${computerBlindText}`;
 
-        // Color code computer bid if blind
+        // Color code computer bid if blind OR if Martha bid first
         const computerBidEl = document.getElementById('floatingComputerBid');
+        const marthaWentFirst = gameState.phase === 'bidding' &&
+            gameState.computer_bid !== null &&
+            gameState.player_bid === null;
+
         if (computerBlindText) {
+            // Blind bid styling
             computerBidEl.style.color = '#dc3545';
             computerBidEl.style.fontWeight = 'bold';
+            computerBidEl.style.backgroundColor = '';
+            computerBidEl.style.border = '';
+            computerBidEl.style.borderRadius = '';
+            computerBidEl.style.padding = '';
+        } else if (marthaWentFirst) {
+            // Martha went first - highlight her bid
+            computerBidEl.style.color = '#1976d2';
+            computerBidEl.style.fontWeight = 'bold';
+            computerBidEl.style.backgroundColor = '#e3f2fd';
+            computerBidEl.style.border = '2px solid #1976d2';
+            computerBidEl.style.borderRadius = '4px';
+            computerBidEl.style.padding = '2px 4px';
         } else {
+            // Normal styling
             computerBidEl.style.color = '#333';
             computerBidEl.style.fontWeight = '600';
+            computerBidEl.style.backgroundColor = '';
+            computerBidEl.style.border = '';
+            computerBidEl.style.borderRadius = '';
+            computerBidEl.style.padding = '';
         }
 
         document.getElementById('floatingComputerBags').textContent = gameState.computer_bags || 0;

@@ -238,17 +238,30 @@ def make_bid():
     # Player makes regular bid
     game['player_bid'] = bid
     
-    # Computer makes intelligent bid using enhanced brain
-    computer_bid, computer_is_blind = computer_bidding_brain(
-        game['computer_hand'], 
-        bid, 
-        game
-    )
-    game['computer_bid'] = computer_bid
-    
-    # Handle computer blind bid
-    if computer_is_blind:
-        game['computer_blind_bid'] = computer_bid
+    # Check if computer has already bid (Martha-first scenario)
+    if game.get('computer_bid') is None:
+        # Normal scenario - computer bids after player
+        computer_bid, computer_is_blind = computer_bidding_brain(
+            game['computer_hand'], 
+            bid, 
+            game
+        )
+        game['computer_bid'] = computer_bid
+        
+        # Handle computer blind bid
+        if computer_is_blind:
+            game['computer_blind_bid'] = computer_bid
+            
+        computer_blind_text = " (BLIND)" if computer_is_blind else ""
+        player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
+        
+        message_base = f'You bid {bid}{player_blind_text}, Martha bid {computer_bid}{computer_blind_text}.'
+    else:
+        # Martha already bid - just acknowledge Tom's bid
+        computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
+        player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
+        
+        message_base = f'You bid {bid}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}.'
     
     # Start playing phase with the designated first leader
     game['phase'] = 'playing'
@@ -257,17 +270,14 @@ def make_bid():
     game['trick_leader'] = first_leader
     
     # Create message indicating who leads first
-    player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
-    computer_blind_text = " (BLIND)" if computer_is_blind else ""
-    
     if first_leader == 'player':
-        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Your turn to lead the first trick.'
+        game['message'] = f'{message_base} Your turn to lead the first trick.'
     else:
-        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta leads the first trick.'
+        game['message'] = f'{message_base} Martha leads the first trick.'
         # If computer leads, make the computer play immediately
         computer_lead(game)
         game['turn'] = 'player'
-        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta led. Your turn to follow.'
+        game['message'] = f'{message_base} Martha led. Your turn to follow.'
     
     session.modified = True
     return jsonify({'success': True})
@@ -318,31 +328,96 @@ def discard_card():
     if game.get('player_bid') is not None:
         # Bids already set, go straight to playing
         game['phase'] = 'playing'
-        game['turn'] = 'player'
-        game['trick_leader'] = 'player'
+        first_leader = game.get('first_leader', 'player')
+        game['turn'] = first_leader
+        game['trick_leader'] = first_leader
         
         player_blind_text = " (BLIND)" if game.get('blind_bid') else ""
         computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
-        game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
+        
+        if first_leader == 'player':
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
+        else:
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha leads the first trick.'
+            # If computer leads, make the computer play immediately
+            computer_lead(game)
+            game['turn'] = 'player'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha led. Your turn to follow.'
     else:
-        # Normal flow - check if player is eligible for blind bidding using base scores
+        # Normal flow - determine bidding order
         player_base_score = game.get('player_score', 0)
         computer_base_score = game.get('computer_score', 0)
         blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
         
-        if blind_eligibility['player_eligible']:
-            game['blind_bidding_available'] = True
-            game['message'] = f'Cards discarded. You are down by {blind_eligibility["player_deficit"]} points - would you like to go BLIND? (5-10 tricks, double points/penalties) Or make a regular bid? (0-10)'
-        else:
-            game['blind_bidding_available'] = False
-            game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+        # Determine who bids first based on game conditions
+        should_martha_bid_first = determine_martha_bids_first(game)
         
-        # Start bidding phase
-        game['phase'] = 'bidding'
-        game['turn'] = 'player'
+        if should_martha_bid_first:
+            # Martha bids first
+            computer_bid, computer_is_blind = computer_bidding_brain(
+                game['computer_hand'], 
+                None,  # No player bid yet since Martha goes first
+                game
+            )
+            game['computer_bid'] = computer_bid
+            
+            if computer_is_blind:
+                game['computer_blind_bid'] = computer_bid
+            
+            # Start bidding phase with Martha's bid already made
+            game['phase'] = 'bidding'
+            game['turn'] = 'player'
+            
+            computer_blind_text = " (BLIND)" if computer_is_blind else ""
+            game['message'] = f'Cards discarded. Martha bid {computer_bid}{computer_blind_text} tricks. Now make your bid: How many tricks will you take? (0-10)'
+        else:
+            # Tom bids first (normal flow)
+            if blind_eligibility['player_eligible']:
+                game['blind_bidding_available'] = True
+                game['message'] = f'Cards discarded. You are down by {blind_eligibility["player_deficit"]} points - would you like to go BLIND? (5-10 tricks, double points/penalties) Or make a regular bid? (0-10)'
+            else:
+                game['blind_bidding_available'] = False
+                game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+            
+            # Start bidding phase
+            game['phase'] = 'bidding'
+            game['turn'] = 'player'
     
     session.modified = True
     return jsonify({'success': True})
+
+
+def determine_martha_bids_first(game):
+    """
+    Determine if Martha should bid first based on game conditions.
+    You can customize this logic based on your game rules.
+    """
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    hand_number = game.get('hand_number', 1)
+    
+    # Example conditions for Martha to bid first:
+    # 1. Martha is significantly behind (100+ points)
+    # 2. Alternating pattern based on hand number
+    # 3. Random chance
+    # 4. Based on who won the discard pile
+    
+    # Condition 1: Martha bids first when she's behind by 75+ points
+    if computer_base_score <= player_base_score - 75:
+        return True
+    
+    # Condition 2: Martha bids first on even hand numbers when scores are close
+    score_diff = abs(player_base_score - computer_base_score)
+    if score_diff <= 50 and hand_number % 2 == 0:
+        return True
+    
+    # Condition 3: Martha bids first if she won the discard pile
+    pending_discard = game.get('pending_discard_result')
+    if pending_discard and pending_discard.get('winner') == 'computer':
+        return True
+    
+    # Default: Tom bids first
+    return False
 
 @app.route('/play', methods=['POST'])
 def play_card():
