@@ -51,7 +51,7 @@ function updateUI() {
         document.getElementById('computerHandSection').style.display = 'none';
 
         // Show results section for blind nil to show how it happened
-        if (gameState.hand_results && gameState.message.includes('BLIND NIL')) {
+        if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
             handleResultsDisplay();  // This will show the results section
         } else {
             document.getElementById('resultsSection').classList.remove('show');
@@ -163,7 +163,7 @@ function updateUI() {
                 console.error('Error clearing trick:', error);
                 trickDisplayTimeout = null;
             }
-        }, 3000);
+        }, 2000); // Changed from 3000 to 2000 (2 seconds)
     }
 
     // Track hand changes for results display
