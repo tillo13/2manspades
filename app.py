@@ -776,6 +776,23 @@ def discard_card():
     session.modified = True
     return jsonify({'success': True})
 
+@app.route('/choose_blind_bidding', methods=['POST'])
+def choose_blind_bidding():
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    game = session['game']
+    
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Move to blind bidding phase
+    game['phase'] = 'blind_bidding'
+    game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
 @app.route('/choose_normal_bidding', methods=['POST'])
 def choose_normal_bidding():
     if 'game' not in session:

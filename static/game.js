@@ -146,13 +146,19 @@ function updateUI() {
 }
 
 // Blind decision functions
-function chooseBlindBidding() {
-    // Show the blind bidding section
-    document.getElementById('blindDecisionSection').style.display = 'none';
-    document.getElementById('discardBlindBiddingSection').style.display = 'block';
-
-    // Update message
-    showMessage('Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!');
+async function chooseBlindBidding() {
+    try {
+        const response = await fetch('/choose_blind_bidding', { method: 'POST' });
+        if (response.ok) {
+            await loadGameState();
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error choosing blind bidding:', error);
+        showMessage('Error choosing blind bidding', 'error');
+    }
 }
 
 async function chooseNormalBidding() {
