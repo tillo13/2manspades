@@ -256,17 +256,20 @@ def calculate_hand_scores_with_bags(game):
     if game.get('blind_nil') and game.get('player_bid') == 0:
         player_actual = game.get('player_tricks', 0)
         if player_actual == 0:
-            # INSTANT WIN
+            # INSTANT WIN - Set score to 500 to show massive victory
+            game['player_score'] = 500
             game['game_over'] = True
             game['winner'] = 'player'
             game['message'] = "BLIND NIL SUCCESS! You win the entire game instantly!"
             return {'explanation': "BLIND NIL SUCCESS - INSTANT GAME WIN!"}
         else:
-            # INSTANT LOSS
+            # INSTANT LOSS - Keep Marta's current score, player gets massive penalty
+            game['player_score'] = -500  # Show crushing defeat
             game['game_over'] = True
             game['winner'] = 'computer'
             game['message'] = f"Blind Nil failed - you took {player_actual} tricks. Marta wins!"
             return {'explanation': f"BLIND NIL FAILURE - took {player_actual} tricks - GAME OVER"}
+
     
     # Normal scoring continues if no blind nil or blind nil not attempted
     player_bid = game.get('player_bid', 0)
