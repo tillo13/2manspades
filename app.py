@@ -276,6 +276,38 @@ def computer_lead_with_logging(game, session_obj=None):
         if session_obj:
             log_game_event('spades_broken', {'broken_by': 'computer', 'card': f"{card['rank']}{card['suit']}"}, session_obj)
 
+def determine_martha_bids_first(game):
+    """
+    Determine if Martha should bid first based on game conditions.
+    You can customize this logic based on your game rules.
+    """
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    hand_number = game.get('hand_number', 1)
+    
+    # Example conditions for Martha to bid first:
+    # 1. Martha is significantly behind (100+ points)
+    # 2. Alternating pattern based on hand number
+    # 3. Random chance
+    # 4. Based on who won the discard pile
+    
+    # Condition 1: Martha bids first when she's behind by 75+ points
+    if computer_base_score <= player_base_score - 75:
+        return True
+    
+    # Condition 2: Martha bids first on even hand numbers when scores are close
+    score_diff = abs(player_base_score - computer_base_score)
+    if score_diff <= 50 and hand_number % 2 == 0:
+        return True
+    
+    # Condition 3: Martha bids first if she won the discard pile
+    pending_discard = game.get('pending_discard_result')
+    if pending_discard and pending_discard.get('winner') == 'computer':
+        return True
+    
+    # Default: Tom bids first
+    return False
+
 # In the index() route:
 @app.route('/')
 def index():
@@ -416,7 +448,7 @@ def toggle_computer_hand():
 
 @app.route('/blind_bid', methods=['POST'])
 def make_blind_bid():
-    """Handle blind bidding before discard phase"""
+    """Handle blind bidding during blind_bidding phase"""
     if 'game' not in session:
         return jsonify({'error': 'No game in session'}), 400
     
@@ -427,16 +459,8 @@ def make_blind_bid():
     data = request.get_json()
     bid = data.get('bid')
     
-    if game['phase'] != 'discard':
-        return jsonify({'error': 'Can only make blind bid before discard'}), 400
-    
-    # Check blind bidding eligibility using base scores
-    player_base_score = game.get('player_score', 0)
-    computer_base_score = game.get('computer_score', 0)
-    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
-    
-    if not blind_eligibility['player_eligible']:
-        return jsonify({'error': 'Not eligible for blind bidding'}), 400
+    if game['phase'] != 'blind_bidding':
+        return jsonify({'error': 'Can only make blind bid during blind bidding phase'}), 400
     
     if bid < 5 or bid > 10:
         return jsonify({'error': 'Blind bid must be between 5 and 10'}), 400
@@ -446,8 +470,7 @@ def make_blind_bid():
         action_type='blind_bid',
         player='player',
         action_data={
-            'bid_amount': bid,
-            'deficit': blind_eligibility['player_deficit']
+            'bid_amount': bid
         },
         session=session,
         request=request
@@ -487,12 +510,92 @@ def make_blind_bid():
             session=session
         )
     
-    # Now proceed to discard with bids already set
+    # Now proceed to playing phase
+    game['phase'] = 'playing'
+    first_leader = game.get('first_leader', 'player')
+    game['turn'] = first_leader
+    game['trick_leader'] = first_leader
+    
     player_blind_text = " (BLIND)"
     computer_blind_text = " (BLIND)" if computer_is_blind else ""
-    game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Now select a card to discard.'
     
-    # Stay in discard phase but with bids set
+    if first_leader == 'player':
+        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Your turn to lead the first trick.'
+    else:
+        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta leads the first trick.'
+        # If computer leads, make the computer play immediately
+        computer_lead_with_logging(game, session)
+        game['turn'] = 'player'
+        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta led. Your turn to follow.'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
+@app.route('/choose_blind_bidding', methods=['POST'])
+def choose_blind_bidding():
+    """Handle when player chooses to go blind"""
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    # Track client session
+    client_info = track_request_session()
+    
+    game = session['game']
+    
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Log the decision
+    log_action(
+        action_type='blind_decision',
+        player='player',
+        action_data={
+            'chose_blind': True,
+            'chose_normal': False
+        },
+        session=session,
+        request=request
+    )
+    
+    # Move to blind bidding phase
+    game['phase'] = 'blind_bidding'
+    game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
+@app.route('/choose_normal_bidding', methods=['POST'])
+def choose_normal_bidding():
+    """Handle when player chooses normal bidding"""
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    # Track client session
+    client_info = track_request_session()
+    
+    game = session['game']
+    
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Log the decision
+    log_action(
+        action_type='blind_decision',
+        player='player',
+        action_data={
+            'chose_blind': False,
+            'chose_normal': True
+        },
+        session=session,
+        request=request
+    )
+    
+    # Move to normal bidding phase
+    game['phase'] = 'bidding'
+    game['turn'] = 'player'
+    game['chose_normal_bidding'] = True
+    game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
+    
     session.modified = True
     return jsonify({'success': True})
 
@@ -605,7 +708,6 @@ def make_bid():
     session.modified = True
     return jsonify({'success': True})
 
-
 @app.route('/discard', methods=['POST'])
 def discard_card():
     if 'game' not in session:
@@ -716,10 +818,12 @@ def discard_card():
             game['turn'] = 'player'
             game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha led. Your turn to follow.'
     else:
-        # Normal flow - check for blind bidding eligibility
+        # Normal flow - check for blind bidding eligibility FIRST
         player_base_score = game.get('player_score', 0)
         computer_base_score = game.get('computer_score', 0)
         blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+        
+        print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Deficit={computer_base_score - player_base_score}, Eligible={blind_eligibility['player_eligible']}")
         
         # Determine who bids first based on game conditions
         should_martha_bid_first = determine_martha_bids_first(game)
@@ -766,7 +870,10 @@ def discard_card():
             if blind_eligibility['player_eligible']:
                 # Enter blind decision phase
                 game['phase'] = 'blind_decision'
-                game['message'] = f'Cards discarded! You are down by {blind_eligibility["player_deficit"]} points. Choose: Go BLIND for double points/penalties, or bid normally?'
+                deficit = computer_base_score - player_base_score
+                game['message'] = f'Cards discarded! You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
+                
+                print(f"DEBUG: Entering blind_decision phase with deficit of {deficit}")
             else:
                 # No blind eligibility - go straight to normal bidding
                 game['phase'] = 'bidding'
@@ -775,90 +882,6 @@ def discard_card():
     
     session.modified = True
     return jsonify({'success': True})
-
-@app.route('/choose_blind_bidding', methods=['POST'])
-def choose_blind_bidding():
-    if 'game' not in session:
-        return jsonify({'error': 'No game in session'}), 400
-    
-    game = session['game']
-    
-    if game['phase'] != 'blind_decision':
-        return jsonify({'error': 'Not in blind decision phase'}), 400
-    
-    # Move to blind bidding phase
-    game['phase'] = 'blind_bidding'
-    game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
-    
-    session.modified = True
-    return jsonify({'success': True})
-
-@app.route('/choose_normal_bidding', methods=['POST'])
-def choose_normal_bidding():
-    if 'game' not in session:
-        return jsonify({'error': 'No game in session'}), 400
-    
-    # Track client session
-    client_info = track_request_session()
-    
-    game = session['game']
-    
-    if game['phase'] != 'blind_decision':
-        return jsonify({'error': 'Not in blind decision phase'}), 400
-    
-    # Log the decision
-    log_action(
-        action_type='blind_decision',
-        player='player',
-        action_data={
-            'chose_blind': False,
-            'chose_normal': True
-        },
-        session=session,
-        request=request
-    )
-    
-    # Move to normal bidding phase
-    game['phase'] = 'bidding'
-    game['turn'] = 'player'
-    game['chose_normal_bidding'] = True
-    game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
-    
-    session.modified = True
-    return jsonify({'success': True})
-
-
-def determine_martha_bids_first(game):
-    """
-    Determine if Martha should bid first based on game conditions.
-    You can customize this logic based on your game rules.
-    """
-    player_base_score = game.get('player_score', 0)
-    computer_base_score = game.get('computer_score', 0)
-    hand_number = game.get('hand_number', 1)
-    
-    # Example conditions for Martha to bid first:
-    # 1. Martha is significantly behind (100+ points)
-    # 2. Alternating pattern based on hand number
-    # 3. Random chance
-    # 4. Based on who won the discard pile
-    
-    # Condition 1: Martha bids first when she's behind by 75+ points
-    if computer_base_score <= player_base_score - 75:
-        return True
-    
-    # Condition 2: Martha bids first on even hand numbers when scores are close
-    score_diff = abs(player_base_score - computer_base_score)
-    if score_diff <= 50 and hand_number % 2 == 0:
-        return True
-    
-    # Condition 3: Martha bids first if she won the discard pile
-    pending_discard = game.get('pending_discard_result')
-    if pending_discard and pending_discard.get('winner') == 'computer':
-        return True
-    
-    # Default: Tom bids first
-    return False
 
 @app.route('/play', methods=['POST'])
 def play_card():
