@@ -917,6 +917,7 @@ def play_card():
     session.modified = True
     return jsonify({'success': True})
 
+
 @app.route('/clear_trick', methods=['POST'])
 def clear_trick():
     """Called by frontend after displaying trick for 3 seconds"""
@@ -989,6 +990,21 @@ def clear_trick():
         
         # Calculate scoring with bags system
         scoring_result = calculate_hand_scores_with_bags(game)
+        
+        # CRITICAL FIX: Check immediately if blind nil ended the game
+        if game.get('game_over', False):
+            session.modified = True
+            log_game_event(
+                event_type='game_completed',
+                event_data={
+                    'winner': game['winner'],
+                    'final_message': game['message'],
+                    'hands_played': game['hand_number'],
+                    'game_end_reason': 'blind_nil'
+                },
+                session=session
+            )
+            return jsonify({'success': True})
         
         # Create structured hand results for cleaner display
         trick_history = game.get('trick_history', [])
@@ -1092,6 +1108,21 @@ def clear_trick():
             
             # Calculate scoring
             scoring_result = calculate_hand_scores_with_bags(game)
+            
+            # CRITICAL FIX: Check immediately if blind nil ended the game (auto-resolve case)
+            if game.get('game_over', False):
+                session.modified = True
+                log_game_event(
+                    event_type='game_completed',
+                    event_data={
+                        'winner': game['winner'],
+                        'final_message': game['message'],
+                        'hands_played': game['hand_number'],
+                        'game_end_reason': 'blind_nil_auto_resolve'
+                    },
+                    session=session
+                )
+                return jsonify({'success': True})
             
             # Create hand results
             trick_history = game.get('trick_history', [])
