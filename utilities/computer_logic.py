@@ -10,6 +10,8 @@ from .custom_rules import (
     apply_blind_scoring
 )
 
+from .logging_utils import log_game_event
+
 # =============================================================================
 # GLOBAL AI DIFFICULTY SETTINGS
 # =============================================================================
@@ -616,3 +618,65 @@ def set_difficulty_hard():
 def set_difficulty_custom(settings_dict):
     """Set AI parameters from a dictionary"""
     globals().update(settings_dict)
+
+def autoplay_remaining_cards(game, session_obj=None):
+    """
+    Check for mathematically certain scenarios and auto-resolve remaining tricks.
+    Returns (was_auto_resolved, explanation)
+    """
+    if len(game['player_hand']) == 0 or len(game['computer_hand']) == 0:
+        return False, ""
+    
+    player_suits = set(card['suit'] for card in game['player_hand'])
+    computer_suits = set(card['suit'] for card in game['computer_hand'])
+    winner = game.get('trick_winner')
+    
+    auto_resolved = False
+    explanation = ""
+    
+    # Case 1: One player only spades, other no spades
+    if player_suits == {'♠'} and '♠' not in computer_suits:
+        remaining_tricks = len(game['player_hand'])
+        game['player_tricks'] += remaining_tricks
+        auto_resolved = True
+        explanation = f"Auto-resolved: You had only spades ({remaining_tricks} cards), Marta had none"
+    elif computer_suits == {'♠'} and '♠' not in player_suits:
+        remaining_tricks = len(game['computer_hand'])
+        game['computer_tricks'] += remaining_tricks
+        auto_resolved = True
+        explanation = f"Auto-resolved: Marta had only spades ({remaining_tricks} cards), you had none"
+    # Case 2: Trick winner has one suit, loser has none of it and no spades
+    elif winner == 'player' and len(player_suits) == 1:
+        player_suit = list(player_suits)[0]
+        if player_suit not in computer_suits and '♠' not in computer_suits:
+            remaining_tricks = len(game['player_hand'])
+            game['player_tricks'] += remaining_tricks
+            auto_resolved = True
+            explanation = f"Auto-resolved: You had only {player_suit} ({remaining_tricks} cards), Marta had none and no spades"
+    elif winner == 'computer' and len(computer_suits) == 1:
+        computer_suit = list(computer_suits)[0]
+        if computer_suit not in player_suits and '♠' not in player_suits:
+            remaining_tricks = len(game['computer_hand'])
+            game['computer_tricks'] += remaining_tricks
+            auto_resolved = True
+            explanation = f"Auto-resolved: Marta had only {computer_suit} ({remaining_tricks} cards), you had none and no spades"
+    
+    if auto_resolved:
+        # Clear hands and mark as over
+        game['player_hand'] = []
+        game['computer_hand'] = []
+        game['hand_over'] = True
+        
+        # Log the auto-resolution
+        if session_obj:
+            log_game_event(
+                event_type='hand_auto_resolved',
+                event_data={
+                    'explanation': explanation,
+                    'final_player_tricks': game['player_tricks'],
+                    'final_computer_tricks': game['computer_tricks']
+                },
+                session=session_obj
+            )
+    
+    return auto_resolved, explanation

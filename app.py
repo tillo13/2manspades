@@ -966,10 +966,9 @@ def clear_trick():
     
     game = session['game']
     
-    # CHANGE THIS: Don't error if trick is already cleared
+    # Don't error if trick is already cleared
     if not game.get('trick_completed'):
-        return jsonify({'success': True, 'message': 'No trick to clear'}), 200  # Changed to 200
-    
+        return jsonify({'success': True, 'message': 'No trick to clear'}), 200
     
     winner = game.get('trick_winner')
     
@@ -978,7 +977,7 @@ def clear_trick():
     game['trick_completed'] = False
     game['trick_winner'] = None
     
-    # Check for hand over
+    # Check for hand over first
     if len(game['player_hand']) == 0:
         game['hand_over'] = True
         
@@ -1057,8 +1056,8 @@ def clear_trick():
                 for trick in trick_history
             ],
             'totals': {
-                'player_score': player_display_score,  # Display score with bags
-                'computer_score': computer_display_score  # Display score with bags
+                'player_score': player_display_score,
+                'computer_score': computer_display_score
             }
         }
         
@@ -1094,16 +1093,102 @@ def clear_trick():
                 },
                 session=session
             )
+    
+    # Check for auto-resolvable scenarios if hand not over
+    elif len(game['player_hand']) > 0 and len(game['computer_hand']) > 0:
+        from utilities.computer_logic import autoplay_remaining_cards
+        auto_resolved, explanation = autoplay_remaining_cards(game, session)
         
-    elif winner == 'computer':
-        # Computer won last trick, so computer leads
-        computer_lead_with_logging(game, session)
-        game['turn'] = 'player'
-        game['message'] = 'Marta led. Your turn to follow.'
-    else:
-        # Player won last trick, player leads next
-        game['turn'] = 'player'
-        game['message'] = 'You won the trick! Your turn to lead.'
+        if auto_resolved:
+            # Continue with normal hand completion logic
+            if 'pending_discard_result' in game:
+                discard_result = game['pending_discard_result']
+                game['player_score'] += discard_result['player_bonus']
+                game['computer_score'] += discard_result['computer_bonus']
+                
+                if 'pending_special_discard_result' in game:
+                    special_discard_result = game['pending_special_discard_result']
+                    
+                    if special_discard_result['player_bag_reduction'] > 0:
+                        game['player_bags'] = reduce_bags_safely(
+                            game.get('player_bags', 0), 
+                            special_discard_result['player_bag_reduction']
+                        )
+                    
+                    if special_discard_result['computer_bag_reduction'] > 0:
+                        game['computer_bags'] = reduce_bags_safely(
+                            game.get('computer_bags', 0), 
+                            special_discard_result['computer_bag_reduction']
+                        )
+                    
+                    game['discard_bonus_explanation'] = discard_result['explanation']
+                    if special_discard_result['explanation']:
+                        game['discard_bonus_explanation'] += " | " + special_discard_result['explanation']
+                else:
+                    game['discard_bonus_explanation'] = discard_result['explanation']
+                
+                del game['pending_discard_result']
+                if 'pending_special_discard_result' in game:
+                    del game['pending_special_discard_result']
+            
+            # Calculate scoring
+            scoring_result = calculate_hand_scores_with_bags(game)
+            
+            # Create hand results
+            trick_history = game.get('trick_history', [])
+            player_display_score = get_display_score(game['player_score'], game.get('player_bags', 0))
+            computer_display_score = get_display_score(game['computer_score'], game.get('computer_bags', 0))
+            
+            hand_results = {
+                'hand_number': game['hand_number'],
+                'parity': {
+                    'player': game.get('player_parity', 'even').title(),
+                    'computer': game.get('computer_parity', 'odd').title()
+                },
+                'discard_info': game.get('discard_bonus_explanation', ''),
+                'scoring': scoring_result['explanation'],
+                'auto_resolution': explanation,
+                'trick_history': [
+                    {
+                        'number': trick['number'],
+                        'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?",
+                        'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?",
+                        'winner': "You" if trick['winner'] == 'player' else "Marta"
+                    }
+                    for trick in trick_history
+                ],
+                'totals': {
+                    'player_score': player_display_score,
+                    'computer_score': computer_display_score
+                }
+            }
+            
+            game['hand_results'] = hand_results
+            game['message'] = f"{explanation}. Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
+            
+            # Check if game is over
+            game_over = check_game_over(game)
+            if game_over:
+                log_game_event(
+                    event_type='game_completed',
+                    event_data={
+                        'winner': game['winner'],
+                        'final_message': game['message'],
+                        'hands_played': game['hand_number']
+                    },
+                    session=session
+                )
+        else:
+            # Normal trick continuation - determine next action
+            if winner == 'computer':
+                # Computer won last trick, so computer leads
+                computer_lead_with_logging(game, session)
+                game['turn'] = 'player'
+                game['message'] = 'Marta led. Your turn to follow.'
+            else:
+                # Player won last trick, player leads next
+                game['turn'] = 'player'
+                game['message'] = 'You won the trick! Your turn to lead.'
     
     session.modified = True
     return jsonify({'success': True})
