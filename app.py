@@ -40,13 +40,15 @@ from utilities.logging_utils import (
     log_game_event,
     log_ai_decision,
     track_session_client,
-    finalize_game_logging
+    finalize_game_logging, get_client_ip
 )
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 
 DEBUG_MODE = False  # Set to False to hide Marta's cards completely
+
+session_tracker = {}
 
 def get_display_score(base_score, bags):
     """Convert base score and bags to display score (bags in ones column)"""
@@ -355,8 +357,21 @@ def new_game():
     
     return jsonify({'success': True})
 
+
 @app.route('/state')
 def get_state():
+    global session_tracker
+    client_ip = get_client_ip(request)
+    session_tracker[client_ip] = time.time()
+    
+    # Print stats every 20 requests and clean up old sessions
+    if len(session_tracker) % 20 == 0:
+        cutoff = time.time() - 300  # 5 minutes ago
+        active = {k: v for k, v in session_tracker.items() if v > cutoff}
+        session_tracker = active  # Clean up the tracker
+        print(f"ACTIVE SESSIONS: {len(active)} users active in last 5 minutes")
+    
+    # ... rest of your existing get_state code stays the same
     if 'game' not in session:
         player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
         session['game'] = init_game(player_parity, computer_parity, first_player)
