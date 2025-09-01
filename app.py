@@ -278,31 +278,31 @@ def computer_lead_with_logging(game, session_obj=None):
         if session_obj:
             log_game_event('spades_broken', {'broken_by': 'computer', 'card': f"{card['rank']}{card['suit']}"}, session_obj)
 
-def determine_martha_bids_first(game):
+def determine_marta_bids_first(game):
     """
-    Determine if Martha should bid first based on game conditions.
+    Determine if Marta should bid first based on game conditions.
     You can customize this logic based on your game rules.
     """
     player_base_score = game.get('player_score', 0)
     computer_base_score = game.get('computer_score', 0)
     hand_number = game.get('hand_number', 1)
     
-    # Example conditions for Martha to bid first:
-    # 1. Martha is significantly behind (100+ points)
+    # Example conditions for Marta to bid first:
+    # 1. Marta is significantly behind (100+ points)
     # 2. Alternating pattern based on hand number
     # 3. Random chance
     # 4. Based on who won the discard pile
     
-    # Condition 1: Martha bids first when she's behind by 75+ points
+    # Condition 1: Marta bids first when she's behind by 75+ points
     if computer_base_score <= player_base_score - 75:
         return True
     
-    # Condition 2: Martha bids first on even hand numbers when scores are close
+    # Condition 2: Marta bids first on even hand numbers when scores are close
     score_diff = abs(player_base_score - computer_base_score)
     if score_diff <= 50 and hand_number % 2 == 0:
         return True
     
-    # Condition 3: Martha bids first if she won the discard pile
+    # Condition 3: Marta bids first if she won the discard pile
     pending_discard = game.get('pending_discard_result')
     if pending_discard and pending_discard.get('winner') == 'computer':
         return True
@@ -639,7 +639,7 @@ def make_bid():
     # Player makes regular bid
     game['player_bid'] = bid
     
-    # Check if computer has already bid (Martha-first scenario)
+    # Check if computer has already bid (Marta-first scenario)
     if game.get('computer_bid') is None:
         # Normal scenario - computer bids after player
         computer_bid, computer_is_blind = computer_bidding_brain(
@@ -675,13 +675,13 @@ def make_bid():
         computer_blind_text = " (BLIND)" if computer_is_blind else ""
         player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
         
-        message_base = f'You bid {bid}{player_blind_text}, Martha bid {computer_bid}{computer_blind_text}.'
+        message_base = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}.'
     else:
-        # Martha already bid - just acknowledge You bid
+        # Marta already bid - just acknowledge You bid
         computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
         player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
         
-        message_base = f'You bid {bid}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}.'
+        message_base = f'You bid {bid}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}.'
     
     # Start playing phase with the designated first leader
     game['phase'] = 'playing'
@@ -706,11 +706,11 @@ def make_bid():
     if first_leader == 'player':
         game['message'] = f'{message_base} Your turn to lead the first trick.'
     else:
-        game['message'] = f'{message_base} Martha leads the first trick.'
+        game['message'] = f'{message_base} Marta leads the first trick.'
         # If computer leads, make the computer play immediately
         computer_lead_with_logging(game, session)
         game['turn'] = 'player'
-        game['message'] = f'{message_base} Martha led. Your turn to follow.'
+        game['message'] = f'{message_base} Marta led. Your turn to follow.'
     
     session.modified = True
     return jsonify({'success': True})
@@ -817,13 +817,13 @@ def discard_card():
         computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
         
         if first_leader == 'player':
-            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
         else:
-            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha leads the first trick.'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta leads the first trick.'
             # If computer leads, make the computer play immediately
             computer_lead_with_logging(game, session)
             game['turn'] = 'player'
-            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha led. Your turn to follow.'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta led. Your turn to follow.'
     else:
         # Normal flow - check for blind bidding eligibility FIRST
         player_base_score = game.get('player_score', 0)
@@ -833,13 +833,13 @@ def discard_card():
         print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Deficit={computer_base_score - player_base_score}, Eligible={blind_eligibility['player_eligible']}")
         
         # Determine who bids first based on game conditions
-        should_martha_bid_first = determine_martha_bids_first(game)
+        should_marta_bid_first = determine_marta_bids_first(game)
         
-        if should_martha_bid_first:
-            # Martha bids first
+        if should_marta_bid_first:
+            # Marta bids first
             computer_bid, computer_is_blind = computer_bidding_brain(
                 game['computer_hand'], 
-                None,  # No player bid yet since Martha goes first
+                None,  # No player bid yet since Marta goes first
                 game
             )
             game['computer_bid'] = computer_bid
@@ -851,7 +851,7 @@ def discard_card():
                     player='computer',
                     action_data={
                         'bid_amount': computer_bid,
-                        'martha_bids_first': True
+                        'marta_bids_first': True
                     },
                     session=session
                 )
@@ -861,17 +861,17 @@ def discard_card():
                     player='computer',
                     action_data={
                         'bid_amount': computer_bid,
-                        'martha_bids_first': True
+                        'marta_bids_first': True
                     },
                     session=session
                 )
             
-            # Start bidding phase with Martha's bid already made
+            # Start bidding phase with Marta's bid already made
             game['phase'] = 'bidding'
             game['turn'] = 'player'
             
             computer_blind_text = " (BLIND)" if computer_is_blind else ""
-            game['message'] = f'Cards discarded. Martha bid {computer_bid}{computer_blind_text} tricks. Now make your bid: How many tricks will you take? (0-10)'
+            game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text} tricks. Now make your bid: How many tricks will you take? (0-10)'
         else:
             # You bids first - check for blind eligibility
             if blind_eligibility['player_eligible']:

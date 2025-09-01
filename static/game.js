@@ -67,13 +67,13 @@ function updateUI() {
     // Handle results display for completed hands
     handleResultsDisplay();
 
-    // Update message with Martha-first bidding support
+    // Update message with Marta-first bidding support
     let messageToShow = gameState.message;
 
-    // Special case: Martha bid first during bidding phase
+    // Special case: Marta bid first during bidding phase
     if (gameState.phase === 'bidding' && gameState.computer_bid !== null && gameState.player_bid === null) {
         const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
-        messageToShow = `Martha bid ${gameState.computer_bid}${computerBlindText} tricks. Now make your bid: How many tricks will you take? (0-10)`;
+        messageToShow = `Marta bid ${gameState.computer_bid}${computerBlindText} tricks. Now make your bid: How many tricks will you take? (0-10)`;
     }
 
     // AVOID showing detailed results if structured results are shown
@@ -334,9 +334,9 @@ function updateFloatingScores() {
         const computerBlindText = gameState.computer_blind_bid === gameState.computer_bid ? 'B' : '';
         document.getElementById('floatingComputerBid').textContent = `${computerBid}${computerBlindText}`;
 
-        // Color code computer bid if blind OR if Martha bid first
+        // Color code computer bid if blind OR if Marta bid first
         const computerBidEl = document.getElementById('floatingComputerBid');
-        const marthaWentFirst = gameState.phase === 'bidding' &&
+        const martaWentFirst = gameState.phase === 'bidding' &&
             gameState.computer_bid !== null &&
             gameState.player_bid === null;
 
@@ -348,8 +348,8 @@ function updateFloatingScores() {
             computerBidEl.style.border = '';
             computerBidEl.style.borderRadius = '';
             computerBidEl.style.padding = '';
-        } else if (marthaWentFirst) {
-            // Martha went first - highlight her bid
+        } else if (martaWentFirst) {
+            // Marta went first - highlight her bid
             computerBidEl.style.color = '#1976d2';
             computerBidEl.style.fontWeight = 'bold';
             computerBidEl.style.backgroundColor = '#e3f2fd';
