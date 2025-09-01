@@ -96,7 +96,7 @@ def check_special_cards_in_discard(player_discard, computer_discard, discard_win
     special_cards_found = []
     
     # Check both discarded cards for special cards
-    for card, discarder in [(player_discard, 'You'), (computer_discard, 'Marta')]:
+    for card, discarder in [(player_discard, 'Tom'), (computer_discard, 'Marta')]:
         if card:
             is_special, reduction = is_special_card(card)
             if is_special:
@@ -117,7 +117,7 @@ def check_special_cards_in_discard(player_discard, computer_discard, discard_win
     # Create explanation
     explanation = ""
     if special_cards_found:
-        winner_name = "You" if discard_winner == 'player' else "Marta"
+        winner_name = "Tom" if discard_winner == 'player' else "Marta"
         cards_text = ", ".join(special_cards_found)
         explanation = f"{winner_name} won discard pile with special cards: {cards_text}"
     
@@ -144,7 +144,7 @@ def check_special_cards_in_trick(trick, winner):
     
     explanation = ""
     if special_cards_found:
-        winner_name = "You" if winner == 'player' else "Marta"
+        winner_name = "Tom" if winner == 'player' else "Marta"
         cards_text = ", ".join(special_cards_found)
         explanation = f"{winner_name} won trick with special cards: {cards_text}"
     
@@ -210,7 +210,7 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
     explanation = f"Discards: {player_discard['rank']}{player_discard['suit']} ({player_value}) + {computer_discard['rank']}{computer_discard['suit']} ({computer_value}) = {total} ({parity_text}){double_text}"
     
     if player_bonus > 0:
-        explanation += f" → You gets {player_bonus} pts!"
+        explanation += f" → Tom gets {player_bonus} pts!"
     elif computer_bonus > 0:
         explanation += f" → Marta gets {computer_bonus} pts!"
     else:
@@ -333,20 +333,20 @@ def calculate_hand_scores_with_bags(game):
     # Player explanation
     if player_bid == 0:
         if player_actual == 0:
-            explanation_parts.append(f"You: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")  # Changed from +100
+            explanation_parts.append(f"Tom: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")  # Changed from +100
         else:
-            explanation_parts.append(f"You: NIL FAILED! 0 bid, {player_actual} tricks (-200 pts, +{player_bags_added} bags)")  # Changed from -100
+            explanation_parts.append(f"Tom: NIL FAILED! 0 bid, {player_actual} tricks (-200 pts, +{player_bags_added} bags)")  # Changed from -100
     elif is_player_blind:
         if player_actual >= player_bid:
-            explanation_parts.append(f"You: BLIND {player_bid} SUCCESS! {player_actual} tricks (DOUBLE POINTS: +{player_hand_points} pts)")
+            explanation_parts.append(f"Tom: BLIND {player_bid} SUCCESS! {player_actual} tricks (DOUBLE POINTS: +{player_hand_points} pts)")
         else:
-            explanation_parts.append(f"You: BLIND {player_bid} FAILED! {player_actual} tricks (DOUBLE PENALTY: {player_hand_points} pts)")
+            explanation_parts.append(f"Tom: BLIND {player_bid} FAILED! {player_actual} tricks (DOUBLE PENALTY: {player_hand_points} pts)")
         if player_bags_added > 0:
             explanation_parts[-1] += f", +{player_bags_added} bags"
     elif player_bags_added > 0:
-        explanation_parts.append(f"You: {player_bid} bid, {player_actual} tricks (+{player_bags_added} bags)")
+        explanation_parts.append(f"Tom: {player_bid} bid, {player_actual} tricks (+{player_bags_added} bags)")
     else:
-        explanation_parts.append(f"You: {player_bid} bid, {player_actual} tricks")
+        explanation_parts.append(f"Tom: {player_bid} bid, {player_actual} tricks")
     
     # Computer explanation with blind support
     if computer_bid == 0:
@@ -368,18 +368,18 @@ def calculate_hand_scores_with_bags(game):
     
     # Show special card effects from tricks
     if player_trick_special_cards > 0:
-        explanation_parts.append(f"You won special cards: -{player_trick_special_cards} bags")
+        explanation_parts.append(f"Tom won special cards: -{player_trick_special_cards} bags")
     if computer_trick_special_cards > 0:
         explanation_parts.append(f"Marta won special cards: -{computer_trick_special_cards} bags")
     
     # Show penalties and bonuses
     if player_penalty:
         penalty_count = (current_player_bags + player_bags_added) // 7
-        explanation_parts.append(f"You: BAG PENALTY! -{penalty_count * 100} pts")
+        explanation_parts.append(f"Tom: BAG PENALTY! -{penalty_count * 100} pts")
     
     if player_bonus:
         bonus_count = abs((current_player_bags + player_bags_added) // -5)
-        explanation_parts.append(f"You: NEGATIVE BAG BONUS! +{bonus_count * 100} pts")
+        explanation_parts.append(f"Tom: NEGATIVE BAG BONUS! +{bonus_count * 100} pts")
         
     if computer_penalty:
         penalty_count = (current_computer_bags + computer_bags_added) // 7
@@ -391,7 +391,7 @@ def calculate_hand_scores_with_bags(game):
     
     # Show current bag counts
     if final_player_bags != 0 or final_computer_bags != 0:
-        explanation_parts.append(f"Bags: You {final_player_bags}/7, Marta {final_computer_bags}/7")
+        explanation_parts.append(f"Bags: Tom {final_player_bags}/7, Marta {final_computer_bags}/7")
     
     return {
         'player_hand_points': player_hand_points,
@@ -409,7 +409,7 @@ def get_player_names_with_parity(player_parity, computer_parity):
     """
     Get display names that include the parity assignment.
     """
-    player_name = f"You ({player_parity.title()})"
+    player_name = f"Tom ({player_parity.title()})"
     computer_name = f"Marta ({computer_parity.title()})"
     
     return (player_name, computer_name)

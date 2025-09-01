@@ -99,7 +99,7 @@ def resolve_trick_with_delay(game, session_obj=None):
     # LOG TRICK COMPLETION TO CONSOLE AND JSON
     p_text = f"{player_card['rank']}{player_card['suit']}" if player_card else "?"
     c_text = f"{computer_card['rank']}{computer_card['suit']}" if computer_card else "?"
-    winner_name = "Tom" if winner == 'player' else "Marta"
+    winner_name = "You" if winner == 'player' else "Marta"
     print(f"TRICK {trick_number}: {p_text} vs {c_text} -> {winner_name} wins")
     
     # LOG TO JSON AS WELL
@@ -307,7 +307,7 @@ def determine_martha_bids_first(game):
     if pending_discard and pending_discard.get('winner') == 'computer':
         return True
     
-    # Default: Tom bids first
+    # Default: You bid first
     return False
 
 # In the index() route:
@@ -677,7 +677,7 @@ def make_bid():
         
         message_base = f'You bid {bid}{player_blind_text}, Martha bid {computer_bid}{computer_blind_text}.'
     else:
-        # Martha already bid - just acknowledge Tom's bid
+        # Martha already bid - just acknowledge You bid
         computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
         player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
         
@@ -873,7 +873,7 @@ def discard_card():
             computer_blind_text = " (BLIND)" if computer_is_blind else ""
             game['message'] = f'Cards discarded. Martha bid {computer_bid}{computer_blind_text} tricks. Now make your bid: How many tricks will you take? (0-10)'
         else:
-            # Tom bids first - check for blind eligibility
+            # You bids first - check for blind eligibility
             if blind_eligibility['player_eligible']:
                 # Enter blind decision phase
                 game['phase'] = 'blind_decision'
@@ -1052,7 +1052,7 @@ def clear_trick():
                     'number': trick['number'],
                     'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?",
                     'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?",
-                    'winner': "Tom" if trick['winner'] == 'player' else "Marta"
+                    'winner': "You" if trick['winner'] == 'player' else "Marta"
                 }
                 for trick in trick_history
             ],

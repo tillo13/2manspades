@@ -228,7 +228,7 @@ def resolve_trick_with_delay(game):
     # LOG EACH TRICK TO CONSOLE
     p_text = f"{player_card['rank']}{player_card['suit']}" if player_card else "?"
     c_text = f"{computer_card['rank']}{computer_card['suit']}" if computer_card else "?"
-    winner_name = "Tom" if winner == 'player' else "Marta"
+    winner_name = "You" if winner == 'player' else "Marta"
     print(f"TRICK {trick_number}: {p_text} vs {c_text} -> {winner_name} wins")
     
     

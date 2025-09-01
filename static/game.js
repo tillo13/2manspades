@@ -429,7 +429,7 @@ function formatCleanResults(results) {
     html += `
         <div class="result-section">
             <div class="result-header">Players</div>
-            <div class="result-content">Tom (${results.parity.player}) vs Marta (${results.parity.computer})</div>
+            <div class="result-content">You (${results.parity.player}) vs Marta (${results.parity.computer})</div>
         </div>
     `;
 
@@ -480,7 +480,7 @@ function formatCleanResults(results) {
         <div class="result-section">
             <div class="result-header">Game Totals</div>
             <div class="result-content totals">
-                <span>Tom: ${results.totals.player_score}</span>
+                <span>You: ${results.totals.player_score}</span>
                 <span>Marta: ${results.totals.computer_score}</span>
             </div>
         </div>
@@ -552,18 +552,18 @@ function updatePlayArea() {
         const playerCard = gameState.current_trick.find(play => play.player === 'player');
         const computerCard = gameState.current_trick.find(play => play.player === 'computer');
 
-        // Always show side by side - Tom left, Marta right
+        // Always show side by side - You left, Marta right
         if (playerCard) {
             const card = playerCard.card;
             const suitClass = getSuitClass(card.suit);
             html += `
                 <div class="trick-card ${suitClass}">
-                    <div class="player-name">Tom</div>
+                    <div class="player-name">You</div>
                     <div class="card-content">${card.rank}${card.suit}</div>
                 </div>
             `;
         } else {
-            html += '<div class="trick-card-placeholder"><div style="font-size: 10px; color: #999;">Tom</div></div>';
+            html += '<div class="trick-card-placeholder"><div style="font-size: 10px; color: #999;">You</div></div>';
         }
 
         if (computerCard) {
