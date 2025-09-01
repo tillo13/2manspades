@@ -37,7 +37,7 @@ PRODUCTION_LOG_PLACEHOLDER = "[PRODUCTION] Log entry saved to pending database i
 # =============================================================================
 
 def get_client_ip(request):
-    """Get the client's IP address, handling proxies and load balancers."""
+    """Get the client's IP address, handling proxies and load balancers, preferring IPv4."""
     forwarded_ips = [
         'X-Forwarded-For',
         'X-Real-IP',
@@ -46,14 +46,39 @@ def get_client_ip(request):
         'X-Client-IP',
     ]
     
+    ipv4_candidates = []
+    ipv6_candidates = []
+    
+    # Collect all possible IPs and categorize them
     for header in forwarded_ips:
         ip = request.headers.get(header)
         if ip:
-            ip = ip.split(',')[0].strip()
-            if ip and ip != 'unknown':
-                return ip
+            # Handle comma-separated list (load balancers often send multiple IPs)
+            ips = [ip.strip() for ip in ip.split(',')]
+            for candidate_ip in ips:
+                if candidate_ip and candidate_ip != 'unknown':
+                    if ':' in candidate_ip and '.' not in candidate_ip:
+                        # Likely IPv6 (contains colons, no dots)
+                        ipv6_candidates.append(candidate_ip)
+                    elif '.' in candidate_ip and candidate_ip.count('.') == 3:
+                        # Likely IPv4 (contains dots, exactly 3 dots)
+                        ipv4_candidates.append(candidate_ip)
     
-    return request.environ.get('REMOTE_ADDR', 'unknown')
+    # Also check REMOTE_ADDR
+    remote_addr = request.environ.get('REMOTE_ADDR')
+    if remote_addr:
+        if ':' in remote_addr and '.' not in remote_addr:
+            ipv6_candidates.append(remote_addr)
+        elif '.' in remote_addr and remote_addr.count('.') == 3:
+            ipv4_candidates.append(remote_addr)
+    
+    # Prefer IPv4, fallback to IPv6
+    if ipv4_candidates:
+        return ipv4_candidates[0]
+    elif ipv6_candidates:
+        return ipv6_candidates[0]
+    else:
+        return 'unknown'
 
 def get_client_info(request):
     """Get comprehensive client information for logging."""
