@@ -155,9 +155,9 @@ def resolve_trick_with_delay(game, session_obj=None):
     
     # Add special card info to message if present
     if special_result['explanation']:
-        game['message'] = f"{base_message} {special_result['explanation']} Cards will clear in 3 seconds..."
+        game['message'] = f"{base_message} {special_result['explanation']}."
     else:
-        game['message'] = f"{base_message} Cards will clear in 1.5 seconds..."
+        game['message'] = f"{base_message}."
     
     # Mark trick as completed but don't clear yet
     game['trick_completed'] = True

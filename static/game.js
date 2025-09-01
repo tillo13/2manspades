@@ -163,7 +163,7 @@ function updateUI() {
                 console.error('Error clearing trick:', error);
                 trickDisplayTimeout = null;
             }
-        }, 2000); // Changed from 3000 to 2000 (2 seconds)
+        }, 1500); // Changed from 3000 to 1500 (1.5 seconds)
     }
 
     // Track hand changes for results display
