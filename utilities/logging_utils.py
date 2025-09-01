@@ -37,58 +37,28 @@ PRODUCTION_LOG_PLACEHOLDER = "[PRODUCTION] Log entry saved to pending database i
 # =============================================================================
 
 def get_client_ip(request):
-    """Get the client's IP address, handling proxies and load balancers, preferring IPv4."""
-    forwarded_ips = [
-        'X-Forwarded-For',
-        'X-Real-IP',
-        'X-Appengine-Remote-Addr',
-        'CF-Connecting-IP',
-        'X-Client-IP',
-    ]
+    """
+    Get the client's IP address, preferring IPv4 over IPv6.
+    Handles proxies and load balancers correctly.
+    """
+    # Use Flask's built-in access_route which automatically parses X-Forwarded-For
+    if request.access_route:
+        # access_route contains IPs in order: [client, proxy1, proxy2, ...]
+        for ip in request.access_route:
+            # Prefer public IPv4 addresses
+            if '.' in ip and ':' not in ip and not ip.startswith(('10.', '192.168.', '172.', '169.254.')):
+                return ip
+        
+        # If no public IPv4, take any IPv4
+        for ip in request.access_route:
+            if '.' in ip and ':' not in ip:
+                return ip
+        
+        # Fallback to first IP (likely IPv6)
+        return request.access_route[0]
     
-    all_ips = []
-    
-    # Debug: Print what headers we're getting
-    print(f"DEBUG: Checking IP headers...")
-    
-    # Collect all possible IPs
-    for header in forwarded_ips:
-        ip = request.headers.get(header)
-        if ip:
-            print(f"DEBUG: Found {header}: {ip}")
-            # Handle comma-separated list
-            ips = [ip.strip() for ip in ip.split(',')]
-            for candidate_ip in ips:
-                if candidate_ip and candidate_ip != 'unknown':
-                    all_ips.append(candidate_ip)
-                    print(f"DEBUG: Added candidate: {candidate_ip}")
-    
-    # Also check REMOTE_ADDR
-    remote_addr = request.environ.get('REMOTE_ADDR')
-    print(f"DEBUG: REMOTE_ADDR: {remote_addr}")
-    if remote_addr and remote_addr != 'unknown':
-        all_ips.append(remote_addr)
-        print(f"DEBUG: Added REMOTE_ADDR: {remote_addr}")
-    
-    print(f"DEBUG: All IPs found: {all_ips}")
-    
-    if not all_ips:
-        print("DEBUG: No IPs found - returning 'no-ip-found'")
-        return 'no-ip-found'
-    
-    # Simple IPv4 preference: look for anything with dots and no colons
-    ipv4_candidates = [ip for ip in all_ips if '.' in ip and ':' not in ip]
-    print(f"DEBUG: IPv4 candidates: {ipv4_candidates}")
-    
-    if ipv4_candidates:
-        chosen_ip = ipv4_candidates[0]
-        print(f"DEBUG: Chose IPv4: {chosen_ip}")
-        return chosen_ip
-    
-    # Fallback to first available IP (likely IPv6)
-    chosen_ip = all_ips[0]
-    print(f"DEBUG: Chose fallback: {chosen_ip}")
-    return chosen_ip
+    # Fallback to direct connection IP
+    return request.remote_addr or 'unknown'
 
 def get_client_info(request):
     """Get comprehensive client information for logging."""
