@@ -37,28 +37,47 @@ PRODUCTION_LOG_PLACEHOLDER = "[PRODUCTION] Log entry saved to pending database i
 # =============================================================================
 
 def get_client_ip(request):
-    """
-    Get the client's IP address, preferring IPv4 over IPv6.
-    Handles proxies and load balancers correctly.
-    """
-    # Use Flask's built-in access_route which automatically parses X-Forwarded-For
-    if request.access_route:
-        # access_route contains IPs in order: [client, proxy1, proxy2, ...]
-        for ip in request.access_route:
-            # Prefer public IPv4 addresses
-            if '.' in ip and ':' not in ip and not ip.startswith(('10.', '192.168.', '172.', '169.254.')):
-                return ip
-        
-        # If no public IPv4, take any IPv4
-        for ip in request.access_route:
-            if '.' in ip and ':' not in ip:
-                return ip
-        
-        # Fallback to first IP (likely IPv6)
-        return request.access_route[0]
+    """Get the client's real IP address, preferring IPv4 when available from the same client."""
     
-    # Fallback to direct connection IP
-    return request.remote_addr or 'unknown'
+    # Get all potential IPs from various headers
+    potential_ips = []
+    
+    # Check X-Forwarded-For (most common)
+    forwarded = request.headers.get('X-Forwarded-For')
+    if forwarded:
+        potential_ips.extend([ip.strip() for ip in forwarded.split(',')])
+    
+    # Check other common headers
+    for header in ['X-Real-IP', 'X-Client-IP']:
+        ip = request.headers.get(header)
+        if ip:
+            potential_ips.append(ip.strip())
+    
+    # Add the direct connection IP
+    if request.remote_addr:
+        potential_ips.append(request.remote_addr)
+    
+    if not potential_ips:
+        return 'unknown'
+    
+    # Filter out obviously internal/load balancer IPs
+    filtered_ips = []
+    for ip in potential_ips:
+        # Skip Google/AWS internal IPs and private ranges
+        if not ip.startswith(('169.254.', '10.', '192.168.', '172.', '127.')):
+            filtered_ips.append(ip)
+    
+    if not filtered_ips:
+        # If all IPs were filtered, use the first original IP
+        return potential_ips[0]
+    
+    # Prefer IPv4 from the filtered list
+    ipv4_ips = [ip for ip in filtered_ips if '.' in ip and ':' not in ip]
+    if ipv4_ips:
+        return ipv4_ips[0]
+    
+    # Fall back to first filtered IP (likely IPv6)
+    return filtered_ips[0]
 
 def get_client_info(request):
     """Get comprehensive client information for logging."""
