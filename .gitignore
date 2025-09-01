@@ -184,3 +184,7 @@ __pycache__/
 *.m4a
 *.mp3
 *.wav
+
+
+
+logging/

@@ -21,7 +21,6 @@ async function loadGameState() {
     }
 }
 
-
 function updateUI() {
     if (!gameState) return;
 
@@ -381,8 +380,7 @@ function updateBagsDisplay(elementId, bags) {
     }
 }
 
-// NEW: Clean structured results display
-// Replace the handleResultsDisplay function in your game.js with this:
+// Clean structured results display
 function handleResultsDisplay() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContent = document.getElementById('resultsContent');
@@ -397,7 +395,7 @@ function handleResultsDisplay() {
     }
 }
 
-// NEW: Clean formatting function
+// Clean formatting function
 function formatCleanResults(results) {
     let html = '';
 
@@ -485,7 +483,7 @@ function formatScoring(scoringText) {
     }).join('');
 }
 
-// OLD: Legacy formatting function - keeping for fallback compatibility
+// Legacy formatting function - keeping for fallback compatibility
 function formatResultsForMobile(explanation) {
     if (!explanation || explanation === 'No discards to score') {
         return '<div class="result-line" style="color: #666; font-style: italic;">No special scoring this hand</div>';
@@ -760,8 +758,8 @@ async function nextHand() {
                 trickDisplayTimeout = null;
             }
             selectedCard = null;
-            resetBiddingState(); // Reset bidding state when starting new hand
-            resetTrickHistoryScroll(); // Reset scroll position for new hand
+            resetBiddingState();
+            resetTrickHistoryScroll();
             await loadGameState();
         } else {
             const error = await response.json();
@@ -809,7 +807,6 @@ function canPlayCard(card, index) {
 function selectCard(index) {
     if (!canPlayCard(gameState.player_hand[index], index)) {
         showMessage('Cannot play this card!', 'error');
-        // Add haptic feedback on mobile if available
         if (navigator.vibrate) {
             navigator.vibrate(100);
         }
@@ -818,9 +815,8 @@ function selectCard(index) {
 
     selectedCard = index;
     updatePlayerHand();
-    updateActionButtons(); // Update button state when card is selected
+    updateActionButtons();
 
-    // Add subtle haptic feedback on mobile if available
     if (navigator.vibrate) {
         navigator.vibrate(50);
     }
@@ -898,7 +894,6 @@ async function makeBid(bidAmount) {
 
         if (response.ok) {
             await loadGameState();
-            // Haptic feedback for successful bid
             if (navigator.vibrate) navigator.vibrate(50);
         } else {
             const error = await response.json();
@@ -920,7 +915,6 @@ async function makeBlindBid(bidAmount) {
 
         if (response.ok) {
             await loadGameState();
-            // Stronger haptic feedback for blind bid
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
             const error = await response.json();
@@ -947,7 +941,6 @@ async function toggleComputerHand() {
     }
 }
 
-
 async function startNewGame() {
     try {
         if (trickDisplayTimeout) {
@@ -957,8 +950,8 @@ async function startNewGame() {
 
         await fetch('/new_game', { method: 'POST' });
         selectedCard = null;
-        resetBiddingState(); // Reset bidding state when starting new game
-        resetTrickHistoryScroll(); // Reset scroll position for new game
+        resetBiddingState();
+        resetTrickHistoryScroll();
         await loadGameState();
     } catch (error) {
         console.error('Error starting new game:', error);
@@ -966,24 +959,17 @@ async function startNewGame() {
     }
 }
 
-// Option 2: Alternative - redirect to force new game
 async function startNewGameWithRedirect() {
     window.location.href = '/?new=true';
 }
 
+// Fixed showMessage function - no auto-scroll behavior
 function showMessage(text, type = '') {
     const messageEl = document.getElementById('message');
     if (messageEl) {
         messageEl.textContent = text;
         messageEl.className = 'message ' + type;
-
-        // Only auto-scroll on mobile if NOT showing hand results
-        // Let users review results freely without page jumping
-        const isShowingResults = gameState && gameState.hand_over && gameState.hand_results;
-
-        if (window.innerWidth < 768 && !isShowingResults) {
-            messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        // Removed all auto-scroll behavior - let users control their own scrolling
     }
 }
 
@@ -1007,7 +993,7 @@ setInterval(() => {
     if (gameState && !gameState.game_over && !trickDisplayTimeout) {
         loadGameState();
     }
-}, 2500); // Slightly longer interval for mobile battery life
+}, 2500);
 
 // Handle orientation changes on mobile
 window.addEventListener('orientationchange', function () {
