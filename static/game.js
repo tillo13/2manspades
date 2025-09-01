@@ -44,7 +44,7 @@ function updateUI() {
         document.getElementById('biddingSection').style.display = 'none';
         const blindDecisionSection = document.getElementById('blindDecisionSection');
         if (blindDecisionSection) blindDecisionSection.style.display = 'none';
-        document.getElementById('discardBlindSection').style.display = 'none';
+        document.getElementById('discardBlindBiddingSection').style.display = 'none';
         document.getElementById('nextHandSection').style.display = 'none';
         document.getElementById('resultsSection').classList.remove('show');
         document.getElementById('playerHandSection').style.display = 'none';
@@ -93,22 +93,25 @@ function updateUI() {
     // Handle results display for completed hands
     handleResultsDisplay();
 
-    // Update message with Marta-first bidding support
+    // Update message - but DON'T override game over messages
     let messageToShow = gameState.message;
 
-    // Special case: Marta bid first during bidding phase
-    if (gameState.phase === 'bidding' && gameState.computer_bid !== null && gameState.player_bid === null) {
-        const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
-        messageToShow = `Marta bid ${gameState.computer_bid}${computerBlindText} tricks. Now make your bid: How many tricks will you take? (0-10)`;
+    // Only do special message handling if game is NOT over
+    if (!gameState.game_over) {
+        // Special case: Marta bid first during bidding phase
+        if (gameState.phase === 'bidding' && gameState.computer_bid !== null && gameState.player_bid === null) {
+            const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
+            messageToShow = `Marta bid ${gameState.computer_bid}${computerBlindText} tricks. Now make your bid: How many tricks will you take? (0-10)`;
+        }
+
+        // AVOID showing detailed results if structured results are shown
+        if (gameState.hand_over && gameState.hand_results) {
+            // If we have structured results, show only a simple message
+            messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue`;
+        }
     }
 
-    // AVOID showing detailed results if structured results are shown
-    if (gameState.hand_over && gameState.hand_results) {
-        // If we have structured results, show only a simple message
-        messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue`;
-    }
-
-    showMessage(messageToShow, messageToShow.includes('WIN') ? 'success' : '');
+    showMessage(messageToShow, messageToShow.includes('WIN') || messageToShow.includes('BLIND NIL SUCCESS') ? 'success' : '');
 
     // Update play area
     updatePlayArea();
