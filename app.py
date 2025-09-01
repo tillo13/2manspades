@@ -991,20 +991,8 @@ def clear_trick():
         # Calculate scoring with bags system
         scoring_result = calculate_hand_scores_with_bags(game)
         
-        # CRITICAL FIX: Check immediately if blind nil ended the game
-        if game.get('game_over', False):
-            session.modified = True
-            log_game_event(
-                event_type='game_completed',
-                event_data={
-                    'winner': game['winner'],
-                    'final_message': game['message'],
-                    'hands_played': game['hand_number'],
-                    'game_end_reason': 'blind_nil'
-                },
-                session=session
-            )
-            return jsonify({'success': True})
+        # Check if blind nil ended the game (but don't return early - show full results)
+        blind_nil_ending = game.get('game_over', False)
         
         # Create structured hand results for cleaner display
         trick_history = game.get('trick_history', [])
@@ -1053,21 +1041,36 @@ def clear_trick():
             session=session
         )
         
-        # Simple message for basic display
-        game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
-        
-        # Check if game is over using base scores for comparison
-        game_over = check_game_over(game)
-        if game_over:
+        # Set appropriate message based on game state
+        if blind_nil_ending:
+            # Keep the blind nil message - it's already set in calculate_hand_scores_with_bags
+            # Results will still be shown alongside the game over screen
             log_game_event(
                 event_type='game_completed',
                 event_data={
                     'winner': game['winner'],
                     'final_message': game['message'],
-                    'hands_played': game['hand_number']
+                    'hands_played': game['hand_number'],
+                    'game_end_reason': 'blind_nil'
                 },
                 session=session
             )
+        else:
+            # Normal hand completion message
+            game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
+            
+            # Check if game is over using base scores for comparison
+            game_over = check_game_over(game)
+            if game_over:
+                log_game_event(
+                    event_type='game_completed',
+                    event_data={
+                        'winner': game['winner'],
+                        'final_message': game['message'],
+                        'hands_played': game['hand_number']
+                    },
+                    session=session
+                )
     
     # Check for auto-resolvable scenarios if hand not over
     elif len(game['player_hand']) > 0 and len(game['computer_hand']) > 0:
@@ -1109,20 +1112,8 @@ def clear_trick():
             # Calculate scoring
             scoring_result = calculate_hand_scores_with_bags(game)
             
-            # CRITICAL FIX: Check immediately if blind nil ended the game (auto-resolve case)
-            if game.get('game_over', False):
-                session.modified = True
-                log_game_event(
-                    event_type='game_completed',
-                    event_data={
-                        'winner': game['winner'],
-                        'final_message': game['message'],
-                        'hands_played': game['hand_number'],
-                        'game_end_reason': 'blind_nil_auto_resolve'
-                    },
-                    session=session
-                )
-                return jsonify({'success': True})
+            # Check if blind nil ended the game (auto-resolve case)
+            blind_nil_ending = game.get('game_over', False)
             
             # Create hand results
             trick_history = game.get('trick_history', [])
@@ -1154,20 +1145,34 @@ def clear_trick():
             }
             
             game['hand_results'] = hand_results
-            game['message'] = f"{explanation}. Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
             
-            # Check if game is over
-            game_over = check_game_over(game)
-            if game_over:
+            if blind_nil_ending:
+                # Keep blind nil message and log completion
                 log_game_event(
                     event_type='game_completed',
                     event_data={
                         'winner': game['winner'],
                         'final_message': game['message'],
-                        'hands_played': game['hand_number']
+                        'hands_played': game['hand_number'],
+                        'game_end_reason': 'blind_nil_auto_resolve'
                     },
                     session=session
                 )
+            else:
+                game['message'] = f"{explanation}. Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
+                
+                # Check if game is over
+                game_over = check_game_over(game)
+                if game_over:
+                    log_game_event(
+                        event_type='game_completed',
+                        event_data={
+                            'winner': game['winner'],
+                            'final_message': game['message'],
+                            'hands_played': game['hand_number']
+                        },
+                        session=session
+                    )
         else:
             # Normal trick continuation - determine next action
             if winner == 'computer':

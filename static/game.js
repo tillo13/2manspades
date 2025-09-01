@@ -20,6 +20,7 @@ async function loadGameState() {
         showMessage('Error loading game', 'error');
     }
 }
+
 function updateUI() {
     if (!gameState) return;
 
@@ -35,20 +36,26 @@ function updateUI() {
         playerHandCountEl.textContent = `(${gameState.player_hand.length} cards)`;
     }
 
-    // Check game over FIRST - if game is over, show game over screen and hide everything else
+    // Check game over FIRST - but still show results for blind nil
     if (gameState.game_over) {
         document.getElementById('gameOver').style.display = 'block';
         document.getElementById('winnerText').textContent = gameState.message;
 
-        // Hide all other interactive sections when game is over
+        // Hide interactive sections when game is over
         document.getElementById('biddingSection').style.display = 'none';
         const blindDecisionSection = document.getElementById('blindDecisionSection');
         if (blindDecisionSection) blindDecisionSection.style.display = 'none';
         document.getElementById('discardBlindBiddingSection').style.display = 'none';
         document.getElementById('nextHandSection').style.display = 'none';
-        document.getElementById('resultsSection').classList.remove('show');
         document.getElementById('playerHandSection').style.display = 'none';
         document.getElementById('computerHandSection').style.display = 'none';
+
+        // Show results section for blind nil to show how it happened
+        if (gameState.hand_results && gameState.message.includes('BLIND NIL')) {
+            handleResultsDisplay();  // This will show the results section
+        } else {
+            document.getElementById('resultsSection').classList.remove('show');
+        }
 
         // Update play area and message for game over
         updatePlayArea();
