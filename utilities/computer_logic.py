@@ -623,9 +623,16 @@ def set_difficulty_custom(settings_dict):
 def autoplay_remaining_cards(game, session_obj=None):
     """
     Check for mathematically certain scenarios and auto-resolve remaining tricks.
+    Only auto-resolves when 3-9 cards remain to preserve engagement.
     Returns (was_auto_resolved, explanation)
     """
-    if len(game['player_hand']) == 0 or len(game['computer_hand']) == 0:
+    player_hand_size = len(game['player_hand'])
+    computer_hand_size = len(game['computer_hand'])
+    
+    # Only auto-resolve if 3-9 cards remain (don't auto-play final 1-2 tricks)
+    if player_hand_size == 0 or computer_hand_size == 0:
+        return False, ""
+    if player_hand_size < 3 or player_hand_size > 9:
         return False, ""
     
     player_suits = set(card['suit'] for card in game['player_hand'])
@@ -673,6 +680,9 @@ def autoplay_remaining_cards(game, session_obj=None):
         computer_cards = game['computer_hand'].copy()
         current_trick_number = len(game.get('trick_history', [])) + 1
         
+        # Log console message for auto-resolution
+        print(f"AUTO-RESOLVE: {explanation}")
+        
         # Play out remaining tricks in any order since outcome is predetermined
         while player_cards and computer_cards:
             # Just take first card from each hand (order doesn't matter)
@@ -686,6 +696,12 @@ def autoplay_remaining_cards(game, session_obj=None):
                 'computer_card': computer_card,
                 'winner': winner_of_remaining  # Predetermined winner
             })
+            
+            # Log each auto-played trick to console
+            p_text = f"{player_card['rank']}{player_card['suit']}"
+            c_text = f"{computer_card['rank']}{computer_card['suit']}"
+            winner_name = "You" if winner_of_remaining == 'player' else "Marta"
+            print(f"AUTO-TRICK {current_trick_number}: {p_text} vs {c_text} -> {winner_name} wins")
             
             current_trick_number += 1
         
@@ -701,6 +717,7 @@ def autoplay_remaining_cards(game, session_obj=None):
                 event_data={
                     'explanation': explanation,
                     'tricks_simulated': tricks_to_award,
+                    'cards_remaining_when_triggered': player_hand_size,
                     'final_player_tricks': game['player_tricks'],
                     'final_computer_tricks': game['computer_tricks']
                 },
