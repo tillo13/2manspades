@@ -145,6 +145,22 @@ function updateUI() {
     restoreTrickHistoryScroll();
 }
 
+//blind nil!
+async function chooseBlindNil() {
+    try {
+        const response = await fetch('/choose_blind_nil', { method: 'POST' });
+        if (response.ok) {
+            await loadGameState();
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error choosing blind nil:', error);
+        showMessage('Error choosing blind nil', 'error');
+    }
+}
+
 // Blind decision functions
 async function chooseBlindBidding() {
     try {

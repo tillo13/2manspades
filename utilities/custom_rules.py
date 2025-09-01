@@ -249,8 +249,26 @@ def reduce_bags_safely(current_bags, reduction):
 
 def calculate_hand_scores_with_bags(game):
     """
-    Calculate hand scoring including bags system, nil bids, and blind bidding for both players.
+    Calculate hand scoring including bags system, nil bids, blind bidding, and blind nil for both players.
     """
+    
+    # Check for blind nil FIRST - it ends the game immediately
+    if game.get('blind_nil') and game.get('player_bid') == 0:
+        player_actual = game.get('player_tricks', 0)
+        if player_actual == 0:
+            # INSTANT WIN
+            game['game_over'] = True
+            game['winner'] = 'player'
+            game['message'] = "BLIND NIL SUCCESS! You win the entire game instantly!"
+            return {'explanation': "BLIND NIL SUCCESS - INSTANT GAME WIN!"}
+        else:
+            # INSTANT LOSS
+            game['game_over'] = True
+            game['winner'] = 'computer'
+            game['message'] = f"Blind Nil failed - you took {player_actual} tricks. Marta wins!"
+            return {'explanation': f"BLIND NIL FAILURE - took {player_actual} tricks - GAME OVER"}
+    
+    # Normal scoring continues if no blind nil or blind nil not attempted
     player_bid = game.get('player_bid', 0)
     computer_bid = game.get('computer_bid', 0)
     player_actual = game.get('player_tricks', 0)
@@ -267,10 +285,10 @@ def calculate_hand_scores_with_bags(game):
     # Calculate player points
     if player_bid == 0:
         if player_actual == 0:
-            player_hand_points = 200  # Changed from 100 to 200
+            player_hand_points = 200  # NIL success
             player_bags_added = 0
         else:
-            player_hand_points = -200  # Changed from -100 to -200
+            player_hand_points = -200  # NIL failure
             player_bags_added = player_actual
     elif player_actual >= player_bid:
         player_hand_points = (player_bid * 10)
@@ -283,13 +301,13 @@ def calculate_hand_scores_with_bags(game):
         if is_player_blind:
             player_hand_points = apply_blind_scoring(player_hand_points, player_bid, player_actual)
     
-    # Calculate computer points (now with blind support!)
+    # Calculate computer points
     if computer_bid == 0:
         if computer_actual == 0:
-            computer_hand_points = 200  # Changed from 100 to 200
+            computer_hand_points = 200  # NIL success
             computer_bags_added = 0
         else:
-            computer_hand_points = -200  # Changed from -100 to -200
+            computer_hand_points = -200  # NIL failure
             computer_bags_added = computer_actual
     elif computer_actual >= computer_bid:
         computer_hand_points = (computer_bid * 10)
@@ -327,15 +345,15 @@ def calculate_hand_scores_with_bags(game):
     game['player_trick_special_cards'] = 0
     game['computer_trick_special_cards'] = 0
     
-    # Create explanation with blind bid support
+    # Create explanation
     explanation_parts = []
     
     # Player explanation
     if player_bid == 0:
         if player_actual == 0:
-            explanation_parts.append(f"You: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")  # Changed from +100
+            explanation_parts.append(f"You: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")
         else:
-            explanation_parts.append(f"You: NIL FAILED! 0 bid, {player_actual} tricks (-200 pts, +{player_bags_added} bags)")  # Changed from -100
+            explanation_parts.append(f"You: NIL FAILED! 0 bid, {player_actual} tricks (-200 pts, +{player_bags_added} bags)")
     elif is_player_blind:
         if player_actual >= player_bid:
             explanation_parts.append(f"You: BLIND {player_bid} SUCCESS! {player_actual} tricks (DOUBLE POINTS: +{player_hand_points} pts)")
@@ -351,9 +369,9 @@ def calculate_hand_scores_with_bags(game):
     # Computer explanation with blind support
     if computer_bid == 0:
         if computer_actual == 0:
-            explanation_parts.append(f"Marta: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")  # Changed from +100
+            explanation_parts.append(f"Marta: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)")
         else:
-            explanation_parts.append(f"Marta: NIL FAILED! 0 bid, {computer_actual} tricks (-200 pts, +{computer_bags_added} bags)")  # Changed from -100
+            explanation_parts.append(f"Marta: NIL FAILED! 0 bid, {computer_actual} tricks (-200 pts, +{computer_bags_added} bags)")
     elif is_computer_blind:
         if computer_actual >= computer_bid:
             explanation_parts.append(f"Marta: BLIND {computer_bid} SUCCESS! {computer_actual} tricks (DOUBLE POINTS: +{computer_hand_points} pts)")

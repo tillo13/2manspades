@@ -575,6 +575,37 @@ def make_blind_bid():
     session.modified = True
     return jsonify({'success': True})
 
+@app.route('/choose_blind_nil', methods=['POST'])
+def choose_blind_nil():
+    """Handle blind nil - win or lose the entire game"""
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    game = session['game']
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Set blind nil
+    game['blind_bid'] = 0
+    game['player_bid'] = 0
+    game['blind_nil'] = True
+    
+    # Computer bids normally (no blind nil for Marta)
+    computer_bid, computer_is_blind = computer_bidding_brain(
+        game['computer_hand'], 0, game
+    )
+    game['computer_bid'] = computer_bid
+    if computer_is_blind:
+        game['computer_blind_bid'] = computer_bid
+    
+    # Go to discard
+    game['phase'] = 'discard'
+    computer_text = f" Marta bid {computer_bid}{'(BLIND)' if computer_is_blind else ''}."
+    game['message'] = f'BLIND NIL chosen! Win instantly with 0 tricks or lose the game!{computer_text} Select a card to discard.'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
 @app.route('/bid', methods=['POST'])
 def make_bid():
     if 'game' not in session:
