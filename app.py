@@ -362,17 +362,21 @@ def new_game():
 def get_state():
     global session_tracker
     client_ip = get_client_ip(request)
-    session_tracker[client_ip] = time.time()
-    
-    # Clean up old sessions and print stats every time
-    cutoff = time.time() - 300  # 5 minutes ago
-    active = {k: v for k, v in session_tracker.items() if v > cutoff}
-    session_tracker = active  # Clean up the tracker
-    
-    # Print with more useful info
-    total_ips = len(active)
     game_phase = session.get('game', {}).get('phase', 'no-game')
-    print(f"ACTIVE: {total_ips} users | Phase: {game_phase} | IP: {client_ip[:15]}...")
+    
+    # Store both timestamp and phase for each IP
+    session_tracker[client_ip] = {'last_seen': time.time(), 'phase': game_phase}
+    
+    # Clean up and show all active users with phases
+    cutoff = time.time() - 300
+    active = {ip: data for ip, data in session_tracker.items() if data['last_seen'] > cutoff}
+    session_tracker = active
+    
+    total_ips = len(active)
+    print(f"ACTIVE: {total_ips} users | Current: {client_ip} ({game_phase})")
+    if total_ips > 1:
+        for ip, data in active.items():
+            print(f"  {ip}: {data['phase']}")
     
     if 'game' not in session:
         player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
