@@ -684,7 +684,6 @@ def make_bid():
     session.modified = True
     return jsonify({'success': True})
 
-
 @app.route('/discard', methods=['POST'])
 def discard_card():
     if 'game' not in session:
@@ -787,22 +786,22 @@ def discard_card():
         computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
         
         if first_leader == 'player':
-            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
         else:
-            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha leads the first trick.'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta leads the first trick.'
             # If computer leads, make the computer play immediately
             computer_lead_with_logging(game, session)
             game['turn'] = 'player'
-            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha led. Your turn to follow.'
+            game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta led. Your turn to follow.'
     else:
-        # Normal flow - check for blind bidding eligibility FIRST
+        # Normal flow - check for blind bidding eligibility for both players
         player_base_score = game.get('player_score', 0)
         computer_base_score = game.get('computer_score', 0)
         blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
         
-        print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Deficit={computer_base_score - player_base_score}, Eligible={blind_eligibility['player_eligible']}")
+        print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
         
-        # You always bid first (unless blind eligibility changes the flow)
+        # Check player blind eligibility first
         if blind_eligibility['player_eligible']:
             # Enter blind decision phase
             game['phase'] = 'blind_decision'
