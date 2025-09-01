@@ -98,12 +98,33 @@
                 <div class="results-content" id="resultsContent"></div>
             </div>
 
-            <!-- Blind Bidding Section for Discard Phase -->
+            <!-- NEW: Blind Decision Section -->
+            <div class="blind-decision-section" id="blindDecisionSection" style="display: none;">
+                <div class="blind-header">
+                    <h3 style="color: #d32f2f; margin-bottom: 8px; font-size: 18px; font-weight: 600;">Blind Bidding
+                        Decision</h3>
+                    <p style="font-size: 14px; margin-bottom: 8px; color: #333; line-height: 1.3;">You're down by 100+
+                        points. Choose your approach:</p>
+                </div>
+
+                <div class="decision-buttons"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                    <button onclick="chooseBlindBidding()"
+                        style="background: #d32f2f; color: white; padding: 15px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s ease;">
+                        Go BLIND<br><small>Double risk/reward</small>
+                    </button>
+                    <button onclick="chooseNormalBidding()"
+                        style="background: #1976d2; color: white; padding: 15px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s ease;">
+                        Bid Normally<br><small>Standard rules</small>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Blind Bidding Section for after choosing blind -->
             <div class="blind-bidding-section" id="discardBlindBiddingSection" style="display: none;">
                 <div class="blind-header">
-                    <h3>Blind Bidding Available</h3>
-                    <p>You're down by 100+ points. Go blind BEFORE seeing your cards for <strong>DOUBLE</strong>
-                        points/penalties!</p>
+                    <h3>Choose Your Blind Bid</h3>
+                    <p>You chose to go blind! Pick your bid amount for <strong>DOUBLE</strong> points/penalties!</p>
                     <div class="blind-warning">
                         Must bid at least 5 tricks, get double rewards or double punishment!
                     </div>
@@ -115,9 +136,6 @@
                     <button onclick="makeBlindBid(8)" class="blind-bid-btn">BLIND 8</button>
                     <button onclick="makeBlindBid(9)" class="blind-bid-btn">BLIND 9</button>
                     <button onclick="makeBlindBid(10)" class="blind-bid-btn">BLIND 10</button>
-                </div>
-                <div class="regular-bid-prompt">
-                    <p>Or discard normally and then make a regular bid:</p>
                 </div>
             </div>
 

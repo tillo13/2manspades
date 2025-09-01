@@ -605,6 +605,7 @@ def make_bid():
     session.modified = True
     return jsonify({'success': True})
 
+
 @app.route('/discard', methods=['POST'])
 def discard_card():
     if 'game' not in session:
@@ -715,7 +716,7 @@ def discard_card():
             game['turn'] = 'player'
             game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha led. Your turn to follow.'
     else:
-        # Normal flow - determine bidding order
+        # Normal flow - check for blind bidding eligibility
         player_base_score = game.get('player_score', 0)
         computer_base_score = game.get('computer_score', 0)
         blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
@@ -761,17 +762,50 @@ def discard_card():
             computer_blind_text = " (BLIND)" if computer_is_blind else ""
             game['message'] = f'Cards discarded. Martha bid {computer_bid}{computer_blind_text} tricks. Now make your bid: How many tricks will you take? (0-10)'
         else:
-            # Tom bids first (normal flow)
+            # Tom bids first - check for blind eligibility
             if blind_eligibility['player_eligible']:
-                game['blind_bidding_available'] = True
-                game['message'] = f'Cards discarded. You are down by {blind_eligibility["player_deficit"]} points - would you like to go BLIND? (5-10 tricks, double points/penalties) Or make a regular bid? (0-10)'
+                # Enter blind decision phase
+                game['phase'] = 'blind_decision'
+                game['message'] = f'Cards discarded! You are down by {blind_eligibility["player_deficit"]} points. Choose: Go BLIND for double points/penalties, or bid normally?'
             else:
-                game['blind_bidding_available'] = False
+                # No blind eligibility - go straight to normal bidding
+                game['phase'] = 'bidding'
+                game['turn'] = 'player'
                 game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
-            
-            # Start bidding phase
-            game['phase'] = 'bidding'
-            game['turn'] = 'player'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
+@app.route('/choose_normal_bidding', methods=['POST'])
+def choose_normal_bidding():
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    # Track client session
+    client_info = track_request_session()
+    
+    game = session['game']
+    
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Log the decision
+    log_action(
+        action_type='blind_decision',
+        player='player',
+        action_data={
+            'chose_blind': False,
+            'chose_normal': True
+        },
+        session=session,
+        request=request
+    )
+    
+    # Move to normal bidding phase
+    game['phase'] = 'bidding'
+    game['turn'] = 'player'
+    game['chose_normal_bidding'] = True
+    game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
     
     session.modified = True
     return jsonify({'success': True})

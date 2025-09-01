@@ -36,35 +36,30 @@ function updateUI() {
         playerHandCountEl.textContent = `(${gameState.player_hand.length} cards)`;
     }
 
-    // Show/hide bidding section and blind bidding
+    // Show/hide sections based on phase
     const biddingSection = document.getElementById('biddingSection');
+    const blindDecisionSection = document.getElementById('blindDecisionSection');
     const discardBlindSection = document.getElementById('discardBlindBiddingSection');
 
-    if (gameState.phase === 'bidding') {
+    // Hide all sections first
+    biddingSection.style.display = 'none';
+    if (blindDecisionSection) blindDecisionSection.style.display = 'none';
+    discardBlindSection.style.display = 'none';
+
+    if (gameState.phase === 'blind_decision') {
+        // Show blind decision section
+        if (blindDecisionSection) blindDecisionSection.style.display = 'block';
+    } else if (gameState.phase === 'blind_bidding') {
+        // Show blind bidding options
+        discardBlindSection.style.display = 'block';
+    } else if (gameState.phase === 'bidding') {
         biddingSection.style.display = 'block';
-        discardBlindSection.style.display = 'none';
         // Only reset bidding state if we're entering bidding phase for the first time
         if (!biddingSection.classList.contains('active')) {
             biddingSection.classList.add('active');
             resetBiddingState();
         }
-    } else if (gameState.phase === 'discard') {
-        // Check if player is eligible for blind bidding and hasn't already bid
-        if (!gameState.player_bid && !gameState.blind_bid) {
-            // Check if player is down by 100+ points for blind eligibility
-            const deficit = gameState.computer_score - gameState.player_score;
-            if (deficit >= 100) {
-                discardBlindSection.style.display = 'block';
-            } else {
-                discardBlindSection.style.display = 'none';
-            }
-        } else {
-            discardBlindSection.style.display = 'none';
-        }
-        biddingSection.style.display = 'none';
     } else {
-        biddingSection.style.display = 'none';
-        discardBlindSection.style.display = 'none';
         // Remove active class when leaving bidding phase
         biddingSection.classList.remove('active');
     }
@@ -148,6 +143,31 @@ function updateUI() {
 
     // Restore trick history scroll position after DOM updates
     restoreTrickHistoryScroll();
+}
+
+// Blind decision functions
+function chooseBlindBidding() {
+    // Show the blind bidding section
+    document.getElementById('blindDecisionSection').style.display = 'none';
+    document.getElementById('discardBlindBiddingSection').style.display = 'block';
+
+    // Update message
+    showMessage('Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!');
+}
+
+async function chooseNormalBidding() {
+    try {
+        const response = await fetch('/choose_normal_bidding', { method: 'POST' });
+        if (response.ok) {
+            await loadGameState();
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error choosing normal bidding:', error);
+        showMessage('Error choosing normal bidding', 'error');
+    }
 }
 
 // New bidding confirmation functions
@@ -483,75 +503,6 @@ function formatScoring(scoringText) {
     }).join('');
 }
 
-// Legacy formatting function - keeping for fallback compatibility
-function formatResultsForMobile(explanation) {
-    if (!explanation || explanation === 'No discards to score') {
-        return '<div class="result-line" style="color: #666; font-style: italic;">No special scoring this hand</div>';
-    }
-
-    // Split explanation by pipe separators and format each section cleanly
-    const sections = explanation.split(' | ');
-    let formatted = '';
-
-    sections.forEach((section) => {
-        section = section.trim();
-
-        if (section.includes('complete!')) {
-            // Skip the "Hand complete" line - already shown in header
-            return;
-        } else if (section.includes('vs') && (section.includes('Even') || section.includes('Odd'))) {
-            // Parity assignment - make it cleaner
-            const clean = section.replace(/Tom \(Even\) vs Marta \(Odd\)|Tom \(Odd\) vs Marta \(Even\)/,
-                section.includes('Tom (Even)') ? 'Tom: Even, Marta: Odd' : 'Tom: Odd, Marta: Even');
-            formatted += `<div class="result-line" style="font-weight: 500; color: #6c757d;">${clean}</div>`;
-        } else if (section.includes('DISCARD PILE REVEALS:')) {
-            // Clean up discard reveals
-            const clean = section.replace('DISCARD PILE REVEALS: Discards:', 'Discard pile:');
-            formatted += `<div class="result-line highlight">${clean}</div>`;
-        } else if (section.includes('Tom:') && section.includes('bid')) {
-            // Player scoring line
-            formatted += `<div class="result-line">${section}</div>`;
-        } else if (section.includes('Marta:') && section.includes('bid')) {
-            // Computer scoring line  
-            formatted += `<div class="result-line">${section}</div>`;
-        } else if (section.includes('BAG PENALTY')) {
-            // Penalty formatting
-            const clean = section.replace('BAG PENALTY!', 'Bag penalty');
-            formatted += `<div class="result-line penalty">${clean}</div>`;
-        } else if (section.includes('NEGATIVE BAG BONUS')) {
-            // Bonus formatting
-            const clean = section.replace('NEGATIVE BAG BONUS!', 'Bag bonus');
-            formatted += `<div class="result-line bonus">${clean}</div>`;
-        } else if (section.includes('won') && section.includes('special cards')) {
-            // Special card wins
-            formatted += `<div class="result-line" style="color: #17a2b8;">${section}</div>`;
-        } else if (section.includes('Bags:')) {
-            // Bag status
-            formatted += `<div class="result-line" style="color: #6c757d; font-size: 11px; text-align: center; border-top: 1px solid #e9ecef; padding-top: 6px; margin-top: 4px;">${section}</div>`;
-        } else if (section.includes('Game totals:')) {
-            // Game totals - make prominent but clean
-            formatted += `<div class="result-line" style="font-weight: 600; text-align: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e9ecef;">${section}</div>`;
-        } else if (section.includes('TRICK HISTORY:')) {
-            // Format trick history nicely
-            const clean = section.replace('TRICK HISTORY: ', '');
-            const tricks = clean.split(' | ');
-            let historyHtml = '<div class="result-line" style="font-weight: 500; margin-top: 8px; color: #495057;">Trick History:</div>';
-            tricks.forEach(trick => {
-                historyHtml += `<div class="result-line" style="font-size: 11px; color: #495057; padding-left: 8px; font-family: monospace;">${trick}</div>`;
-            });
-            formatted += historyHtml;
-        } else if (section.includes('Click') || section.includes('continue')) {
-            // Skip instructions - handled by button
-            return;
-        } else if (section.length > 0) {
-            // Any other content
-            formatted += `<div class="result-line">${section}</div>`;
-        }
-    });
-
-    return formatted;
-}
-
 function updateActionButtons() {
     const actionButton = document.getElementById('actionButton');
     const nextHandSection = document.getElementById('nextHandSection');
@@ -563,18 +514,9 @@ function updateActionButtons() {
         nextHandSection.style.display = 'none';
 
         if (gameState.phase === 'discard') {
-            // Hide discard button if player is blind eligible and no bid made yet
-            const deficit = gameState.computer_score - gameState.player_score;
-            const isBlindEligible = deficit >= 100;
-            const noBidMadeYet = !gameState.player_bid && !gameState.blind_bid;
-
-            if (isBlindEligible && noBidMadeYet) {
-                actionButton.style.display = 'none';
-            } else {
-                actionButton.textContent = 'Discard Selected';
-                actionButton.onclick = discardCard;
-                actionButton.style.display = 'inline-block';
-            }
+            actionButton.textContent = 'Discard Selected';
+            actionButton.onclick = discardCard;
+            actionButton.style.display = 'inline-block';
         } else if (gameState.phase === 'playing') {
             actionButton.textContent = 'Play Selected';
             actionButton.onclick = playCard;
@@ -649,13 +591,9 @@ function updatePlayerHand() {
         playerHandSection.style.display = 'block';
     }
 
-    // Hide cards if in discard phase, no bid made yet, and player is down by 100+ points
-    const deficit = gameState.computer_score - gameState.player_score;
-    const isBlindEligible = deficit >= 100;
-    const noBidMadeYet = !gameState.player_bid && !gameState.blind_bid;
-
-    if (gameState.phase === 'discard' && isBlindEligible && noBidMadeYet) {
-        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">Cards hidden - make blind bid decision first!</div>';
+    // Hide cards during blind decision or blind bidding phases
+    if (gameState.phase === 'blind_decision' || gameState.phase === 'blind_bidding') {
+        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">Cards hidden during blind bidding decision!</div>';
         return;
     }
 
