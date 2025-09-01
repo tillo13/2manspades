@@ -84,6 +84,21 @@ def init_new_hand(game):
     current_first_leader = game.get('first_leader', 'player')
     next_first_leader = 'computer' if current_first_leader == 'player' else 'player'
     
+    # Check blind bidding eligibility before setting phase
+    from .custom_rules import check_blind_bidding_eligibility
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+    
+    # Set initial phase and message based on blind eligibility
+    if blind_eligibility['player_eligible']:
+        initial_phase = 'blind_decision'
+        deficit = computer_base_score - player_base_score
+        initial_message = f'You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
+    else:
+        initial_phase = 'discard'
+        initial_message = f'Hand #{game["hand_number"]} - Select a card to discard'
+    
     game.update({
         'player_hand': sort_hand(deck[:11]),
         'computer_hand': sort_hand(deck[11:22]),
@@ -91,11 +106,11 @@ def init_new_hand(game):
         'player_tricks': 0,
         'computer_tricks': 0,
         'spades_broken': False,
-        'phase': 'discard',
-        'turn': 'player',  # Always player can discard first (simultaneous)
+        'phase': initial_phase,  # This is the key change
+        'turn': 'player',
         'trick_leader': None,
         'hand_over': False,
-        'message': f'Hand #{game["hand_number"]} - Select a card to discard',
+        'message': initial_message,  # This is also updated
         'player_discarded': None,
         'computer_discarded': None,
         'show_computer_hand': False,
@@ -108,11 +123,11 @@ def init_new_hand(game):
         'computer_trick_special_cards': 0,
         'pending_discard_result': None,
         'pending_special_discard_result': None,
-        'blind_bidding_available': False,
+        'blind_bidding_available': blind_eligibility['player_eligible'],
         'blind_bid': None,
         'computer_blind_bid': None,
-        'first_leader': next_first_leader,  # Alternate who leads first trick
-        'trick_history': []  # Reset trick history for new hand
+        'first_leader': next_first_leader,
+        'trick_history': []
     })
 
 def computer_bidding_brain(computer_hand, player_bid, game_state=None):

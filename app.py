@@ -446,6 +446,73 @@ def toggle_computer_hand():
     
     return jsonify({'success': True, 'showing': game['show_computer_hand']})
 
+
+@app.route('/choose_blind_bidding', methods=['POST'])
+def choose_blind_bidding():
+    """Handle when player chooses to go blind"""
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    # Track client session
+    client_info = track_request_session()
+    
+    game = session['game']
+    
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Log the decision
+    log_action(
+        action_type='blind_decision',
+        player='player',
+        action_data={
+            'chose_blind': True,
+            'chose_normal': False
+        },
+        session=session,
+        request=request
+    )
+    
+    # Move to blind bidding phase
+    game['phase'] = 'blind_bidding'
+    game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
+@app.route('/choose_normal_bidding', methods=['POST'])
+def choose_normal_bidding():
+    """Handle when player chooses normal bidding"""
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    
+    # Track client session
+    client_info = track_request_session()
+    
+    game = session['game']
+    
+    if game['phase'] != 'blind_decision':
+        return jsonify({'error': 'Not in blind decision phase'}), 400
+    
+    # Log the decision
+    log_action(
+        action_type='blind_decision',
+        player='player',
+        action_data={
+            'chose_blind': False,
+            'chose_normal': True
+        },
+        session=session,
+        request=request
+    )
+    
+    # Move to discard phase
+    game['phase'] = 'discard'
+    game['message'] = 'You chose normal bidding. Select a card to discard.'
+    
+    session.modified = True
+    return jsonify({'success': True})
+
 @app.route('/blind_bid', methods=['POST'])
 def make_blind_bid():
     """Handle blind bidding during blind_bidding phase"""
@@ -510,91 +577,10 @@ def make_blind_bid():
             session=session
         )
     
-    # Now proceed to playing phase
-    game['phase'] = 'playing'
-    first_leader = game.get('first_leader', 'player')
-    game['turn'] = first_leader
-    game['trick_leader'] = first_leader
-    
-    player_blind_text = " (BLIND)"
+    # After blind bid, go to discard phase
+    game['phase'] = 'discard'
     computer_blind_text = " (BLIND)" if computer_is_blind else ""
-    
-    if first_leader == 'player':
-        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Your turn to lead the first trick.'
-    else:
-        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta leads the first trick.'
-        # If computer leads, make the computer play immediately
-        computer_lead_with_logging(game, session)
-        game['turn'] = 'player'
-        game['message'] = f'You bid {bid}{player_blind_text}, Marta bid {computer_bid}{computer_blind_text}. Marta led. Your turn to follow.'
-    
-    session.modified = True
-    return jsonify({'success': True})
-
-@app.route('/choose_blind_bidding', methods=['POST'])
-def choose_blind_bidding():
-    """Handle when player chooses to go blind"""
-    if 'game' not in session:
-        return jsonify({'error': 'No game in session'}), 400
-    
-    # Track client session
-    client_info = track_request_session()
-    
-    game = session['game']
-    
-    if game['phase'] != 'blind_decision':
-        return jsonify({'error': 'Not in blind decision phase'}), 400
-    
-    # Log the decision
-    log_action(
-        action_type='blind_decision',
-        player='player',
-        action_data={
-            'chose_blind': True,
-            'chose_normal': False
-        },
-        session=session,
-        request=request
-    )
-    
-    # Move to blind bidding phase
-    game['phase'] = 'blind_bidding'
-    game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
-    
-    session.modified = True
-    return jsonify({'success': True})
-
-@app.route('/choose_normal_bidding', methods=['POST'])
-def choose_normal_bidding():
-    """Handle when player chooses normal bidding"""
-    if 'game' not in session:
-        return jsonify({'error': 'No game in session'}), 400
-    
-    # Track client session
-    client_info = track_request_session()
-    
-    game = session['game']
-    
-    if game['phase'] != 'blind_decision':
-        return jsonify({'error': 'Not in blind decision phase'}), 400
-    
-    # Log the decision
-    log_action(
-        action_type='blind_decision',
-        player='player',
-        action_data={
-            'chose_blind': False,
-            'chose_normal': True
-        },
-        session=session,
-        request=request
-    )
-    
-    # Move to normal bidding phase
-    game['phase'] = 'bidding'
-    game['turn'] = 'player'
-    game['chose_normal_bidding'] = True
-    game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
+    game['message'] = f'You bid BLIND {bid}! Marta bid {computer_bid}{computer_blind_text}. Select a card to discard.'
     
     session.modified = True
     return jsonify({'success': True})
