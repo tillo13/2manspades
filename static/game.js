@@ -20,7 +20,6 @@ async function loadGameState() {
         showMessage('Error loading game', 'error');
     }
 }
-
 function updateUI() {
     if (!gameState) return;
 
@@ -35,6 +34,33 @@ function updateUI() {
     if (playerHandCountEl) {
         playerHandCountEl.textContent = `(${gameState.player_hand.length} cards)`;
     }
+
+    // Check game over FIRST - if game is over, show game over screen and hide everything else
+    if (gameState.game_over) {
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('winnerText').textContent = gameState.message;
+
+        // Hide all other interactive sections when game is over
+        document.getElementById('biddingSection').style.display = 'none';
+        const blindDecisionSection = document.getElementById('blindDecisionSection');
+        if (blindDecisionSection) blindDecisionSection.style.display = 'none';
+        document.getElementById('discardBlindSection').style.display = 'none';
+        document.getElementById('nextHandSection').style.display = 'none';
+        document.getElementById('resultsSection').classList.remove('show');
+        document.getElementById('playerHandSection').style.display = 'none';
+        document.getElementById('computerHandSection').style.display = 'none';
+
+        // Update play area and message for game over
+        updatePlayArea();
+        showMessage(gameState.message, gameState.winner === 'player' ? 'success' : '');
+
+        // Restore trick history scroll position and return early
+        restoreTrickHistoryScroll();
+        return;
+    }
+
+    // Game is not over, continue with normal UI updates
+    document.getElementById('gameOver').style.display = 'none';
 
     // Show/hide sections based on phase
     const biddingSection = document.getElementById('biddingSection');
@@ -128,14 +154,6 @@ function updateUI() {
                 trickDisplayTimeout = null;
             }
         }, 3000);
-    }
-
-    // Check game over
-    if (gameState.game_over) {
-        document.getElementById('gameOver').style.display = 'block';
-        document.getElementById('winnerText').textContent = gameState.message;
-    } else {
-        document.getElementById('gameOver').style.display = 'none';
     }
 
     // Track hand changes for results display
