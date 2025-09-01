@@ -619,6 +619,7 @@ def set_difficulty_custom(settings_dict):
     """Set AI parameters from a dictionary"""
     globals().update(settings_dict)
 
+
 def autoplay_remaining_cards(game, session_obj=None):
     """
     Check for mathematically certain scenarios and auto-resolve remaining tricks.
@@ -633,35 +634,61 @@ def autoplay_remaining_cards(game, session_obj=None):
     
     auto_resolved = False
     explanation = ""
+    tricks_to_award = 0
     
     # Case 1: One player only spades, other no spades
     if player_suits == {'♠'} and '♠' not in computer_suits:
-        remaining_tricks = len(game['player_hand'])
-        game['player_tricks'] += remaining_tricks
+        tricks_to_award = len(game['player_hand'])
+        game['player_tricks'] += tricks_to_award
         auto_resolved = True
-        explanation = f"Auto-resolved: You had only spades ({remaining_tricks} cards), Marta had none"
+        explanation = f"Auto-resolved: You had only spades ({tricks_to_award} cards), Marta had none"
+        winner_of_remaining = 'player'
     elif computer_suits == {'♠'} and '♠' not in player_suits:
-        remaining_tricks = len(game['computer_hand'])
-        game['computer_tricks'] += remaining_tricks
+        tricks_to_award = len(game['computer_hand'])
+        game['computer_tricks'] += tricks_to_award
         auto_resolved = True
-        explanation = f"Auto-resolved: Marta had only spades ({remaining_tricks} cards), you had none"
+        explanation = f"Auto-resolved: Marta had only spades ({tricks_to_award} cards), you had none"
+        winner_of_remaining = 'computer'
     # Case 2: Trick winner has one suit, loser has none of it and no spades
     elif winner == 'player' and len(player_suits) == 1:
         player_suit = list(player_suits)[0]
         if player_suit not in computer_suits and '♠' not in computer_suits:
-            remaining_tricks = len(game['player_hand'])
-            game['player_tricks'] += remaining_tricks
+            tricks_to_award = len(game['player_hand'])
+            game['player_tricks'] += tricks_to_award
             auto_resolved = True
-            explanation = f"Auto-resolved: You had only {player_suit} ({remaining_tricks} cards), Marta had none and no spades"
+            explanation = f"Auto-resolved: You had only {player_suit} ({tricks_to_award} cards), Marta had none and no spades"
+            winner_of_remaining = 'player'
     elif winner == 'computer' and len(computer_suits) == 1:
         computer_suit = list(computer_suits)[0]
         if computer_suit not in player_suits and '♠' not in player_suits:
-            remaining_tricks = len(game['computer_hand'])
-            game['computer_tricks'] += remaining_tricks
+            tricks_to_award = len(game['computer_hand'])
+            game['computer_tricks'] += tricks_to_award
             auto_resolved = True
-            explanation = f"Auto-resolved: Marta had only {computer_suit} ({remaining_tricks} cards), you had none and no spades"
+            explanation = f"Auto-resolved: Marta had only {computer_suit} ({tricks_to_award} cards), you had none and no spades"
+            winner_of_remaining = 'computer'
     
     if auto_resolved:
+        # Simulate the remaining tricks and add to history
+        player_cards = game['player_hand'].copy()
+        computer_cards = game['computer_hand'].copy()
+        current_trick_number = len(game.get('trick_history', [])) + 1
+        
+        # Play out remaining tricks in any order since outcome is predetermined
+        while player_cards and computer_cards:
+            # Just take first card from each hand (order doesn't matter)
+            player_card = player_cards.pop(0)
+            computer_card = computer_cards.pop(0)
+            
+            # Add to trick history
+            game.setdefault('trick_history', []).append({
+                'number': current_trick_number,
+                'player_card': player_card,
+                'computer_card': computer_card,
+                'winner': winner_of_remaining  # Predetermined winner
+            })
+            
+            current_trick_number += 1
+        
         # Clear hands and mark as over
         game['player_hand'] = []
         game['computer_hand'] = []
@@ -673,6 +700,7 @@ def autoplay_remaining_cards(game, session_obj=None):
                 event_type='hand_auto_resolved',
                 event_data={
                     'explanation': explanation,
+                    'tricks_simulated': tricks_to_award,
                     'final_player_tricks': game['player_tricks'],
                     'final_computer_tricks': game['computer_tricks']
                 },
