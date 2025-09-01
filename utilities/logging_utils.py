@@ -46,39 +46,49 @@ def get_client_ip(request):
         'X-Client-IP',
     ]
     
-    ipv4_candidates = []
-    ipv6_candidates = []
+    all_ips = []
     
-    # Collect all possible IPs and categorize them
+    # Debug: Print what headers we're getting
+    print(f"DEBUG: Checking IP headers...")
+    
+    # Collect all possible IPs
     for header in forwarded_ips:
         ip = request.headers.get(header)
         if ip:
-            # Handle comma-separated list (load balancers often send multiple IPs)
+            print(f"DEBUG: Found {header}: {ip}")
+            # Handle comma-separated list
             ips = [ip.strip() for ip in ip.split(',')]
             for candidate_ip in ips:
                 if candidate_ip and candidate_ip != 'unknown':
-                    if ':' in candidate_ip and '.' not in candidate_ip:
-                        # Likely IPv6 (contains colons, no dots)
-                        ipv6_candidates.append(candidate_ip)
-                    elif '.' in candidate_ip and candidate_ip.count('.') == 3:
-                        # Likely IPv4 (contains dots, exactly 3 dots)
-                        ipv4_candidates.append(candidate_ip)
+                    all_ips.append(candidate_ip)
+                    print(f"DEBUG: Added candidate: {candidate_ip}")
     
     # Also check REMOTE_ADDR
     remote_addr = request.environ.get('REMOTE_ADDR')
-    if remote_addr:
-        if ':' in remote_addr and '.' not in remote_addr:
-            ipv6_candidates.append(remote_addr)
-        elif '.' in remote_addr and remote_addr.count('.') == 3:
-            ipv4_candidates.append(remote_addr)
+    print(f"DEBUG: REMOTE_ADDR: {remote_addr}")
+    if remote_addr and remote_addr != 'unknown':
+        all_ips.append(remote_addr)
+        print(f"DEBUG: Added REMOTE_ADDR: {remote_addr}")
     
-    # Prefer IPv4, fallback to IPv6
+    print(f"DEBUG: All IPs found: {all_ips}")
+    
+    if not all_ips:
+        print("DEBUG: No IPs found - returning 'no-ip-found'")
+        return 'no-ip-found'
+    
+    # Simple IPv4 preference: look for anything with dots and no colons
+    ipv4_candidates = [ip for ip in all_ips if '.' in ip and ':' not in ip]
+    print(f"DEBUG: IPv4 candidates: {ipv4_candidates}")
+    
     if ipv4_candidates:
-        return ipv4_candidates[0]
-    elif ipv6_candidates:
-        return ipv6_candidates[0]
-    else:
-        return 'unknown'
+        chosen_ip = ipv4_candidates[0]
+        print(f"DEBUG: Chose IPv4: {chosen_ip}")
+        return chosen_ip
+    
+    # Fallback to first available IP (likely IPv6)
+    chosen_ip = all_ips[0]
+    print(f"DEBUG: Chose fallback: {chosen_ip}")
+    return chosen_ip
 
 def get_client_info(request):
     """Get comprehensive client information for logging."""
