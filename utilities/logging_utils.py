@@ -221,7 +221,8 @@ def _finalize_current_log_file(final_game_state):
 
 def initialize_game_logging(game):
     """Initialize logging structures and start new log file for a new game - NO FILE SCANNING"""
-    game_id = str(uuid.uuid4())
+    # Use Unix timestamp as game ID for easy time correlation
+    game_id = str(int(time.time()))
     hand_id = str(uuid.uuid4())
     
     game.update({
