@@ -221,8 +221,8 @@ def _finalize_current_log_file(final_game_state):
 
 def initialize_game_logging(game):
     """Initialize logging structures and start new log file for a new game - NO FILE SCANNING"""
-    # Use Unix timestamp as game ID for easy time correlation
-    game_id = str(int(time.time()))
+    # Use Unix timestamp with microsecond precision as game ID for easy time correlation
+    game_id = str(int(time.time() * 1000000))
     hand_id = str(uuid.uuid4())
     
     game.update({
@@ -260,7 +260,7 @@ def initialize_game_logging_with_client(game, request=None):
         # Console output only
         if LOG_TO_CONSOLE:
             print(f"NEW GAME STARTED by {client_info['ip_address']}")
-            print(f"   Game ID: {game.get('game_id', 'unknown')[:8]}...")
+            print(f"   Game ID: {game.get('game_id', 'unknown')}")
     
     return game
 
