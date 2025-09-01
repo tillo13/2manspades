@@ -364,14 +364,16 @@ def get_state():
     client_ip = get_client_ip(request)
     session_tracker[client_ip] = time.time()
     
-    # Print stats every 20 requests and clean up old sessions
-    if len(session_tracker) % 20 == 0:
-        cutoff = time.time() - 300  # 5 minutes ago
-        active = {k: v for k, v in session_tracker.items() if v > cutoff}
-        session_tracker = active  # Clean up the tracker
-        print(f"ACTIVE SESSIONS: {len(active)} users active in last 5 minutes")
+    # Clean up old sessions and print stats every time
+    cutoff = time.time() - 300  # 5 minutes ago
+    active = {k: v for k, v in session_tracker.items() if v > cutoff}
+    session_tracker = active  # Clean up the tracker
     
-    # ... rest of your existing get_state code stays the same
+    # Print with more useful info
+    total_ips = len(active)
+    game_phase = session.get('game', {}).get('phase', 'no-game')
+    print(f"ACTIVE: {total_ips} users | Phase: {game_phase} | IP: {client_ip[:15]}...")
+    
     if 'game' not in session:
         player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
         session['game'] = init_game(player_parity, computer_parity, first_player)
