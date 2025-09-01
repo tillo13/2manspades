@@ -1223,6 +1223,9 @@ def next_hand():
     session.modified = True
     return jsonify({'success': True})
 
+@app.route('/instructions')
+def instructions():
+    return render_template('instructions.html')
 
 if __name__ == '__main__':
     import subprocess

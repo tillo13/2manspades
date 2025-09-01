@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Play Two-Man Spades</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #2d3748;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        h3 {
+            color: #4a5568;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .highlight {
+            background: #fff5f5;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .tip {
+            background: #f0fff4;
+            border-left: 4px solid #38a169;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .example {
+            background: #ebf8ff;
+            border: 1px solid #90cdf4;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+
+        .card-example {
+            display: inline-block;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 2px;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .spade {
+            color: #000;
+        }
+
+        .heart {
+            color: #ff0000;
+        }
+
+        .diamond {
+            color: #ff6200;
+        }
+
+        .club {
+            color: #333;
+        }
+
+        .scoring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .scoring-table th,
+        .scoring-table td {
+            border: 1px solid #cbd5e0;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .scoring-table th {
+            background: #edf2f7;
+            font-weight: bold;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+        }
+
+        .back-button:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+
+        ol,
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="javascript:history.back()" class="back-button">← Back to Game</a>
+
+    <div class="container">
+        <h1>How to Play Two-Man Spades</h1>
+
+        <div class="section">
+            <div class="highlight">
+                <h3>About This Game</h3>
+                <p><strong>This is a custom variant developed over years of play.</strong> While based on traditional
+                    Spades, this "Two-Man Spades" includes unique rules like parity scoring, special bag-reduction
+                    cards, and blind bidding that don't exist in standard Spades. The game mechanics have been tested
+                    and refined to be balanced and enjoyable, but this is essentially a "house rules" version.</p>
+                <p><strong>Rules(ish):</strong> <a
+                        href="https://docs.google.com/spreadsheets/d/1uxxzX09zhGm0b8R48Fi4vHvOEyrlp1AmVN-sN41voj0/edit?usp=sharing"
+                        target="_blank" style="color: #3182ce;">Traditional Spades rules and variations</a></p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Overview</h2>
+            <p>Two-Man Spades is a trick-taking card game where you compete against Marta (the computer) to reach 300
+                points first. Each hand, you'll discard one card, bid on how many tricks you think you can win, then
+                play cards strategically to meet your bid while preventing your opponent from meeting theirs.</p>
+        </div>
+
+        <div class="section">
+            <h2>Game Setup</h2>
+            <p>At the start of each game, players are randomly assigned <strong>parity</strong>:</p>
+            <ul>
+                <li><strong>Even Player:</strong> Gets bonus points when discard pile totals an even number</li>
+                <li><strong>Odd Player:</strong> Gets bonus points when discard pile totals an odd number</li>
+            </ul>
+            <p>Each hand deals 11 cards to each player from a standard 52-card deck.</p>
+        </div>
+
+        <div class="section">
+            <h2>Hand Flow</h2>
+
+            <h3>1. Discard Phase</h3>
+            <p>Each player selects one card to discard face-down. These cards are revealed simultaneously and:</p>
+            <ul>
+                <li>Their face values are added together (Ace=1, Jack=11, Queen=12, King=13)</li>
+                <li>The player whose parity matches the total gets bonus points</li>
+                <li>If both cards are the same suit OR same rank, points are doubled</li>
+                <li>Base bonus is 10 points (20 for doubles)</li>
+            </ul>
+
+            <div class="example">
+                <strong>Example:</strong> You discard 7♣ (value 7), Marta discards 6♥ (value 6).
+                Total = 13 (odd). If you're the odd player, you get 10 points.
+                If both cards were hearts, you'd get 20 points instead.
+            </div>
+
+            <h3>2. Bidding Phase</h3>
+            <p>Players bid how many tricks (out of 10) they expect to win with their remaining cards.</p>
+
+            <div class="highlight">
+                <strong>Special Bidding Rules:</strong>
+                <ul>
+                    <li><strong>NIL (0 bid):</strong> If you take exactly 0 tricks, get +200 points. If you take any
+                        tricks, lose -200 points and gain that many bags.</li>
+                    <li><strong>Blind Bidding:</strong> When down by 100+ points, you can bid "blind" (5-10 tricks) for
+                        double points/penalties before seeing your cards!</li>
+                </ul>
+            </div>
+
+            <h3>3. Playing Tricks</h3>
+            <p>Players take turns playing cards. The person with the odd parity leads the first trick of each hand.</p>
+
+            <h4>Playing Rules:</h4>
+            <ul>
+                <li><strong>Follow Suit:</strong> You must play the same suit as the lead card if you have it</li>
+                <li><strong>Trump:</strong> Spades (♠) always beat other suits</li>
+                <li><strong>Spades Broken:</strong> You can't lead spades until they've been "broken" by someone playing
+                    a spade on a different suit</li>
+                <li><strong>Highest Card Wins:</strong> Within the same suit, higher cards win (Ace is highest)</li>
+            </ul>
+
+            <div class="example">
+                <strong>Trick Example:</strong> Marta leads <span class="card-example heart">Q♥</span>.
+                You have <span class="card-example heart">7♥</span> and <span class="card-example spade">3♠</span>.
+                You must play the 7♥ (follow suit). Marta wins with the higher heart.
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Scoring System</h2>
+
+            <h3>Basic Scoring</h3>
+            <table class="scoring-table">
+                <tr>
+                    <th>Situation</th>
+                    <th>Points Earned</th>
+                </tr>
+                <tr>
+                    <td>Made your bid exactly</td>
+                    <td>Bid × 10 points</td>
+                </tr>
+                <tr>
+                    <td>Made more than your bid</td>
+                    <td>Bid × 10 points + 1 bag per extra trick</td>
+                </tr>
+                <tr>
+                    <td>Failed to make your bid</td>
+                    <td>Lose Bid × 10 points</td>
+                </tr>
+                <tr>
+                    <td>NIL success (0 bid, 0 tricks)</td>
+                    <td>+200 points</td>
+                </tr>
+                <tr>
+                    <td>NIL failure (0 bid, any tricks)</td>
+                    <td>-200 points + tricks as bags</td>
+                </tr>
+                <tr>
+                    <td>Blind bid success</td>
+                    <td>Double normal points</td>
+                </tr>
+                <tr>
+                    <td>Blind bid failure</td>
+                    <td>Double normal penalty</td>
+                </tr>
+            </table>
+
+            <h3>Bags System</h3>
+            <p>Bags are penalties for taking more tricks than you bid:</p>
+            <ul>
+                <li>Every 7 bags = -100 points penalty</li>
+                <li>Negative bags give bonuses: every 5 negative bags = +100 points</li>
+                <li>Your score display shows base score + bags in the ones digit</li>
+            </ul>
+
+            <div class="tip">
+                <strong>Bag Strategy:</strong> Sometimes it's better to let your opponent win a trick rather than
+                accumulate bags, especially when you're close to a 7-bag penalty!
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Special Cards</h2>
+            <p>Two cards provide bag reduction when won in tricks or discard piles:</p>
+            <ul>
+                <li><span class="card-example diamond">7♦</span> Seven of Diamonds: -2 bags</li>
+                <li><span class="card-example club">10♣</span> Ten of Clubs: -1 bag</li>
+            </ul>
+            <p>The player who wins the trick or discard pile containing these cards gets the bag reduction.</p>
+        </div>
+
+        <div class="section">
+            <h2>Winning the Game</h2>
+            <p>The game ends when:</p>
+            <ul>
+                <li><strong>Target Reached:</strong> Someone reaches 300 points (winner has highest score)</li>
+                <li><strong>Mercy Rule:</strong> Someone leads by 300+ points (automatic win)</li>
+            </ul>
+
+            <h3>Tie-Breaking</h3>
+            <p>If display scores are tied at 300+:</p>
+            <ol>
+                <li>Player with higher base score wins</li>
+                <li>If base scores tied, player with fewer bags wins</li>
+                <li>If one player has negative bags, they win</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>Advanced Features</h2>
+
+            <h3>Auto-Resolution</h3>
+            <p>When the outcome of remaining tricks is mathematically certain (like when one player has only spades and
+                the other has none), the game automatically plays out the remaining cards to save time while showing you
+                exactly what happened.</p>
+
+            <h3>Martha's Bidding Priority</h3>
+            <p>In certain situations, Marta may bid first instead of you:</p>
+            <ul>
+                <li>When she's behind by 75+ points</li>
+                <li>On even-numbered hands when scores are close</li>
+                <li>When she won the discard pile</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Strategy Tips</h2>
+
+            <div class="tip">
+                <strong>Bidding Strategy:</strong>
+                <ul>
+                    <li>Count your high spades - they're usually reliable tricks</li>
+                    <li>Look for aces in other suits, but remember they can be trumped</li>
+                    <li>Consider void suits (suits you have no cards in) - you can trump them</li>
+                    <li>Be conservative when you have many bags</li>
+                </ul>
+            </div>
+
+            <div class="tip">
+                <strong>Playing Strategy:</strong>
+                <ul>
+                    <li>Try to force out high cards early when you're leading</li>
+                    <li>Count cards to know what's still in play</li>
+                    <li>Use your spades wisely - they're powerful but limited</li>
+                    <li>Sometimes let your opponent win tricks if you've already made your bid</li>
+                </ul>
+            </div>
+
+            <div class="tip">
+                <strong>Discard Strategy:</strong>
+                <ul>
+                    <li>Discard singleton special cards (7♦ or 10♣) to create voids</li>
+                    <li>Create voids in suits where you have spades to trump</li>
+                    <li>Consider the parity game - sometimes a strategic discard can win you bonus points</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Interface Guide</h2>
+            <ul>
+                <li><strong>Top Headers:</strong> Show game scores, hand number, and current hand status</li>
+                <li><strong>Play Area:</strong> Shows current trick being played</li>
+                <li><strong>Your Cards:</strong> Click to select, then use the action button</li>
+                <li><strong>Results Summary:</strong> After each hand, review detailed scoring and trick history</li>
+                <li><strong>Auto-Resolution Message:</strong> When remaining tricks are predetermined, you'll see
+                    exactly what happened</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <p style="text-align: center; margin-top: 40px; font-style: italic; color: #666;">
+                Two-Man Spades combines strategy, memory, and calculated risk-taking. Each hand is a puzzle to solve,
+                and each game tells a story. Good luck, and may your bids be true!
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>
