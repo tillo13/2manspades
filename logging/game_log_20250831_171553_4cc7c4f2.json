@@ -1,0 +1,332 @@
+[
+  {
+    "log_type": "game_metadata",
+    "data": {
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "log_file_created": "2025-08-31T17:15:53.422181",
+      "log_version": "2.0",
+      "game_type": "two_man_spades",
+      "environment": "local_development"
+    }
+  },
+  {
+    "log_type": "game_init",
+    "data": {
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "started_at": 1756685753.422466,
+      "player_parity": "odd",
+      "computer_parity": "even",
+      "first_leader": "player"
+    }
+  },
+  {
+    "log_type": "game_event",
+    "data": {
+      "timestamp": 1756685753.423017,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "event_type": "new_game_started",
+      "hand_number": 1,
+      "event_data": {
+        "player_parity": "odd",
+        "computer_parity": "even",
+        "first_leader": "player"
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 1,
+      "timestamp": 1756685756.254195,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "discard",
+      "player": "player",
+      "hand_number": 1,
+      "phase": "discard",
+      "action_data": {
+        "card_discarded": "K\u2663",
+        "card_index": 1
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": null
+      },
+      "additional_context": {
+        "hand_size_after": 10
+      },
+      "client_info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "referer": "http://localhost:5001/",
+        "method": "POST",
+        "endpoint": "discard_card",
+        "is_local": true
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 2,
+      "timestamp": 1756685756.254912,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "discard",
+      "player": "computer",
+      "hand_number": 1,
+      "phase": "discard",
+      "action_data": {
+        "card_discarded": "2\u2663",
+        "card_index": 0
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": null
+      },
+      "additional_context": {
+        "hand_size_after": 10
+      }
+    }
+  },
+  {
+    "log_type": "game_event",
+    "data": {
+      "timestamp": 1756685756.255622,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "event_type": "discard_scoring",
+      "hand_number": 1,
+      "event_data": {
+        "player_card": "K\u2663",
+        "computer_card": "2\u2663",
+        "winner": "player",
+        "bonus_points": 20,
+        "is_double": true,
+        "explanation": "Discards: K\u2663 (13) + 2\u2663 (2) = 15 (odd) (DOUBLE: Both \u2663 suit!) \u2192 Tom gets 20 pts!"
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 3,
+      "timestamp": 1756685759.7495859,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "regular_bid",
+      "player": "player",
+      "hand_number": 1,
+      "phase": "bidding",
+      "action_data": {
+        "bid_amount": 1,
+        "is_nil": false
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": null
+      },
+      "additional_context": null,
+      "client_info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "referer": "http://localhost:5001/",
+        "method": "POST",
+        "endpoint": "make_bid",
+        "is_local": true
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 4,
+      "timestamp": 1756685759.750793,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "regular_bid",
+      "player": "computer",
+      "hand_number": 1,
+      "phase": "bidding",
+      "action_data": {
+        "bid_amount": 3,
+        "in_response_to_player": true
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": null
+      },
+      "additional_context": null
+    }
+  },
+  {
+    "log_type": "game_event",
+    "data": {
+      "timestamp": 1756685759.7515001,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "event_type": "bidding_complete",
+      "hand_number": 1,
+      "event_data": {
+        "player_bid": 1,
+        "computer_bid": 3,
+        "first_leader": "player",
+        "player_blind": false,
+        "computer_blind": false
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 5,
+      "timestamp": 1756685762.148192,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "card_play",
+      "player": "player",
+      "hand_number": 1,
+      "phase": "playing",
+      "action_data": {
+        "card_played": "5\u2666",
+        "card_index": 2,
+        "trick_position": 1,
+        "leading": true
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": "player"
+      },
+      "additional_context": {
+        "hand_size_before": 10,
+        "spades_broken_before": false
+      },
+      "client_info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "referer": "http://localhost:5001/",
+        "method": "POST",
+        "endpoint": "play_card",
+        "is_local": true
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 6,
+      "timestamp": 1756685762.1490529,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "card_play",
+      "player": "computer",
+      "hand_number": 1,
+      "phase": "playing",
+      "action_data": {
+        "card_played": "J\u2666",
+        "trick_position": 2,
+        "following_suit": true
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "computer",
+        "trick_leader": "player"
+      },
+      "additional_context": {
+        "responding_to": "5\u2666",
+        "hand_size_after": 9
+      }
+    }
+  },
+  {
+    "log_type": "game_event",
+    "data": {
+      "timestamp": 1756685762.150717,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "event_type": "trick_completed",
+      "hand_number": 1,
+      "event_data": {
+        "trick_number": 1,
+        "player_card": "5\u2666",
+        "computer_card": "J\u2666",
+        "winner": "computer",
+        "winner_name": "Marta"
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 7,
+      "timestamp": 1756685765.170472,
+      "game_id": "4cc7c4f2-451a-40c8-bb7d-2f42c66b23b6",
+      "hand_id": "c3c5db6b-e326-46be-86a5-0f2ea2fa6e43",
+      "action_type": "card_play",
+      "player": "computer",
+      "hand_number": 1,
+      "phase": "playing",
+      "action_data": {
+        "card_played": "2\u2665",
+        "trick_position": 1,
+        "leading": true
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 1,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "computer",
+        "trick_leader": "computer"
+      },
+      "additional_context": {
+        "hand_size_after": 8
+      }
+    }
+  }
+]

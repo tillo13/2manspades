@@ -10,7 +10,6 @@
 
 <body>
     <!-- Floating score headers -->
-    <!-- Update the floating game score section in index.html -->
     <div class="floating-game-score" id="floatingGameScore">
         <div class="game-score-item">
             <div class="game-score-label">Tom</div>
@@ -59,125 +58,141 @@
     </div>
 
     <div class="container">
-        <div class="container">
-            <!-- Play area and messages at top - always visible -->
-            <div class="top-interactive-area">
-                <div class="play-area" id="playArea">
-                    <div id="trickDisplay"></div>
-                </div>
+        <!-- Play area and messages at top - always visible -->
+        <div class="top-interactive-area">
+            <div class="play-area" id="playArea">
+                <div id="trickDisplay"></div>
+            </div>
 
-                <!-- Game Over section moved here, right below play area -->
-                <div class="game-over" id="gameOver" style="display: none;">
-                    <div class="winner-text" id="winnerText"></div>
-                    <button onclick="startNewGame()">Play Again</button>
-                </div>
+            <!-- Game Over section moved here, right below play area -->
+            <div class="game-over" id="gameOver" style="display: none;">
+                <div class="winner-text" id="winnerText"></div>
+                <button onclick="startNewGame()">Play Again</button>
+            </div>
 
-                <div class="message" id="message">Loading game...</div>
+            <div class="message" id="message">Loading game...</div>
 
-                <!-- Clean Results Section -->
-                <div class="results-section" id="resultsSection">
-                    <div class="results-header">Hand Summary</div>
-                    <div class="results-content" id="resultsContent"></div>
-                </div>
+            <!-- Next Hand Button - moved above results -->
+            <div class="next-hand-section" id="nextHandSection" style="display: none;">
+                <button id="nextHandButton" onclick="nextHand()" class="next-hand-btn">Next Hand</button>
+            </div>
 
-                <!-- Blind Bidding Section for Discard Phase -->
-                <div class="blind-bidding-section" id="discardBlindBiddingSection" style="display: none;">
-                    <div class="blind-header">
-                        <h3>Blind Bidding Available</h3>
-                        <p>You're down by 100+ points. Go blind BEFORE seeing your cards for <strong>DOUBLE</strong>
-                            points/penalties!</p>
-                        <div class="blind-warning">
-                            Must bid at least 5 tricks, get double rewards or double punishment!
-                        </div>
+            <!-- Discarded cards section - moved below Next Hand button -->
+            <div class="discards-section" id="discardsSection" style="display: none;">
+                <div class="hand-title">Discarded Cards</div>
+                <div class="discards-content">
+                    <div class="discard-item">
+                        <div class="discard-label">Tom</div>
+                        <div id="playerDiscard"></div>
                     </div>
-                    <div class="bid-buttons blind-buttons">
-                        <button onclick="makeBlindBid(5)" class="blind-bid-btn">BLIND 5</button>
-                        <button onclick="makeBlindBid(6)" class="blind-bid-btn">BLIND 6</button>
-                        <button onclick="makeBlindBid(7)" class="blind-bid-btn">BLIND 7</button>
-                        <button onclick="makeBlindBid(8)" class="blind-bid-btn">BLIND 8</button>
-                        <button onclick="makeBlindBid(9)" class="blind-bid-btn">BLIND 9</button>
-                        <button onclick="makeBlindBid(10)" class="blind-bid-btn">BLIND 10</button>
-                    </div>
-                    <div class="regular-bid-prompt">
-                        <p>Or discard normally and then make a regular bid:</p>
-                    </div>
-                </div>
-
-                <div class="bidding-section" id="biddingSection" style="display: none;">
-                    <div class="hand-title">Make Your Bid</div>
-                    <p style="text-align: center; margin-bottom: 15px; font-size: 14px;">How many tricks will you take
-                        out of 10?</p>
-
-                    <!-- Regular bidding buttons -->
-                    <div class="bid-buttons">
-                        <button onclick="makeBid(0)" class="regular-bid-btn">0</button>
-                        <button onclick="makeBid(1)" class="regular-bid-btn">1</button>
-                        <button onclick="makeBid(2)" class="regular-bid-btn">2</button>
-                        <button onclick="makeBid(3)" class="regular-bid-btn">3</button>
-                        <button onclick="makeBid(4)" class="regular-bid-btn">4</button>
-                        <button onclick="makeBid(5)" class="regular-bid-btn">5</button>
-                        <button onclick="makeBid(6)" class="regular-bid-btn">6</button>
-                        <button onclick="makeBid(7)" class="regular-bid-btn">7</button>
-                        <button onclick="makeBid(8)" class="regular-bid-btn">8</button>
-                        <button onclick="makeBid(9)" class="regular-bid-btn">9</button>
-                        <button onclick="makeBid(10)" class="regular-bid-btn">10</button>
+                    <div class="discard-item">
+                        <div class="discard-label">Marta</div>
+                        <div id="computerDiscard"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Hands section - can scroll if needed -->
-            <div class="hands-area">
-
-                <div class="hand-section">
-                    <div class="hand-title">
-                        Your Hand
-                        <span style="font-size: 12px; color: #666; font-weight: normal;" id="playerHandCount"></span>
-                    </div>
-                    <div class="cards" id="playerHand"></div>
-                    <div class="controls">
-                        <button id="actionButton" onclick="performAction()">Discard Card</button>
-                        <button id="nextHandButton" onclick="nextHand()" style="display: none;">Next Hand</button>
-                    </div>
-                </div>
-
-                <!-- In the Marta's Hand section, modify this part: -->
-                <!-- In templates/index.html, make sure the computer hand section has an ID: -->
-                <div class="hand-section" id="computerHandSection">
-                    <div class="hand-title">
-                        Marta's Hand (hidden)
-                        <!-- Only show toggle button if debug mode is enabled -->
-                        <button id="toggleComputerHand" onclick="toggleComputerHand()" style="display: none;">Show
-                            Cards</button>
-                    </div>
-                    <div class="cards" id="computerHand"></div>
-                </div>
-
-                <div class="discards-section" id="discardsSection" style="display: none;">
-                    <div class="hand-title">Discarded Cards</div>
-                    <div class="discards-content">
-                        <div class="discard-item">
-                            <div class="discard-label">Tom</div>
-                            <div id="playerDiscard"></div>
-                        </div>
-                        <div class="discard-item">
-                            <div class="discard-label">Marta</div>
-                            <div id="computerDiscard"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Game over section removed from here since it's now above -->
+            <!-- Clean Results Section -->
+            <div class="results-section" id="resultsSection">
+                <div class="results-header">Hand Summary</div>
+                <div class="results-content" id="resultsContent"></div>
             </div>
 
-            <!-- Bottom New Game Section -->
-            <!-- Bottom New Game Section -->
-            <div class="bottom-section">
-                <button class="bottom-new-game-btn" onclick="startNewGame()">New Game</button>
-                <button class="bottom-rules-btn"
-                    onclick="window.open('https://docs.google.com/spreadsheets/d/1uxxzX09zhGm0b8R48Fi4vHvOEyrlp1AmVN-sN41voj0/edit?usp=sharing', '_blank')">Rules</button>
+            <!-- Blind Bidding Section for Discard Phase -->
+            <div class="blind-bidding-section" id="discardBlindBiddingSection" style="display: none;">
+                <div class="blind-header">
+                    <h3>Blind Bidding Available</h3>
+                    <p>You're down by 100+ points. Go blind BEFORE seeing your cards for <strong>DOUBLE</strong>
+                        points/penalties!</p>
+                    <div class="blind-warning">
+                        Must bid at least 5 tricks, get double rewards or double punishment!
+                    </div>
+                </div>
+                <div class="bid-buttons blind-buttons">
+                    <button onclick="makeBlindBid(5)" class="blind-bid-btn">BLIND 5</button>
+                    <button onclick="makeBlindBid(6)" class="blind-bid-btn">BLIND 6</button>
+                    <button onclick="makeBlindBid(7)" class="blind-bid-btn">BLIND 7</button>
+                    <button onclick="makeBlindBid(8)" class="blind-bid-btn">BLIND 8</button>
+                    <button onclick="makeBlindBid(9)" class="blind-bid-btn">BLIND 9</button>
+                    <button onclick="makeBlindBid(10)" class="blind-bid-btn">BLIND 10</button>
+                </div>
+                <div class="regular-bid-prompt">
+                    <p>Or discard normally and then make a regular bid:</p>
+                </div>
             </div>
 
-            <script src="{{ url_for('static', filename='game.js') }}"></script>
+            <!-- UPDATED BIDDING SECTION WITH CONFIRMATION -->
+            <div class="bidding-section" id="biddingSection" style="display: none;">
+                <div class="bidding-title">Make Your Bid</div>
+                <div class="bidding-prompt">How many tricks will you take out of 10?<br>
+                    <small style="color: #666;">Tap a number to select, then confirm your bid</small>
+                </div>
+
+                <!-- Updated bidding buttons - changed onclick to selectBid -->
+                <div class="bid-buttons">
+                    <button onclick="selectBid(0)" class="bid-btn" data-bid="0">0<br><small>NIL</small></button>
+                    <button onclick="selectBid(1)" class="bid-btn" data-bid="1">1</button>
+                    <button onclick="selectBid(2)" class="bid-btn" data-bid="2">2</button>
+                    <button onclick="selectBid(3)" class="bid-btn" data-bid="3">3</button>
+                    <button onclick="selectBid(4)" class="bid-btn" data-bid="4">4</button>
+                    <button onclick="selectBid(5)" class="bid-btn" data-bid="5">5</button>
+                    <button onclick="selectBid(6)" class="bid-btn" data-bid="6">6</button>
+                    <button onclick="selectBid(7)" class="bid-btn" data-bid="7">7</button>
+                    <button onclick="selectBid(8)" class="bid-btn" data-bid="8">8</button>
+                    <button onclick="selectBid(9)" class="bid-btn" data-bid="9">9</button>
+                    <button onclick="selectBid(10)" class="bid-btn" data-bid="10">10</button>
+                </div>
+
+                <!-- New confirmation buttons -->
+                <div class="bid-confirmation-buttons" style="margin-top: 15px; text-align: center;">
+                    <button id="confirmBidButton" onclick="confirmSelectedBid()"
+                        style="display: none; background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; margin-right: 10px; cursor: pointer;">
+                        Confirm Bid
+                    </button>
+                    <button id="cancelBidButton" onclick="cancelBidSelection()"
+                        style="display: none; background: #6c757d; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer;">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hands section - can scroll if needed -->
+        <div class="hands-area">
+
+            <!-- Player hand section with conditional hiding -->
+            <div class="hand-section" id="playerHandSection">
+                <div class="hand-title">
+                    Your Hand
+                    <span style="font-size: 12px; color: #666; font-weight: normal;" id="playerHandCount"></span>
+                </div>
+                <div class="cards" id="playerHand"></div>
+                <div class="controls">
+                    <button id="actionButton" onclick="performAction()">Discard Card</button>
+                </div>
+            </div>
+
+            <!-- Computer hand section -->
+            <div class="hand-section" id="computerHandSection">
+                <div class="hand-title">
+                    Marta's Hand (hidden)
+                    <!-- Only show toggle button if debug mode is enabled -->
+                    <button id="toggleComputerHand" onclick="toggleComputerHand()" style="display: none;">Show
+                        Cards</button>
+                </div>
+                <div class="cards" id="computerHand"></div>
+            </div>
+        </div>
+
+        <!-- Bottom navigation -->
+        <div class="bottom-section">
+            <button class="bottom-new-game-btn" onclick="startNewGame()">New Game</button>
+            <button class="bottom-rules-btn"
+                onclick="window.open('https://docs.google.com/spreadsheets/d/1uxxzX09zhGm0b8R48Fi4vHvOEyrlp1AmVN-sN41voj0/edit?usp=sharing', '_blank')">Rules</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
 </body>
 
 </html>

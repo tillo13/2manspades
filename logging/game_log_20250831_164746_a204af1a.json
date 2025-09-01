@@ -1,0 +1,125 @@
+[
+  {
+    "log_type": "game_metadata",
+    "data": {
+      "game_id": "a204af1a-c22d-4e89-9d3e-14fa0e4b3534",
+      "log_file_created": "2025-08-31T16:47:46.288882",
+      "log_version": "2.0",
+      "game_type": "two_man_spades",
+      "environment": "local_development"
+    }
+  },
+  {
+    "log_type": "game_init",
+    "data": {
+      "game_id": "a204af1a-c22d-4e89-9d3e-14fa0e4b3534",
+      "started_at": 1756684066.289292,
+      "player_parity": "even",
+      "computer_parity": "odd",
+      "first_leader": "computer"
+    }
+  },
+  {
+    "log_type": "game_event",
+    "data": {
+      "timestamp": 1756684066.290026,
+      "game_id": "a204af1a-c22d-4e89-9d3e-14fa0e4b3534",
+      "hand_id": "b9b91ef1-f0ee-4510-aaa9-52c869c0066f",
+      "event_type": "new_game_started",
+      "hand_number": 1,
+      "event_data": {
+        "player_parity": "even",
+        "computer_parity": "odd",
+        "first_leader": "computer"
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 1,
+      "timestamp": 1756684068.1649,
+      "game_id": "a204af1a-c22d-4e89-9d3e-14fa0e4b3534",
+      "hand_id": "b9b91ef1-f0ee-4510-aaa9-52c869c0066f",
+      "action_type": "discard",
+      "player": "player",
+      "hand_number": 1,
+      "phase": "discard",
+      "action_data": {
+        "card_discarded": "5\u2663",
+        "card_index": 1
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": null
+      },
+      "additional_context": {
+        "hand_size_after": 10
+      },
+      "client_info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referer": "http://localhost:5001/",
+        "method": "POST",
+        "endpoint": "discard_card",
+        "is_local": true
+      }
+    }
+  },
+  {
+    "log_type": "action",
+    "data": {
+      "sequence": 2,
+      "timestamp": 1756684068.165621,
+      "game_id": "a204af1a-c22d-4e89-9d3e-14fa0e4b3534",
+      "hand_id": "b9b91ef1-f0ee-4510-aaa9-52c869c0066f",
+      "action_type": "discard",
+      "player": "computer",
+      "hand_number": 1,
+      "phase": "discard",
+      "action_data": {
+        "card_discarded": "3\u2666",
+        "card_index": 2
+      },
+      "game_context": {
+        "player_score": 0,
+        "computer_score": 0,
+        "player_tricks": 0,
+        "computer_tricks": 0,
+        "player_bags": 0,
+        "computer_bags": 0,
+        "spades_broken": false,
+        "turn": "player",
+        "trick_leader": null
+      },
+      "additional_context": {
+        "hand_size_after": 10
+      }
+    }
+  },
+  {
+    "log_type": "game_event",
+    "data": {
+      "timestamp": 1756684068.166167,
+      "game_id": "a204af1a-c22d-4e89-9d3e-14fa0e4b3534",
+      "hand_id": "b9b91ef1-f0ee-4510-aaa9-52c869c0066f",
+      "event_type": "discard_scoring",
+      "hand_number": 1,
+      "event_data": {
+        "player_card": "5\u2663",
+        "computer_card": "3\u2666",
+        "winner": "player",
+        "bonus_points": 10,
+        "is_double": false,
+        "explanation": "Discards: 5\u2663 (5) + 3\u2666 (3) = 8 (even) \u2192 Tom gets 10 pts!"
+      }
+    }
+  }
+]

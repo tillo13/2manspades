@@ -12,7 +12,7 @@ from utilities.gameplay_logic import (
     init_new_hand,
     sort_hand,
     is_valid_play,
-    determine_trick_winner,
+    resolve_trick_with_delay,
     computer_follow,
     computer_lead,
     check_game_over
@@ -31,16 +31,6 @@ from utilities.custom_rules import (
 from utilities.computer_logic import (
     computer_bidding_brain,
     computer_discard_strategy
-)
-
-# Import logging utilities
-from utilities.logging_utils import (
-    initialize_game_logging_with_client,
-    log_action,
-    log_game_event,
-    log_ai_decision,
-    track_session_client,
-    finalize_game_logging
 )
 
 app = Flask(__name__)
@@ -69,213 +59,6 @@ def get_base_score_from_display(display_score, bags):
     """Convert display score back to base score (removing bags from ones column)"""
     return display_score - bags
 
-def track_request_session():
-    """Track client info for this request session"""
-    if 'game' in session:
-        return track_session_client(session, request)
-    return None
-
-def resolve_trick_with_delay(game, session_obj=None):
-    """Resolve trick and set it up to be displayed for 3 seconds with logging"""
-    if len(game['current_trick']) != 2:
-        return
-    
-    winner = determine_trick_winner(game['current_trick'])
-    
-    # SAVE TRICK TO HISTORY BEFORE PROCESSING
-    trick_number = len(game.get('trick_history', [])) + 1
-    player_card = next((play['card'] for play in game['current_trick'] if play['player'] == 'player'), None)
-    computer_card = next((play['card'] for play in game['current_trick'] if play['player'] == 'computer'), None)
-    
-    game.setdefault('trick_history', []).append({
-        'number': trick_number,
-        'player_card': player_card,
-        'computer_card': computer_card,
-        'winner': winner
-    })
-    
-    # LOG TRICK COMPLETION TO CONSOLE AND JSON
-    p_text = f"{player_card['rank']}{player_card['suit']}" if player_card else "?"
-    c_text = f"{computer_card['rank']}{computer_card['suit']}" if computer_card else "?"
-    winner_name = "Tom" if winner == 'player' else "Marta"
-    print(f"TRICK {trick_number}: {p_text} vs {c_text} -> {winner_name} wins")
-    
-    # LOG TO JSON AS WELL
-    if session_obj:
-        log_game_event(
-            event_type='trick_completed',
-            event_data={
-                'trick_number': trick_number,
-                'player_card': p_text,
-                'computer_card': c_text,
-                'winner': winner,
-                'winner_name': winner_name
-            },
-            session=session_obj
-        )
-    
-    # Check for special cards in the trick and apply bag reduction IMMEDIATELY
-    from utilities.custom_rules import check_special_cards_in_trick, reduce_bags_safely
-    special_result = check_special_cards_in_trick(game['current_trick'], winner)
-    
-    if special_result['bag_reduction'] > 0:
-        if winner == 'player':
-            current_bags = game.get('player_bags', 0)
-            game['player_bags'] = reduce_bags_safely(current_bags, special_result['bag_reduction'])
-            game['player_trick_special_cards'] = game.get('player_trick_special_cards', 0) + special_result['bag_reduction']
-        else:
-            current_bags = game.get('computer_bags', 0)
-            game['computer_bags'] = reduce_bags_safely(current_bags, special_result['bag_reduction'])
-            game['computer_trick_special_cards'] = game.get('computer_trick_special_cards', 0) + special_result['bag_reduction']
-        
-        game['special_card_message'] = special_result['explanation']
-        
-        # Log special card effect
-        if session_obj:
-            log_game_event(
-                event_type='special_card_effect',
-                event_data={
-                    'trick_number': trick_number,
-                    'bag_reduction': special_result['bag_reduction'],
-                    'beneficiary': winner_name,
-                    'explanation': special_result['explanation']
-                },
-                session=session_obj
-            )
-    
-    # Award trick
-    if winner == 'player':
-        game['player_tricks'] += 1
-        base_message = 'You won the trick!'
-    else:
-        game['computer_tricks'] += 1
-        base_message = 'Marta won the trick!'
-    
-    # Add special card info to message if present
-    if special_result['explanation']:
-        game['message'] = f"{base_message} {special_result['explanation']} Cards will clear in 3 seconds..."
-    else:
-        game['message'] = f"{base_message} Cards will clear in 3 seconds..."
-    
-    # Mark trick as completed but don't clear yet
-    game['trick_completed'] = True
-    game['trick_winner'] = winner
-
-def computer_follow_with_logging(game, session_obj=None):
-    """Computer plays a card when following with logging"""
-    hand = game['computer_hand']
-    trick = game['current_trick']
-    
-    if not trick or not hand:
-        return
-    
-    # Use enhanced following strategy from computer_logic
-    from utilities.computer_logic import computer_follow_strategy
-    chosen_idx = computer_follow_strategy(hand, trick, game)
-    
-    if chosen_idx is None:
-        # Fallback to original simple logic if strategy fails
-        lead_card = trick[0]['card']
-        lead_suit = lead_card['suit']
-        lead_value = lead_card['value']
-        
-        # Find valid plays
-        same_suit = [(i, c) for i, c in enumerate(hand) if c['suit'] == lead_suit]
-        spades = [(i, c) for i, c in enumerate(hand) if c['suit'] == '♠']
-        
-        if same_suit:
-            # Must follow suit - try to win with lowest winning card
-            winners = [(i, c) for i, c in same_suit if c['value'] > lead_value]
-            if winners:
-                chosen_idx = min(winners, key=lambda x: x[1]['value'])[0]
-            else:
-                # Can't win, play lowest
-                chosen_idx = min(same_suit, key=lambda x: x[1]['value'])[0]
-        elif lead_suit != '♠' and spades:
-            # Can't follow suit, can trump with spade
-            chosen_idx = min(spades, key=lambda x: x[1]['value'])[0]
-        else:
-            # Can't follow or trump, discard lowest
-            all_cards = [(i, c) for i, c in enumerate(hand)]
-            chosen_idx = min(all_cards, key=lambda x: x[1]['value'])[0]
-    
-    # Play the chosen card
-    card = hand.pop(chosen_idx)
-    game['current_trick'].append({'player': 'computer', 'card': card})
-    
-    # LOG COMPUTER'S RESPONSE
-    if session_obj:
-        lead_card = game['current_trick'][0]['card'] if len(game['current_trick']) >= 1 else None
-        log_action(
-            action_type='card_play',
-            player='computer',
-            action_data={
-                'card_played': f"{card['rank']}{card['suit']}",
-                'trick_position': 2,
-                'following_suit': card['suit'] == lead_card['suit'] if lead_card else False
-            },
-            session=session_obj,
-            additional_context={
-                'responding_to': f"{lead_card['rank']}{lead_card['suit']}" if lead_card else None,
-                'hand_size_after': len(hand)
-            }
-        )
-    
-    if card['suit'] == '♠':
-        game['spades_broken'] = True
-        if session_obj:
-            log_game_event('spades_broken', {'broken_by': 'computer', 'card': f"{card['rank']}{card['suit']}"}, session_obj)
-
-def computer_lead_with_logging(game, session_obj=None):
-    """Computer plays a card when leading with logging"""
-    hand = game['computer_hand']
-    
-    if not hand:
-        return
-    
-    # Use enhanced leading strategy from computer_logic
-    from utilities.computer_logic import computer_lead_strategy
-    chosen_idx = computer_lead_strategy(hand, game['spades_broken'])
-    
-    if chosen_idx is None:
-        # Fallback to original simple logic if strategy fails
-        valid = []
-        for i, card in enumerate(hand):
-            if card['suit'] != '♠' or game['spades_broken'] or all(c['suit'] == '♠' for c in hand):
-                valid.append((i, card))
-        
-        if valid:
-            chosen = min(valid, key=lambda x: (x[1]['suit'] == '♠', x[1]['value']))
-            chosen_idx = chosen[0]
-        else:
-            return
-    
-    # Play the chosen card
-    card = hand.pop(chosen_idx)
-    game['current_trick'] = [{'player': 'computer', 'card': card}]
-    game['trick_leader'] = 'computer'
-    
-    # LOG COMPUTER'S LEAD
-    if session_obj:
-        log_action(
-            action_type='card_play',
-            player='computer',
-            action_data={
-                'card_played': f"{card['rank']}{card['suit']}",
-                'trick_position': 1,
-                'leading': True
-            },
-            session=session_obj,
-            additional_context={
-                'hand_size_after': len(hand)
-            }
-        )
-    
-    if card['suit'] == '♠':
-        game['spades_broken'] = True
-        if session_obj:
-            log_game_event('spades_broken', {'broken_by': 'computer', 'card': f"{card['rank']}{card['suit']}"}, session_obj)
-
 # In the index() route:
 @app.route('/')
 def index():
@@ -286,48 +69,23 @@ def index():
     if force_new or 'game' not in session:
         session.clear()
         player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
-        game = init_game(player_parity, computer_parity, first_player)
-        # Initialize logging with client tracking
-        game = initialize_game_logging_with_client(game, request)
-        session['game'] = game
+        session['game'] = init_game(player_parity, computer_parity, first_player)
     
     # If there's an existing game, preserve it
     return render_template('index.html')
 
 @app.route('/new_game', methods=['POST'])
 def new_game():
-    # Track client session
-    client_info = track_request_session()
-    
-    # Finalize previous game logging if exists
-    if 'game' in session:
-        finalize_game_logging(session['game'])
-    
     # Assign new even/odd and first player for the new game
     player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
-    game = init_game(player_parity, computer_parity, first_player)
-    # Initialize logging with client tracking - this starts a new JSON file
-    game = initialize_game_logging_with_client(game, request)
-    session['game'] = game
-    
-    # Log the new game start
-    log_game_event(
-        event_type='new_game_started',
-        event_data={
-            'player_parity': player_parity,
-            'computer_parity': computer_parity,
-            'first_leader': first_player
-        },
-        session=session
-    )
-    
+    session['game'] = init_game(player_parity, computer_parity, first_player)
     return jsonify({'success': True})
 
 @app.route('/state')
 def get_state():
     if 'game' not in session:
-        player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
-        session['game'] = init_game(player_parity, computer_parity, first_player)
+        player_parity, computer_parity = assign_even_odd_at_game_start()
+        session['game'] = init_game(player_parity, computer_parity)
     
     game = session['game']
     
@@ -420,9 +178,6 @@ def make_blind_bid():
     if 'game' not in session:
         return jsonify({'error': 'No game in session'}), 400
     
-    # Track client session
-    client_info = track_request_session()
-    
     game = session['game']
     data = request.get_json()
     bid = data.get('bid')
@@ -441,18 +196,6 @@ def make_blind_bid():
     if bid < 5 or bid > 10:
         return jsonify({'error': 'Blind bid must be between 5 and 10'}), 400
     
-    # Log blind bid
-    log_action(
-        action_type='blind_bid',
-        player='player',
-        action_data={
-            'bid_amount': bid,
-            'deficit': blind_eligibility['player_deficit']
-        },
-        session=session,
-        request=request
-    )
-    
     # Set blind bid and regular bid
     game['blind_bid'] = bid
     game['player_bid'] = bid
@@ -467,25 +210,6 @@ def make_blind_bid():
     
     if computer_is_blind:
         game['computer_blind_bid'] = computer_bid
-        log_action(
-            action_type='blind_bid',
-            player='computer',
-            action_data={
-                'bid_amount': computer_bid,
-                'in_response_to_player': True
-            },
-            session=session
-        )
-    else:
-        log_action(
-            action_type='regular_bid',
-            player='computer',
-            action_data={
-                'bid_amount': computer_bid,
-                'in_response_to_blind': True
-            },
-            session=session
-        )
     
     # Now proceed to discard with bids already set
     player_blind_text = " (BLIND)"
@@ -501,9 +225,6 @@ def make_bid():
     if 'game' not in session:
         return jsonify({'error': 'No game in session'}), 400
     
-    # Track client session
-    client_info = track_request_session()
-    
     game = session['game']
     data = request.get_json()
     bid = data.get('bid')
@@ -513,18 +234,6 @@ def make_bid():
     
     if bid < 0 or bid > 10:
         return jsonify({'error': 'Bid must be between 0 and 10'}), 400
-    
-    # Log player bid
-    log_action(
-        action_type='regular_bid',
-        player='player',
-        action_data={
-            'bid_amount': bid,
-            'is_nil': bid == 0
-        },
-        session=session,
-        request=request
-    )
     
     # Player makes regular bid
     game['player_bid'] = bid
@@ -542,25 +251,6 @@ def make_bid():
         # Handle computer blind bid
         if computer_is_blind:
             game['computer_blind_bid'] = computer_bid
-            log_action(
-                action_type='blind_bid',
-                player='computer',
-                action_data={
-                    'bid_amount': computer_bid,
-                    'in_response_to_player': True
-                },
-                session=session
-            )
-        else:
-            log_action(
-                action_type='regular_bid',
-                player='computer',
-                action_data={
-                    'bid_amount': computer_bid,
-                    'in_response_to_player': True
-                },
-                session=session
-            )
             
         computer_blind_text = " (BLIND)" if computer_is_blind else ""
         player_blind_text = " (BLIND)" if game.get('blind_bid') == bid else ""
@@ -579,26 +269,13 @@ def make_bid():
     game['turn'] = first_leader
     game['trick_leader'] = first_leader
     
-    # Log bidding phase complete
-    log_game_event(
-        event_type='bidding_complete',
-        event_data={
-            'player_bid': game['player_bid'],
-            'computer_bid': game['computer_bid'],
-            'first_leader': first_leader,
-            'player_blind': game.get('blind_bid') is not None,
-            'computer_blind': game.get('computer_blind_bid') is not None
-        },
-        session=session
-    )
-    
     # Create message indicating who leads first
     if first_leader == 'player':
         game['message'] = f'{message_base} Your turn to lead the first trick.'
     else:
         game['message'] = f'{message_base} Martha leads the first trick.'
         # If computer leads, make the computer play immediately
-        computer_lead_with_logging(game, session)
+        computer_lead(game)
         game['turn'] = 'player'
         game['message'] = f'{message_base} Martha led. Your turn to follow.'
     
@@ -609,9 +286,6 @@ def make_bid():
 def discard_card():
     if 'game' not in session:
         return jsonify({'error': 'No game in session'}), 400
-    
-    # Track client session
-    client_info = track_request_session()
     
     game = session['game']
     data = request.get_json()
@@ -624,42 +298,11 @@ def discard_card():
         return jsonify({'error': 'Invalid card index'}), 400
     
     # Player discards
-    player_card = game['player_hand'].pop(card_index)
-    game['player_discarded'] = player_card
-    
-    # Log player discard
-    log_action(
-        action_type='discard',
-        player='player',
-        action_data={
-            'card_discarded': f"{player_card['rank']}{player_card['suit']}",
-            'card_index': card_index
-        },
-        session=session,
-        additional_context={
-            'hand_size_after': len(game['player_hand'])
-        },
-        request=request
-    )
+    game['player_discarded'] = game['player_hand'].pop(card_index)
     
     # Computer discards using enhanced strategy
     idx = computer_discard_strategy(game['computer_hand'], game)
-    computer_card = game['computer_hand'].pop(idx)
-    game['computer_discarded'] = computer_card
-    
-    # Log computer discard
-    log_action(
-        action_type='discard',
-        player='computer',
-        action_data={
-            'card_discarded': f"{computer_card['rank']}{computer_card['suit']}",
-            'card_index': idx
-        },
-        session=session,
-        additional_context={
-            'hand_size_after': len(game['computer_hand'])
-        }
-    )
+    game['computer_discarded'] = game['computer_hand'].pop(idx)
     
     # Calculate discard bonus points and determine winner
     discard_result = calculate_discard_score_with_winner(
@@ -681,20 +324,6 @@ def discard_card():
     
     game['pending_special_discard_result'] = special_discard_result
     
-    # Log discard results
-    log_game_event(
-        event_type='discard_scoring',
-        event_data={
-            'player_card': f"{player_card['rank']}{player_card['suit']}",
-            'computer_card': f"{computer_card['rank']}{computer_card['suit']}",
-            'winner': discard_result['winner'],
-            'bonus_points': discard_result['player_bonus'] + discard_result['computer_bonus'],
-            'is_double': discard_result['is_double'],
-            'explanation': discard_result['explanation']
-        },
-        session=session
-    )
-    
     # Check if bids were already made (blind bidding scenario)
     if game.get('player_bid') is not None:
         # Bids already set, go straight to playing
@@ -711,7 +340,7 @@ def discard_card():
         else:
             game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha leads the first trick.'
             # If computer leads, make the computer play immediately
-            computer_lead_with_logging(game, session)
+            computer_lead(game)
             game['turn'] = 'player'
             game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Martha bid {game["computer_bid"]}{computer_blind_text}. Martha led. Your turn to follow.'
     else:
@@ -734,25 +363,6 @@ def discard_card():
             
             if computer_is_blind:
                 game['computer_blind_bid'] = computer_bid
-                log_action(
-                    action_type='blind_bid',
-                    player='computer',
-                    action_data={
-                        'bid_amount': computer_bid,
-                        'martha_bids_first': True
-                    },
-                    session=session
-                )
-            else:
-                log_action(
-                    action_type='regular_bid',
-                    player='computer',
-                    action_data={
-                        'bid_amount': computer_bid,
-                        'martha_bids_first': True
-                    },
-                    session=session
-                )
             
             # Start bidding phase with Martha's bid already made
             game['phase'] = 'bidding'
@@ -814,9 +424,6 @@ def play_card():
     if 'game' not in session:
         return jsonify({'error': 'No game in session'}), 400
     
-    # Track client session
-    client_info = track_request_session()
-    
     game = session['game']
     data = request.get_json()
     card_index = data.get('index')
@@ -836,43 +443,24 @@ def play_card():
     if not is_valid_play(card, game['player_hand'], game['current_trick'], game['spades_broken']):
         return jsonify({'error': 'Invalid play - must follow suit if possible'}), 400
     
-    # LOG THE PLAYER'S CARD PLAY
-    log_action(
-        action_type='card_play',
-        player='player', 
-        action_data={
-            'card_played': f"{card['rank']}{card['suit']}",
-            'card_index': card_index,
-            'trick_position': len(game['current_trick']) + 1,
-            'leading': len(game['current_trick']) == 0
-        },
-        session=session,
-        additional_context={
-            'hand_size_before': len(game['player_hand']),
-            'spades_broken_before': game['spades_broken']
-        },
-        request=request
-    )
-    
     # Play the card
     game['player_hand'].pop(card_index)
     game['current_trick'].append({'player': 'player', 'card': card})
     
     if card['suit'] == '♠':
         game['spades_broken'] = True
-        log_game_event('spades_broken', {'broken_by': 'player', 'card': f"{card['rank']}{card['suit']}"}, session)
     
     # Determine next action based on trick state
     if len(game['current_trick']) == 1:
         # Player just led, computer needs to follow
         game['trick_leader'] = 'player'
         game['turn'] = 'computer'
-        computer_follow_with_logging(game, session)
+        computer_follow(game)
         # After computer follows, resolve the trick with delay
-        resolve_trick_with_delay(game, session)
+        resolve_trick_with_delay(game)
     elif len(game['current_trick']) == 2:
         # This shouldn't happen in normal flow, but handle it
-        resolve_trick_with_delay(game, session)
+        resolve_trick_with_delay(game)
     
     session.modified = True
     return jsonify({'success': True})
@@ -885,10 +473,8 @@ def clear_trick():
     
     game = session['game']
     
-    # CHANGE THIS: Don't error if trick is already cleared
     if not game.get('trick_completed'):
-        return jsonify({'success': True, 'message': 'No trick to clear'}), 200  # Changed to 200
-    
+        return jsonify({'error': 'No completed trick to clear'}), 400
     
     winner = game.get('trick_winner')
     
@@ -900,19 +486,6 @@ def clear_trick():
     # Check for hand over
     if len(game['player_hand']) == 0:
         game['hand_over'] = True
-        
-        # Log hand completion
-        log_game_event(
-            event_type='hand_completed',
-            event_data={
-                'hand_number': game['hand_number'],
-                'player_tricks': game['player_tricks'],
-                'computer_tricks': game['computer_tricks'],
-                'player_bid': game.get('player_bid', 0),
-                'computer_bid': game.get('computer_bid', 0)
-            },
-            session=session
-        )
         
         # Apply stored discard results at the end of the hand
         if 'pending_discard_result' in game:
@@ -984,39 +557,15 @@ def clear_trick():
         # Store structured results for frontend
         game['hand_results'] = hand_results
         
-        # Log final scoring
-        log_game_event(
-            event_type='hand_scoring',
-            event_data={
-                'scoring_explanation': scoring_result['explanation'],
-                'final_scores': {
-                    'player_score': player_display_score,
-                    'computer_score': computer_display_score
-                },
-                'hand_results': hand_results
-            },
-            session=session
-        )
-        
         # Simple message for basic display
         game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
         
         # Check if game is over using base scores for comparison
-        game_over = check_game_over(game)
-        if game_over:
-            log_game_event(
-                event_type='game_completed',
-                event_data={
-                    'winner': game['winner'],
-                    'final_message': game['message'],
-                    'hands_played': game['hand_number']
-                },
-                session=session
-            )
+        check_game_over(game)
         
     elif winner == 'computer':
         # Computer won last trick, so computer leads
-        computer_lead_with_logging(game, session)
+        computer_lead(game)
         game['turn'] = 'player'
         game['message'] = 'Marta led. Your turn to follow.'
     else:
@@ -1032,23 +581,10 @@ def next_hand():
     if 'game' not in session:
         return jsonify({'error': 'No game in session'}), 400
     
-    # Track client session
-    client_info = track_request_session()
-    
     game = session['game']
     
     if not game.get('hand_over', False) or game.get('game_over', False):
         return jsonify({'error': 'Cannot start next hand'}), 400
-    
-    # Log new hand start
-    log_game_event(
-        event_type='new_hand_started',
-        event_data={
-            'previous_hand': game['hand_number'],
-            'new_hand': game['hand_number'] + 1
-        },
-        session=session
-    )
     
     # Increment hand number and start new hand
     game['hand_number'] += 1
