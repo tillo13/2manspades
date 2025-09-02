@@ -106,11 +106,11 @@ def init_new_hand(game):
         'player_tricks': 0,
         'computer_tricks': 0,
         'spades_broken': False,
-        'phase': initial_phase,  # This is the key change
+        'phase': initial_phase,
         'turn': 'player',
         'trick_leader': None,
         'hand_over': False,
-        'message': initial_message,  # This is also updated
+        'message': initial_message,
         'player_discarded': None,
         'computer_discarded': None,
         'show_computer_hand': False,

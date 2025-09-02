@@ -204,18 +204,7 @@ function updateMessages() {
 
     let messageToShow = gameState.message;
 
-    // Clean bidding messages - show actual bid amounts when available
-    if (gameState.phase === 'bidding') {
-        if (gameState.computer_bid !== null && gameState.player_bid === null) {
-            // Marta bid first scenario - show her actual bid
-            const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
-            messageToShow = `Marta bid ${gameState.computer_bid}${computerBlindText}. Your turn to bid.`;
-        } else if (gameState.player_bid === null && gameState.computer_bid === null) {
-            // Neither has bid yet - show who goes first
-            const firstBidder = gameState.first_leader === 'player' ? 'You bid first.' : 'Marta bids first.';
-            messageToShow = firstBidder;
-        }
-    }
+
 
     // Avoid showing detailed results if structured results are shown
     if (gameState.hand_over && gameState.hand_results) {

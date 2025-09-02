@@ -715,6 +715,7 @@ def make_bid():
     session.modified = True
     return jsonify({'success': True})
 
+
 @app.route('/discard', methods=['POST'])
 def discard_card():
     if 'game' not in session:
@@ -843,8 +844,46 @@ def discard_card():
         else:
             # No blind eligibility - go straight to normal bidding
             game['phase'] = 'bidding'
-            game['turn'] = 'player'
-            game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+            first_leader = game.get('first_leader', 'player')
+            
+            if first_leader == 'computer':
+                # Marta bids first - make her bid immediately
+                computer_bid, computer_is_blind = computer_bidding_brain(
+                    game['computer_hand'], 
+                    None,  # No player bid yet
+                    game
+                )
+                game['computer_bid'] = computer_bid
+                
+                # Log Marta's bid
+                if computer_is_blind:
+                    game['computer_blind_bid'] = computer_bid
+                    computer_blind_text = " (BLIND)"
+                    log_action(
+                        action_type='blind_bid',
+                        player='computer',
+                        action_data={
+                            'bid_amount': computer_bid,
+                            'bid_first': True
+                        },
+                        session=session
+                    )
+                else:
+                    computer_blind_text = ""
+                    log_action(
+                        action_type='regular_bid',
+                        player='computer',
+                        action_data={
+                            'bid_amount': computer_bid,
+                            'bid_first': True
+                        },
+                        session=session
+                    )
+                
+                game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+            else:
+                # Player bids first
+                game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
     
     session.modified = True
     return jsonify({'success': True})
