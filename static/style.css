@@ -8,8 +8,13 @@ body {
     font-family: 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* GAME PAGE LAYOUT */
+body:not(.instructions-page) {
     padding: 140px 0 40px 0;
-    /* Increased top padding */
 }
 
 .container {
@@ -21,7 +26,7 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-/* Floating headers with better spacing */
+/* FLOATING HEADERS (GAME ONLY) */
 .floating-game-score {
     position: fixed;
     top: 10px;
@@ -42,7 +47,6 @@ body {
 .floating-hand-score {
     position: fixed;
     top: 80px;
-    /* Increased from 70px to prevent overlap */
     left: 8px;
     right: 8px;
     background: rgba(248, 249, 250, 0.95);
@@ -58,7 +62,8 @@ body {
     color: #495057;
 }
 
-.game-score-item {
+.game-score-item,
+.hand-score-item {
     text-align: center;
     flex: 1;
 }
@@ -83,12 +88,6 @@ body {
     line-height: 1;
 }
 
-.hand-score-item {
-    text-align: center;
-    flex: 1;
-    font-size: 12px;
-}
-
 .hand-score-item .label {
     color: #6c757d;
     margin-bottom: 2px;
@@ -99,12 +98,7 @@ body {
     color: #333;
 }
 
-/* Top interactive area */
-.top-interactive-area {
-    /* No additional styling needed */
-}
-
-/* Play area */
+/* PLAY AREA */
 .play-area {
     padding: 20px 8px;
     margin-bottom: 12px;
@@ -112,6 +106,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.play-area.hidden-for-phase {
+    display: none !important;
 }
 
 .trick-container {
@@ -168,77 +166,32 @@ body {
     flex-shrink: 0;
 }
 
-/* Trick card colors */
-.trick-card.spade {
+/* CARD COLORS */
+.trick-card.spade,
+.card.spade,
+.spade {
     color: #000;
 }
 
-.trick-card.heart {
+.trick-card.heart,
+.card.heart,
+.heart {
     color: #ff0000;
 }
 
-.trick-card.diamond {
+.trick-card.diamond,
+.card.diamond,
+.diamond {
     color: #ff6200;
 }
 
-.trick-card.club {
+.trick-card.club,
+.card.club,
+.club {
     color: #333;
 }
 
-/* Game over */
-.game-over {
-    text-align: center;
-    padding: 20px 15px;
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border-radius: 10px;
-    margin-bottom: 15px;
-    border: 3px solid #ff9800;
-    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
-    animation: gameOverPulse 2s ease-in-out infinite alternate;
-}
-
-.winner-text {
-    font-size: 22px;
-    font-weight: bold;
-    color: #d84315;
-    margin-bottom: 15px;
-    line-height: 1.2;
-    text-shadow: 1px 1px 2px rgba(216, 67, 21, 0.2);
-}
-
-.game-over button {
-    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-    color: white;
-    border: none;
-    padding: 15px 25px;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.game-over button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
-    background: linear-gradient(135deg, #45a049 0%, #4caf50 100%);
-}
-
-/* Animation for game over box */
-@keyframes gameOverPulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
-    }
-
-    100% {
-        transform: scale(1.02);
-        box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
-    }
-}
-
-/* Message */
+/* MESSAGES */
 .message {
     text-align: center;
     padding: 10px 12px;
@@ -262,7 +215,64 @@ body {
     border-left-color: #dc3545;
 }
 
-/* Next Hand button section */
+/* GAME OVER */
+.game-over {
+    text-align: center;
+    padding: 20px 15px;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 3px solid #ff9800;
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+    animation: gameOverPulse 2s ease-in-out infinite alternate;
+}
+
+.winner-text {
+    font-size: 22px;
+    font-weight: bold;
+    color: #d84315;
+    margin-bottom: 15px;
+    line-height: 1.2;
+    text-shadow: 1px 1px 2px rgba(216, 67, 21, 0.2);
+}
+
+@keyframes gameOverPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+    }
+
+    100% {
+        transform: scale(1.02);
+        box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
+    }
+}
+
+/* BUTTONS */
+button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* NEXT HAND BUTTON */
 .next-hand-section {
     margin-bottom: 20px;
     text-align: center;
@@ -289,159 +299,7 @@ body {
     box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4) !important;
 }
 
-/* Results section */
-.results-section {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    display: none;
-    font-size: 13px;
-    color: #495057;
-    border: 1px solid #e9ecef;
-}
-
-.results-section.show {
-    display: block;
-}
-
-.results-header {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 10px;
-    font-size: 16px;
-    text-align: center;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.results-content {
-    /* Placeholder for dynamic content */
-}
-
-.result-section {
-    margin-bottom: 10px;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 6px;
-}
-
-.result-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.result-header {
-    font-size: 12px;
-    font-weight: 600;
-    color: #6c757d;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-}
-
-.result-content {
-    font-size: 13px;
-    color: #495057;
-    line-height: 1.3;
-}
-
-.result-content.highlight {
-    background: #e8f5e9;
-    padding: 6px 8px;
-    border-radius: 4px;
-    color: #2e7d32;
-}
-
-.result-content.totals {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
-    background: #f8f9fa;
-    padding: 6px 8px;
-    border-radius: 4px;
-}
-
-/* Trick history */
-.trick-history {
-    font-family: monospace;
-    font-size: 11px;
-    max-height: 150px;
-    overflow-y: auto;
-    background: #f8f9fa;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-}
-
-.trick-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 2px 0;
-    border-bottom: 1px solid #e9ecef;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.trick-line:last-child {
-    border-bottom: none;
-}
-
-.trick-number {
-    color: #6c757d;
-    font-weight: 600;
-    width: 100%;
-}
-
-.trick-cards {
-    width: 100%;
-    color: #495057;
-    margin: 2px 0;
-}
-
-.trick-winner {
-    color: #28a745;
-    font-weight: 600;
-    width: 100%;
-    font-size: 10px;
-}
-
-/* Discarded cards section */
-.discards-section {
-    background: #e8f5e9;
-    border: 2px solid #4caf50;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 20px;
-}
-
-.discards-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 6px;
-}
-
-.discard-item {
-    text-align: center;
-    background: white;
-    padding: 10px;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.discard-label {
-    font-size: 12px;
-    font-weight: bold;
-    color: #666;
-    margin-bottom: 6px;
-}
-
-/* Hands area */
-.hands-area {
-    /* No specific styling needed */
-}
-
-/* Hand sections */
+/* HAND SECTIONS */
 .hand-section {
     background: #f8f9fa;
     border-radius: 10px;
@@ -459,6 +317,7 @@ body {
     align-items: center;
 }
 
+/* CARD GRIDS */
 .cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
@@ -504,56 +363,44 @@ body {
     cursor: not-allowed;
 }
 
-/* Card colors */
-.card.spade {
-    color: #000;
+/* MOBILE OPTIMIZATIONS */
+@media (max-width: 767px) {
+
+    /* Compact 5x2 card layout */
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: auto auto auto;
+        gap: 5px;
+        max-width: 300px;
+        margin: 0 auto 10px auto;
+    }
+
+    .card {
+        min-width: 50px;
+        min-height: 65px;
+        font-size: 14px;
+        padding: 8px 4px;
+        border-radius: 5px;
+    }
+
+    .card:hover:not(.disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .card.selected {
+        transform: translateY(-2px);
+        box-shadow: 0 3px 8px rgba(76, 175, 80, 0.4);
+    }
+
+    .hand-section {
+        padding: 10px;
+        margin-bottom: 12px;
+    }
 }
 
-.card.heart {
-    color: #ff0000;
-}
-
-.card.diamond {
-    color: #ff6200;
-}
-
-.card.club {
-    color: #333;
-}
-
-/* Controls */
-.controls {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-/* Buttons */
-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 12px 18px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 80px;
-}
-
-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-}
-
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Bidding section */
+/* BIDDING SECTIONS */
 .bidding-section {
     background: #f8f9fa;
     border: 2px solid #dee2e6;
@@ -603,16 +450,106 @@ button:disabled {
     transform: translateY(-2px);
 }
 
-.bid-btn {
-    /* Inherits from button styles above */
+/* Mobile bidding 6x2 layout */
+@media (max-width: 767px) {
+    .bid-buttons {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-rows: auto auto;
+        gap: 4px;
+        max-width: 300px;
+    }
+
+    .bid-buttons button {
+        padding: 8px 2px;
+        font-size: 11px;
+        min-width: 45px;
+        border-radius: 4px;
+        min-height: 36px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    .bid-buttons button small {
+        font-size: 8px;
+        margin-top: 1px;
+        opacity: 0.9;
+    }
+
+    /* 6x2 grid arrangement: 0-5 top row, 6-10 bottom row, with 10 spanning center */
+    .bid-buttons button:nth-child(1) {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    /* 0 NIL */
+    .bid-buttons button:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    /* 1 */
+    .bid-buttons button:nth-child(3) {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    /* 2 */
+    .bid-buttons button:nth-child(4) {
+        grid-column: 4;
+        grid-row: 1;
+    }
+
+    /* 3 */
+    .bid-buttons button:nth-child(5) {
+        grid-column: 5;
+        grid-row: 1;
+    }
+
+    /* 4 */
+    .bid-buttons button:nth-child(6) {
+        grid-column: 6;
+        grid-row: 1;
+    }
+
+    /* 5 */
+    .bid-buttons button:nth-child(7) {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    /* 6 */
+    .bid-buttons button:nth-child(8) {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    /* 7 */
+    .bid-buttons button:nth-child(9) {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    /* 8 */
+    .bid-buttons button:nth-child(10) {
+        grid-column: 4;
+        grid-row: 2;
+    }
+
+    /* 9 */
+    .bid-buttons button:nth-child(11) {
+        grid-column: 5 / span 2;
+        grid-row: 2;
+        min-width: 90px;
+    }
+
+    /* 10 spanning two columns */
 }
 
-/* Confirmation buttons styling */
-.bid-confirmation-buttons {
-    margin-top: 15px;
-    text-align: center;
-}
-
+/* BID CONFIRMATION BUTTONS */
 #confirmBidButton {
     background: #28a745 !important;
     color: white !important;
@@ -649,7 +586,6 @@ button:disabled {
     transform: translateY(-2px) !important;
 }
 
-/* Selected bid button styling */
 .bid-btn.selected {
     background: #28a745 !important;
     color: white !important;
@@ -658,13 +594,21 @@ button:disabled {
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
 }
 
-/* Blind bidding section */
+/* BLIND BIDDING */
+.blind-decision-section {
+    background: #fff2f2;
+    border: 2px solid #e57373;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
 .blind-bidding-section {
     background: #fff2f2;
     border: 2px solid #e57373;
     border-radius: 8px;
     padding: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 .blind-header h3 {
@@ -692,12 +636,11 @@ button:disabled {
 }
 
 .blind-buttons {
+    display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 6px;
     max-width: 280px;
-    display: grid;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 0 auto;
 }
 
 .blind-bid-btn {
@@ -714,19 +657,170 @@ button:disabled {
     transform: translateY(-2px);
 }
 
-.regular-bid-prompt {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #ccc;
+@media (max-width: 767px) {
+    .blind-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: auto auto;
+        gap: 6px;
+        max-width: 250px;
+    }
+
+    .blind-bid-btn {
+        padding: 10px 4px;
+        font-size: 11px;
+        min-height: 40px;
+        border-radius: 5px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.1;
+    }
 }
 
-.regular-bid-prompt p {
+/* RESULTS AND DISCARDS */
+.results-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: none;
+    font-size: 13px;
+    color: #495057;
+    border: 1px solid #e9ecef;
+}
+
+.results-section.show {
+    display: block;
+}
+
+.results-header {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 16px;
+    text-align: center;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.result-section {
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 6px;
+}
+
+.result-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.result-header {
     font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.result-content {
+    font-size: 13px;
+    color: #495057;
+    line-height: 1.3;
+}
+
+.result-content.highlight {
+    background: #e8f5e9;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: #2e7d32;
+}
+
+.result-content.totals {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    background: #f8f9fa;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.trick-history {
+    font-family: monospace;
+    font-size: 11px;
+    max-height: 150px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.trick-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    border-bottom: 1px solid #e9ecef;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.trick-line:last-child {
+    border-bottom: none;
+}
+
+.trick-number {
+    color: #6c757d;
+    font-weight: 600;
+    width: 100%;
+}
+
+.trick-cards {
+    width: 100%;
+    color: #495057;
+    margin: 2px 0;
+}
+
+.trick-winner {
+    color: #28a745;
+    font-weight: 600;
+    width: 100%;
+    font-size: 10px;
+}
+
+.discards-section {
+    background: #e8f5e9;
+    border: 2px solid #4caf50;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.discards-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.discard-item {
+    text-align: center;
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.discard-label {
+    font-size: 12px;
+    font-weight: bold;
     color: #666;
     margin-bottom: 6px;
 }
 
-/* Bottom section */
+/* BOTTOM NAVIGATION */
 .bottom-section {
     position: fixed;
     bottom: 0;
@@ -746,9 +840,8 @@ button:disabled {
     gap: 6px;
 }
 
-.bottom-new-game-btn {
-    background: #dc3545;
-    color: white;
+.bottom-new-game-btn,
+.bottom-rules-btn {
     border: none;
     padding: 4px 8px;
     border-radius: 4px;
@@ -759,6 +852,11 @@ button:disabled {
     min-width: 50px;
 }
 
+.bottom-new-game-btn {
+    background: #dc3545;
+    color: white;
+}
+
 .bottom-new-game-btn:hover {
     background: #c82333;
 }
@@ -766,14 +864,6 @@ button:disabled {
 .bottom-rules-btn {
     background: #28a745;
     color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    height: 22px;
-    min-width: 45px;
 }
 
 .bottom-rules-btn:hover {
@@ -791,11 +881,128 @@ button:disabled {
     background: #5a6268;
 }
 
-/* Desktop adjustments */
+/* INSTRUCTIONS PAGE LAYOUT */
+.instructions-page body {
+    padding: 20px;
+}
+
+.instructions-page .container {
+    max-width: 800px;
+    padding: 30px;
+}
+
+.instructions-page h1 {
+    color: #4a5568;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.5em;
+}
+
+.instructions-page h2 {
+    color: #2d3748;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.instructions-page h3 {
+    color: #4a5568;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.instructions-page .section {
+    margin-bottom: 25px;
+}
+
+.instructions-page .highlight {
+    background: #fff5f5;
+    border-left: 4px solid #e53e3e;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+
+.instructions-page .tip {
+    background: #f0fff4;
+    border-left: 4px solid #38a169;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+
+.instructions-page .example {
+    background: #ebf8ff;
+    border: 1px solid #90cdf4;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+}
+
+.instructions-page .card-example {
+    display: inline-block;
+    background: white;
+    border: 2px solid #333;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 2px;
+    font-weight: bold;
+    min-width: 50px;
+    text-align: center;
+}
+
+.instructions-page .scoring-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.instructions-page .scoring-table th,
+.instructions-page .scoring-table td {
+    border: 1px solid #cbd5e0;
+    padding: 12px;
+    text-align: left;
+}
+
+.instructions-page .scoring-table th {
+    background: #edf2f7;
+    font-weight: bold;
+}
+
+.instructions-page .back-button {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: #4299e1;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+}
+
+.instructions-page .back-button:hover {
+    background: #3182ce;
+    transform: translateY(-2px);
+}
+
+.instructions-page ol,
+.instructions-page ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.instructions-page li {
+    margin-bottom: 8px;
+}
+
+/* DESKTOP ADJUSTMENTS */
 @media (min-width: 768px) {
-    body {
+    body:not(.instructions-page) {
         padding-top: 160px;
-        /* Increased for desktop too */
         padding-bottom: 45px;
     }
 
@@ -814,7 +1021,6 @@ button:disabled {
 
     .floating-hand-score {
         top: 85px;
-        /* Increased spacing for desktop */
     }
 
     .bottom-section {

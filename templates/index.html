@@ -58,26 +58,28 @@
     </div>
 
     <div class="container">
-        <!-- Play area and messages at top - always visible -->
+        <!-- Top interactive area -->
         <div class="top-interactive-area">
+            <!-- Play area (hidden during bidding/discard phases) -->
             <div class="play-area" id="playArea">
                 <div id="trickDisplay"></div>
             </div>
 
-            <!-- Game Over section moved here, right below play area -->
+            <!-- Game Over section -->
             <div class="game-over" id="gameOver" style="display: none;">
                 <div class="winner-text" id="winnerText"></div>
                 <button onclick="startNewGame()">Play Again</button>
             </div>
 
+            <!-- Message area -->
             <div class="message" id="message">Loading game...</div>
 
-            <!-- Next Hand Button - moved above results -->
+            <!-- Next Hand Button -->
             <div class="next-hand-section" id="nextHandSection" style="display: none;">
                 <button id="nextHandButton" onclick="nextHand()" class="next-hand-btn">Next Hand</button>
             </div>
 
-            <!-- Discarded cards section - moved below Next Hand button -->
+            <!-- Discarded cards section -->
             <div class="discards-section" id="discardsSection" style="display: none;">
                 <div class="hand-title">Discarded Cards</div>
                 <div class="discards-content">
@@ -92,39 +94,36 @@
                 </div>
             </div>
 
-            <!-- Clean Results Section -->
+            <!-- Results Section -->
             <div class="results-section" id="resultsSection">
                 <div class="results-header">Hand Summary</div>
                 <div class="results-content" id="resultsContent"></div>
             </div>
 
-            <!-- NEW: Blind Decision Section -->
+            <!-- Blind Decision Section -->
             <div class="blind-decision-section" id="blindDecisionSection" style="display: none;">
                 <div class="blind-header">
-                    <h3 style="color: #d32f2f; margin-bottom: 8px; font-size: 18px; font-weight: 600;">Blind Bidding
-                        Decision</h3>
-                    <p style="font-size: 14px; margin-bottom: 8px; color: #333; line-height: 1.3;">You're down by 100+
-                        points. Choose your approach:</p>
+                    <h3>Blind Bidding Decision</h3>
+                    <p>You're down by 100+ points. Choose your approach:</p>
                 </div>
-
                 <div class="decision-buttons"
-                    style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
+                    style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px;">
                     <button onclick="chooseBlindNil()"
-                        style="background: #8b0000; color: white; padding: 15px 8px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 12px;">
+                        style="background: #8b0000; color: white; padding: 12px 6px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 11px;">
                         Blind NIL<br><small>Win or Die!</small>
                     </button>
                     <button onclick="chooseBlindBidding()"
-                        style="background: #d32f2f; color: white; padding: 15px 8px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 12px;">
+                        style="background: #d32f2f; color: white; padding: 12px 6px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 11px;">
                         Go BLIND<br><small>5-10 tricks</small>
                     </button>
                     <button onclick="chooseNormalBidding()"
-                        style="background: #1976d2; color: white; padding: 15px 8px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; font-size: 12px;">
+                        style="background: #1976d2; color: white; padding: 12px 6px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 11px;">
                         Bid Normal<br><small>See cards</small>
                     </button>
                 </div>
             </div>
 
-            <!-- Blind Bidding Section for after choosing blind -->
+            <!-- Blind Bidding Section -->
             <div class="blind-bidding-section" id="discardBlindBiddingSection" style="display: none;">
                 <div class="blind-header">
                     <h3>Choose Your Blind Bid</h3>
@@ -143,14 +142,12 @@
                 </div>
             </div>
 
-            <!-- UPDATED BIDDING SECTION WITH CONFIRMATION -->
+            <!-- Regular Bidding Section -->
             <div class="bidding-section" id="biddingSection" style="display: none;">
                 <div class="bidding-title">Make Your Bid</div>
-                <div class="bidding-prompt">How many tricks will you take out of 10?<br>
-                    <small style="color: #666;">Tap a number to select, then confirm your bid</small>
-                </div>
+                <div class="bidding-prompt">How many tricks will you take?</div>
 
-                <!-- Updated bidding buttons - changed onclick to selectBid -->
+                <!-- 6x2 bidding buttons -->
                 <div class="bid-buttons">
                     <button onclick="selectBid(0)" class="bid-btn" data-bid="0">0<br><small>NIL</small></button>
                     <button onclick="selectBid(1)" class="bid-btn" data-bid="1">1</button>
@@ -165,24 +162,21 @@
                     <button onclick="selectBid(10)" class="bid-btn" data-bid="10">10</button>
                 </div>
 
-                <!-- New confirmation buttons -->
-                <div class="bid-confirmation-buttons" style="margin-top: 15px; text-align: center;">
-                    <button id="confirmBidButton" onclick="confirmSelectedBid()"
-                        style="display: none; background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; margin-right: 10px; cursor: pointer;">
+                <!-- Confirmation buttons -->
+                <div class="bid-confirmation-buttons" style="margin-top: 12px; text-align: center;">
+                    <button id="confirmBidButton" onclick="confirmSelectedBid()" style="display: none;">
                         Confirm Bid
                     </button>
-                    <button id="cancelBidButton" onclick="cancelBidSelection()"
-                        style="display: none; background: #6c757d; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer;">
+                    <button id="cancelBidButton" onclick="cancelBidSelection()" style="display: none;">
                         Cancel
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Hands section - can scroll if needed -->
+        <!-- Hands area -->
         <div class="hands-area">
-
-            <!-- Player hand section with conditional hiding -->
+            <!-- Player hand section -->
             <div class="hand-section" id="playerHandSection">
                 <div class="hand-title">
                     Your Hand
@@ -190,7 +184,7 @@
                 </div>
                 <div class="cards" id="playerHand"></div>
                 <div class="controls">
-                    <button id="actionButton" onclick="performAction()">Discard Card</button>
+                    <button id="actionButton" onclick="performAction()">Select Card</button>
                 </div>
             </div>
 
@@ -198,7 +192,6 @@
             <div class="hand-section" id="computerHandSection">
                 <div class="hand-title">
                     Marta's Hand (hidden)
-                    <!-- Only show toggle button if debug mode is enabled -->
                     <button id="toggleComputerHand" onclick="toggleComputerHand()" style="display: none;">Show
                         Cards</button>
                 </div>

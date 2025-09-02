@@ -3,13 +3,14 @@ let selectedCard = null;
 let trickDisplayTimeout = null;
 let lastHandNumber = null;
 
-// New variables for bidding confirmation
+// Bidding confirmation variables
 let selectedBid = null;
 let confirmingBid = false;
 
-// New global variable for scroll preservation
+// Scroll preservation for trick history
 let trickHistoryScrollPosition = 0;
 
+// MAIN FUNCTIONS
 async function loadGameState() {
     try {
         const response = await fetch('/state');
@@ -24,334 +25,41 @@ async function loadGameState() {
 function updateUI() {
     if (!gameState) return;
 
-    // Preserve trick history scroll position before updating
     preserveTrickHistoryScroll();
-
-    // Update floating game scores
     updateFloatingScores();
-
-    // Update hand count display
-    const playerHandCountEl = document.getElementById('playerHandCount');
-    if (playerHandCountEl) {
-        playerHandCountEl.textContent = `(${gameState.player_hand.length} cards)`;
-    }
-
-    // Check game over FIRST - but still show results for blind nil
-    if (gameState.game_over) {
-        document.getElementById('gameOver').style.display = 'block';
-        document.getElementById('winnerText').textContent = gameState.message;
-
-        // Hide interactive sections when game is over
-        document.getElementById('biddingSection').style.display = 'none';
-        const blindDecisionSection = document.getElementById('blindDecisionSection');
-        if (blindDecisionSection) blindDecisionSection.style.display = 'none';
-        document.getElementById('discardBlindBiddingSection').style.display = 'none';
-        document.getElementById('nextHandSection').style.display = 'none';
-        document.getElementById('playerHandSection').style.display = 'none';
-        document.getElementById('computerHandSection').style.display = 'none';
-
-        // Show results section for blind nil to show how it happened
-        if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
-            handleResultsDisplay();  // This will show the results section
-        } else {
-            document.getElementById('resultsSection').classList.remove('show');
-        }
-
-        // Update play area and message for game over
-        updatePlayArea();
-        showMessage(gameState.message, gameState.winner === 'player' ? 'success' : '');
-
-        // Restore trick history scroll position and return early
-        restoreTrickHistoryScroll();
-        return;
-    }
-
-    // Game is not over, continue with normal UI updates
-    document.getElementById('gameOver').style.display = 'none';
-
-    // Show/hide sections based on phase
-    const biddingSection = document.getElementById('biddingSection');
-    const blindDecisionSection = document.getElementById('blindDecisionSection');
-    const discardBlindSection = document.getElementById('discardBlindBiddingSection');
-
-    // Hide all sections first
-    biddingSection.style.display = 'none';
-    if (blindDecisionSection) blindDecisionSection.style.display = 'none';
-    discardBlindSection.style.display = 'none';
-
-    if (gameState.phase === 'blind_decision') {
-        // Show blind decision section
-        if (blindDecisionSection) blindDecisionSection.style.display = 'block';
-    } else if (gameState.phase === 'blind_bidding') {
-        // Show blind bidding options
-        discardBlindSection.style.display = 'block';
-    } else if (gameState.phase === 'bidding') {
-        biddingSection.style.display = 'block';
-        // Only reset bidding state if we're entering bidding phase for the first time
-        if (!biddingSection.classList.contains('active')) {
-            biddingSection.classList.add('active');
-            resetBiddingState();
-        }
-    } else {
-        // Remove active class when leaving bidding phase
-        biddingSection.classList.remove('active');
-    }
-
-    // Handle results display for completed hands
-    handleResultsDisplay();
-
-    // Update message - but DON'T override game over messages
-    let messageToShow = gameState.message;
-
-    // Only do special message handling if game is NOT over
-    if (!gameState.game_over) {
-        // Special case: Marta bid first during bidding phase
-        if (gameState.phase === 'bidding' && gameState.computer_bid !== null && gameState.player_bid === null) {
-            const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
-            messageToShow = `Marta bid ${gameState.computer_bid}${computerBlindText} tricks. Now make your bid: How many tricks will you take? (0-10)`;
-        }
-
-        // AVOID showing detailed results if structured results are shown
-        if (gameState.hand_over && gameState.hand_results) {
-            // If we have structured results, show only a simple message
-            messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue`;
-        }
-    }
-
-    showMessage(messageToShow, messageToShow.includes('WIN') || messageToShow.includes('BLIND NIL SUCCESS') ? 'success' : '');
-
-    // Update play area
+    updatePlayAreaVisibility();
+    updateHandCount();
+    updateGameOverState();
+    updatePhaseVisibility();
+    updateMessages();
     updatePlayArea();
-
-    // Update hands
     updatePlayerHand();
     updateComputerHand();
-
-    // Update buttons based on game state
     updateActionButtons();
-
-    // Update bidding buttons if in bidding phase
-    if (gameState.phase === 'bidding') {
-        updateBidButtons();
-    }
-
-    // Update computer hand toggle button - respect debug mode
-    const toggleButton = document.getElementById('toggleComputerHand');
-    if (toggleButton) {
-        if (gameState.debug_mode) {
-            // In debug mode, show the button and update text
-            toggleButton.style.display = 'inline-block';
-            toggleButton.textContent = gameState.show_computer_hand ? 'Hide Cards' : 'Show Cards';
-            toggleButton.style.background = '#6c757d';
-        } else {
-            // Not in debug mode, hide the button completely
-            toggleButton.style.display = 'none';
-        }
-    }
-
-    // Show discards if hand is over
+    updateBidButtons();
+    updateComputerHandToggle();
     updateDiscards();
+    handleResultsDisplay();
+    handleTrickCompletion();
 
-    // Check for completed trick that needs to be displayed
-    if (gameState.current_trick && gameState.current_trick.length === 2 && !trickDisplayTimeout) {
-        trickDisplayTimeout = setTimeout(async () => {
-            try {
-                await fetch('/clear_trick', { method: 'POST' });
-                await loadGameState();
-                trickDisplayTimeout = null;
-            } catch (error) {
-                console.error('Error clearing trick:', error);
-                trickDisplayTimeout = null;
-            }
-        }, 1500); // Changed from 3000 to 1500 (1.5 seconds)
-    }
-
-    // Track hand changes for results display
     lastHandNumber = gameState.hand_number;
-
-    // Restore trick history scroll position after DOM updates
     restoreTrickHistoryScroll();
 }
 
-//blind nil!
-async function chooseBlindNil() {
-    try {
-        const response = await fetch('/choose_blind_nil', { method: 'POST' });
-        if (response.ok) {
-            await loadGameState();
-        } else {
-            const error = await response.json();
-            showMessage(error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error choosing blind nil:', error);
-        showMessage('Error choosing blind nil', 'error');
-    }
-}
-
-// Blind decision functions
-async function chooseBlindBidding() {
-    try {
-        const response = await fetch('/choose_blind_bidding', { method: 'POST' });
-        if (response.ok) {
-            await loadGameState();
-        } else {
-            const error = await response.json();
-            showMessage(error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error choosing blind bidding:', error);
-        showMessage('Error choosing blind bidding', 'error');
-    }
-}
-
-async function chooseNormalBidding() {
-    try {
-        const response = await fetch('/choose_normal_bidding', { method: 'POST' });
-        if (response.ok) {
-            await loadGameState();
-        } else {
-            const error = await response.json();
-            showMessage(error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error choosing normal bidding:', error);
-        showMessage('Error choosing normal bidding', 'error');
-    }
-}
-
-// New bidding confirmation functions
-function selectBid(bidAmount) {
-    if (confirmingBid) return; // Prevent double-taps during confirmation
-
-    selectedBid = bidAmount;
-    confirmingBid = true;
-
-    // Update button states to show selection
-    updateBidButtons();
-
-    // Update the bidding prompt to show confirmation
-    const biddingPrompt = document.querySelector('.bidding-prompt');
-    if (biddingPrompt) {
-        const bidText = bidAmount === 0 ? 'NIL (0 tricks)' : `${bidAmount} tricks`;
-        biddingPrompt.innerHTML = `
-            You selected: <strong>${bidText}</strong><br>
-            <small style="color: #666;">Confirm this bid or select a different amount</small>
-        `;
-    }
-
-    // Haptic feedback for selection
-    if (navigator.vibrate) navigator.vibrate(50);
-}
-
-function confirmSelectedBid() {
-    if (selectedBid === null || !confirmingBid) return;
-
-    // Make the actual bid
-    makeBid(selectedBid);
-
-    // Reset confirmation state
-    resetBiddingState();
-}
-
-function cancelBidSelection() {
-    resetBiddingState();
-
-    const biddingPrompt = document.querySelector('.bidding-prompt');
-    if (biddingPrompt) {
-        biddingPrompt.innerHTML = `How many tricks will you take out of 10?<br>
-            <small style="color: #666;">Tap a number to select, then confirm your bid</small>`;
-    }
-}
-
-function resetBiddingState() {
-    selectedBid = null;
-    confirmingBid = false;
-    updateBidButtons();
-}
-
-function updateBidButtons() {
-    const bidButtons = document.querySelectorAll('.bid-btn');
-    const confirmButton = document.getElementById('confirmBidButton');
-    const cancelButton = document.getElementById('cancelBidButton');
-
-    if (confirmingBid && selectedBid !== null) {
-        // Show selected state
-        bidButtons.forEach(btn => {
-            const bidValue = parseInt(btn.getAttribute('data-bid'));
-            if (bidValue === selectedBid) {
-                btn.classList.add('selected');
-                btn.style.backgroundColor = '#28a745';
-                btn.style.color = 'white';
-                btn.style.border = '2px solid #1e7e34';
-            } else {
-                btn.classList.remove('selected');
-                btn.style.backgroundColor = '';
-                btn.style.color = '';
-                btn.style.border = '';
-                btn.style.opacity = '0.6';
-            }
-        });
-
-        // Show confirm/cancel buttons
-        if (confirmButton) confirmButton.style.display = 'inline-block';
-        if (cancelButton) cancelButton.style.display = 'inline-block';
-    } else {
-        // Reset all buttons to normal state
-        bidButtons.forEach(btn => {
-            btn.classList.remove('selected');
-            btn.style.backgroundColor = '';
-            btn.style.color = '';
-            btn.style.border = '';
-            btn.style.opacity = '';
-        });
-
-        // Hide confirm/cancel buttons
-        if (confirmButton) confirmButton.style.display = 'none';
-        if (cancelButton) cancelButton.style.display = 'none';
-    }
-}
-
-// Scroll position preservation functions
-function preserveTrickHistoryScroll() {
-    const trickHistory = document.querySelector('.trick-history');
-    if (trickHistory) {
-        trickHistoryScrollPosition = trickHistory.scrollTop;
-    }
-}
-
-function restoreTrickHistoryScroll() {
-    const trickHistory = document.querySelector('.trick-history');
-    if (trickHistory && trickHistoryScrollPosition > 0) {
-        // Use setTimeout to ensure DOM has updated
-        setTimeout(() => {
-            trickHistory.scrollTop = trickHistoryScrollPosition;
-        }, 10);
-    }
-}
-
-// Reset scroll position when starting new hand
-function resetTrickHistoryScroll() {
-    trickHistoryScrollPosition = 0;
-}
-
+// UI UPDATE FUNCTIONS
 function updateFloatingScores() {
-    // Update floating game score with parity indicators
     const gameScoreEl = document.getElementById('floatingGameScore');
     if (gameScoreEl) {
         document.getElementById('floatingPlayerScore').textContent = gameState.player_score;
         document.getElementById('floatingComputerScore').textContent = gameState.computer_score;
         document.getElementById('floatingHandNumber').textContent = gameState.hand_number;
 
-        // Update parity displays
         const playerParityText = `(${gameState.player_parity.toUpperCase()})`;
         const computerParityText = `(${gameState.computer_parity.toUpperCase()})`;
-
         document.getElementById('floatingPlayerParity').textContent = playerParityText;
         document.getElementById('floatingComputerParity').textContent = computerParityText;
     }
 
-    // Update floating hand score
     const handScoreEl = document.getElementById('floatingHandScore');
     if (handScoreEl) {
         // Player side
@@ -360,7 +68,6 @@ function updateFloatingScores() {
         const playerBlindText = gameState.blind_bid === gameState.player_bid ? 'B' : '';
         document.getElementById('floatingPlayerBid').textContent = `${playerBid}${playerBlindText}`;
 
-        // Color code player bid if blind
         const playerBidEl = document.getElementById('floatingPlayerBid');
         if (playerBlindText) {
             playerBidEl.style.color = '#dc3545';
@@ -378,14 +85,12 @@ function updateFloatingScores() {
         const computerBlindText = gameState.computer_blind_bid === gameState.computer_bid ? 'B' : '';
         document.getElementById('floatingComputerBid').textContent = `${computerBid}${computerBlindText}`;
 
-        // Color code computer bid if blind OR if Marta bid first
         const computerBidEl = document.getElementById('floatingComputerBid');
         const martaWentFirst = gameState.phase === 'bidding' &&
             gameState.computer_bid !== null &&
             gameState.player_bid === null;
 
         if (computerBlindText) {
-            // Blind bid styling
             computerBidEl.style.color = '#dc3545';
             computerBidEl.style.fontWeight = 'bold';
             computerBidEl.style.backgroundColor = '';
@@ -393,7 +98,6 @@ function updateFloatingScores() {
             computerBidEl.style.borderRadius = '';
             computerBidEl.style.padding = '';
         } else if (martaWentFirst) {
-            // Marta went first - highlight her bid
             computerBidEl.style.color = '#1976d2';
             computerBidEl.style.fontWeight = 'bold';
             computerBidEl.style.backgroundColor = '#e3f2fd';
@@ -401,7 +105,6 @@ function updateFloatingScores() {
             computerBidEl.style.borderRadius = '4px';
             computerBidEl.style.padding = '2px 4px';
         } else {
-            // Normal styling
             computerBidEl.style.color = '#333';
             computerBidEl.style.fontWeight = '600';
             computerBidEl.style.backgroundColor = '';
@@ -411,61 +114,479 @@ function updateFloatingScores() {
         }
 
         document.getElementById('floatingComputerBags').textContent = gameState.computer_bags || 0;
-
-        // Spades status
         document.getElementById('floatingSpadesStatus').textContent = gameState.spades_broken ? 'Broken' : 'Not Broken';
     }
 }
 
-function updateBagsDisplay(elementId, bags) {
-    const bagsEl = document.getElementById(elementId);
-    if (!bagsEl) return;
+function updatePlayAreaVisibility() {
+    const playArea = document.getElementById('playArea');
+    if (!playArea) return;
 
-    bagsEl.textContent = `Bags: ${bags}/7`;
+    // Hide play area during these phases to save screen space
+    const hiddenPhases = ['discard', 'bidding', 'blind_decision', 'blind_bidding'];
 
-    // Color coding for mobile-friendly visibility
-    if (bags >= 6) {
-        bagsEl.style.color = '#d32f2f';
-        bagsEl.style.fontWeight = 'bold';
-        bagsEl.style.backgroundColor = '#ffebee';
-        bagsEl.style.padding = '2px 6px';
-        bagsEl.style.borderRadius = '4px';
-    } else if (bags >= 4) {
-        bagsEl.style.color = '#f57c00';
-        bagsEl.style.fontWeight = 'bold';
-        bagsEl.style.backgroundColor = '#fff3e0';
-        bagsEl.style.padding = '2px 6px';
-        bagsEl.style.borderRadius = '4px';
-    } else if (bags <= -4) {
-        bagsEl.style.color = '#1976d2';
-        bagsEl.style.fontWeight = 'bold';
-        bagsEl.style.backgroundColor = '#e3f2fd';
-        bagsEl.style.padding = '2px 6px';
-        bagsEl.style.borderRadius = '4px';
+    if (hiddenPhases.includes(gameState.phase)) {
+        playArea.classList.add('hidden-for-phase');
     } else {
-        bagsEl.style.color = '#666';
-        bagsEl.style.fontWeight = 'normal';
-        bagsEl.style.backgroundColor = 'transparent';
-        bagsEl.style.padding = '0';
+        playArea.classList.remove('hidden-for-phase');
     }
 }
 
-// Clean structured results display
+function updateHandCount() {
+    const playerHandCountEl = document.getElementById('playerHandCount');
+    if (playerHandCountEl) {
+        playerHandCountEl.textContent = `(${gameState.player_hand.length} cards)`;
+    }
+}
+
+function updateGameOverState() {
+    const gameOverEl = document.getElementById('gameOver');
+    const winnerTextEl = document.getElementById('winnerText');
+
+    if (gameState.game_over) {
+        gameOverEl.style.display = 'block';
+        winnerTextEl.textContent = gameState.message;
+        hideInteractiveSections();
+
+        // Show results for blind nil games
+        if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
+            handleResultsDisplay();
+        } else {
+            document.getElementById('resultsSection').classList.remove('show');
+        }
+    } else {
+        gameOverEl.style.display = 'none';
+    }
+}
+
+function hideInteractiveSections() {
+    document.getElementById('biddingSection').style.display = 'none';
+    const blindDecisionSection = document.getElementById('blindDecisionSection');
+    if (blindDecisionSection) blindDecisionSection.style.display = 'none';
+    document.getElementById('discardBlindBiddingSection').style.display = 'none';
+    document.getElementById('nextHandSection').style.display = 'none';
+    document.getElementById('playerHandSection').style.display = 'none';
+    document.getElementById('computerHandSection').style.display = 'none';
+}
+
+function updatePhaseVisibility() {
+    if (gameState.game_over) return;
+
+    const biddingSection = document.getElementById('biddingSection');
+    const blindDecisionSection = document.getElementById('blindDecisionSection');
+    const discardBlindSection = document.getElementById('discardBlindBiddingSection');
+
+    // Hide all sections first
+    biddingSection.style.display = 'none';
+    if (blindDecisionSection) blindDecisionSection.style.display = 'none';
+    discardBlindSection.style.display = 'none';
+
+    if (gameState.phase === 'blind_decision') {
+        if (blindDecisionSection) blindDecisionSection.style.display = 'block';
+    } else if (gameState.phase === 'blind_bidding') {
+        discardBlindSection.style.display = 'block';
+    } else if (gameState.phase === 'bidding') {
+        biddingSection.style.display = 'block';
+        if (!biddingSection.classList.contains('active')) {
+            biddingSection.classList.add('active');
+            resetBiddingState();
+        }
+    } else {
+        biddingSection.classList.remove('active');
+    }
+}
+
+function updateMessages() {
+    if (gameState.game_over) {
+        showMessage(gameState.message, gameState.winner === 'player' ? 'success' : '');
+        return;
+    }
+
+    let messageToShow = gameState.message;
+
+    // Clean bidding messages - determine who bids first and show simple message
+    if (gameState.phase === 'bidding') {
+        if (gameState.computer_bid !== null && gameState.player_bid === null) {
+            // Marta bid first scenario
+            const computerBlindText = gameState.computer_blind_bid ? " (BLIND)" : "";
+            messageToShow = `Marta bid ${gameState.computer_bid}${computerBlindText} first. Your turn to bid.`;
+        } else if (gameState.player_bid === null && gameState.computer_bid === null) {
+            // Determine who should bid first based on game logic
+            const firstBidder = gameState.first_leader === 'player' ? 'You bid first.' : 'Marta bids first.';
+            messageToShow = firstBidder;
+        }
+    }
+
+    // Avoid showing detailed results if structured results are shown
+    if (gameState.hand_over && gameState.hand_results) {
+        messageToShow = `Hand #${gameState.hand_number} complete! Scroll to see hand statistics, or click 'Next Hand' to continue!`;
+    }
+
+    showMessage(messageToShow, messageToShow.includes('WIN') || messageToShow.includes('BLIND NIL SUCCESS') ? 'success' : '');
+}
+
+function updatePlayArea() {
+    const trickDisplay = document.getElementById('trickDisplay');
+
+    if (gameState.current_trick.length === 0) {
+        trickDisplay.innerHTML = '<div style="color: #999; font-size: 14px;">Waiting for play...</div>';
+    } else {
+        let html = '<div class="trick-container">';
+
+        const playerCard = gameState.current_trick.find(play => play.player === 'player');
+        const computerCard = gameState.current_trick.find(play => play.player === 'computer');
+
+        // Always show side by side - You left, Marta right
+        if (playerCard) {
+            const card = playerCard.card;
+            const suitClass = getSuitClass(card.suit);
+            html += `
+                <div class="trick-card ${suitClass}">
+                    <div class="player-name">You</div>
+                    <div class="card-content">${card.rank}${card.suit}</div>
+                </div>
+            `;
+        } else {
+            html += '<div class="trick-card-placeholder"><div style="font-size: 10px; color: #999;">You</div></div>';
+        }
+
+        if (computerCard) {
+            const card = computerCard.card;
+            const suitClass = getSuitClass(card.suit);
+            html += `
+                <div class="trick-card ${suitClass}">
+                    <div class="player-name">Marta</div>
+                    <div class="card-content">${card.rank}${card.suit}</div>
+                </div>
+            `;
+        } else {
+            html += '<div class="trick-card-placeholder"><div style="font-size: 10px; color: #999;">Marta</div></div>';
+        }
+
+        html += '</div>';
+        trickDisplay.innerHTML = html;
+    }
+}
+
+function updatePlayerHand() {
+    const handEl = document.getElementById('playerHand');
+    const playerHandSection = document.getElementById('playerHandSection');
+
+    // Hide entire hand section when hand is complete
+    if (gameState.hand_over && gameState.player_hand.length === 0) {
+        playerHandSection.style.display = 'none';
+        return;
+    } else {
+        playerHandSection.style.display = 'block';
+    }
+
+    handEl.innerHTML = '';
+
+    // Hide cards during blind decision or blind bidding phases
+    if (gameState.phase === 'blind_decision' || gameState.phase === 'blind_bidding') {
+        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">Cards hidden during blind bidding decision!</div>';
+        return;
+    }
+
+    gameState.player_hand.forEach((card, index) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = `card ${getSuitClass(card.suit)}`;
+        cardEl.textContent = `${card.rank}${card.suit}`;
+
+        cardEl.onclick = () => selectCard(index);
+        cardEl.ontouchstart = (e) => {
+            e.preventDefault();
+            selectCard(index);
+        };
+
+        if (selectedCard === index) {
+            cardEl.classList.add('selected');
+        }
+
+        if (!canPlayCard(card, index)) {
+            cardEl.classList.add('disabled');
+        }
+
+        handEl.appendChild(cardEl);
+    });
+}
+
+function updateComputerHand() {
+    const handEl = document.getElementById('computerHand');
+    const computerHandSection = handEl.closest('.hand-section');
+
+    // Hide entire computer hand section if debug mode is off
+    if (!gameState.debug_mode) {
+        computerHandSection.style.display = 'none';
+        return;
+    }
+
+    computerHandSection.style.display = 'block';
+    handEl.innerHTML = '';
+
+    // Only show cards if debug mode is on AND show_computer_hand is true
+    if (gameState.debug_mode && gameState.show_computer_hand && gameState.computer_hand) {
+        gameState.computer_hand.forEach((card, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = `card ${getSuitClass(card.suit)}`;
+            cardEl.textContent = `${card.rank}${card.suit}`;
+            cardEl.style.cursor = 'default';
+            handEl.appendChild(cardEl);
+        });
+    } else {
+        const cardCount = gameState.computer_hand_count || 0;
+        for (let i = 0; i < cardCount; i++) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            cardEl.style.background = '#666';
+            cardEl.style.color = '#999';
+            cardEl.textContent = '?';
+            cardEl.style.cursor = 'default';
+            handEl.appendChild(cardEl);
+        }
+    }
+}
+
+function updateActionButtons() {
+    const actionButton = document.getElementById('actionButton');
+    const nextHandSection = document.getElementById('nextHandSection');
+
+    if (gameState.hand_over && !gameState.game_over) {
+        actionButton.style.display = 'none';
+        nextHandSection.style.display = 'block';
+    } else {
+        nextHandSection.style.display = 'none';
+
+        if (gameState.phase === 'discard') {
+            actionButton.textContent = 'Discard Selected';
+            actionButton.onclick = discardCard;
+            actionButton.style.display = 'inline-block';
+        } else if (gameState.phase === 'playing') {
+            actionButton.textContent = 'Play Selected';
+            actionButton.onclick = playCard;
+            actionButton.style.display = 'inline-block';
+        } else {
+            actionButton.style.display = 'none';
+        }
+    }
+
+    if (selectedCard === null && actionButton.style.display !== 'none') {
+        actionButton.disabled = true;
+        actionButton.textContent = gameState.phase === 'discard' ? 'Select Card to Discard' : 'Select Card to Play';
+    } else if (actionButton.style.display !== 'none') {
+        actionButton.disabled = false;
+        actionButton.textContent = gameState.phase === 'discard' ? 'Discard Selected' : 'Play Selected';
+    }
+}
+
+function updateBidButtons() {
+    if (gameState.phase !== 'bidding') return;
+
+    const bidButtons = document.querySelectorAll('.bid-btn');
+    const confirmButton = document.getElementById('confirmBidButton');
+    const cancelButton = document.getElementById('cancelBidButton');
+
+    if (confirmingBid && selectedBid !== null) {
+        bidButtons.forEach(btn => {
+            const bidValue = parseInt(btn.getAttribute('data-bid'));
+            if (bidValue === selectedBid) {
+                btn.classList.add('selected');
+                btn.style.backgroundColor = '#28a745';
+                btn.style.color = 'white';
+                btn.style.border = '2px solid #1e7e34';
+            } else {
+                btn.classList.remove('selected');
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                btn.style.border = '';
+                btn.style.opacity = '0.6';
+            }
+        });
+
+        if (confirmButton) confirmButton.style.display = 'inline-block';
+        if (cancelButton) cancelButton.style.display = 'inline-block';
+    } else {
+        bidButtons.forEach(btn => {
+            btn.classList.remove('selected');
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+            btn.style.border = '';
+            btn.style.opacity = '';
+        });
+
+        if (confirmButton) confirmButton.style.display = 'none';
+        if (cancelButton) cancelButton.style.display = 'none';
+    }
+}
+
+function updateComputerHandToggle() {
+    const toggleButton = document.getElementById('toggleComputerHand');
+    if (toggleButton) {
+        if (gameState.debug_mode) {
+            toggleButton.style.display = 'inline-block';
+            toggleButton.textContent = gameState.show_computer_hand ? 'Hide Cards' : 'Show Cards';
+            toggleButton.style.background = '#6c757d';
+        } else {
+            toggleButton.style.display = 'none';
+        }
+    }
+}
+
+function updateDiscards() {
+    const discardsSection = document.getElementById('discardsSection');
+
+    if (gameState.hand_over && (gameState.player_discarded || gameState.computer_discarded)) {
+        discardsSection.style.display = 'block';
+
+        const playerDiscardEl = document.getElementById('playerDiscard');
+        if (gameState.player_discarded) {
+            const card = gameState.player_discarded;
+            playerDiscardEl.innerHTML = `<div class="card ${getSuitClass(card.suit)}">${card.rank}${card.suit}</div>`;
+        } else {
+            playerDiscardEl.innerHTML = '<div class="card" style="opacity: 0.5;">None</div>';
+        }
+
+        const computerDiscardEl = document.getElementById('computerDiscard');
+        if (gameState.computer_discarded) {
+            const card = gameState.computer_discarded;
+            computerDiscardEl.innerHTML = `<div class="card ${getSuitClass(card.suit)}">${card.rank}${card.suit}</div>`;
+        } else {
+            computerDiscardEl.innerHTML = '<div class="card" style="opacity: 0.5;">None</div>';
+        }
+    } else {
+        discardsSection.style.display = 'none';
+    }
+}
+
 function handleResultsDisplay() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContent = document.getElementById('resultsContent');
 
     if (gameState.hand_over && gameState.hand_results) {
-        // Show results section with clean structured content
         resultsSection.classList.add('show');
         resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
     } else {
-        // Don't show results if no structured data available
         resultsSection.classList.remove('show');
     }
 }
 
-// Clean formatting function
+function handleTrickCompletion() {
+    // Check for completed trick that needs to be displayed
+    if (gameState.current_trick && gameState.current_trick.length === 2 && !trickDisplayTimeout) {
+        trickDisplayTimeout = setTimeout(async () => {
+            try {
+                await fetch('/clear_trick', { method: 'POST' });
+                await loadGameState();
+                trickDisplayTimeout = null;
+            } catch (error) {
+                console.error('Error clearing trick:', error);
+                trickDisplayTimeout = null;
+            }
+        }, 1500);
+    }
+}
+
+// HELPER FUNCTIONS
+function getSuitClass(suit) {
+    switch (suit) {
+        case '♠': return 'spade';
+        case '♥': return 'heart';
+        case '♦': return 'diamond';
+        case '♣': return 'club';
+        default: return '';
+    }
+}
+
+function canPlayCard(card, index) {
+    if (gameState.phase === 'discard') return true;
+    if (gameState.turn !== 'player') return false;
+
+    if (gameState.current_trick.length === 1) {
+        const leadSuit = gameState.current_trick[0].card.suit;
+        const hasSuit = gameState.player_hand.some(c => c.suit === leadSuit);
+        if (hasSuit) {
+            return card.suit === leadSuit;
+        }
+        return true;
+    }
+
+    if (gameState.current_trick.length === 0) {
+        if (card.suit === '♠' && !gameState.spades_broken) {
+            return gameState.player_hand.every(c => c.suit === '♠');
+        }
+        return true;
+    }
+
+    return false;
+}
+
+function selectCard(index) {
+    if (!canPlayCard(gameState.player_hand[index], index)) {
+        showMessage('Cannot play this card!', 'error');
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
+        }
+        return;
+    }
+
+    selectedCard = index;
+    updatePlayerHand();
+    updateActionButtons();
+
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+}
+
+function showMessage(text, type = '') {
+    const messageEl = document.getElementById('message');
+    if (messageEl) {
+        messageEl.textContent = text;
+        messageEl.className = 'message ' + type;
+    }
+}
+
+// BIDDING FUNCTIONS
+function selectBid(bidAmount) {
+    if (confirmingBid) return;
+
+    selectedBid = bidAmount;
+    confirmingBid = true;
+
+    updateBidButtons();
+
+    const biddingPrompt = document.querySelector('.bidding-prompt');
+    if (biddingPrompt) {
+        const bidText = bidAmount === 0 ? 'NIL (0 tricks)' : `${bidAmount} tricks`;
+        biddingPrompt.innerHTML = `You selected: <strong>${bidText}</strong>`;
+    }
+
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
+function confirmSelectedBid() {
+    if (selectedBid === null || !confirmingBid) return;
+
+    makeBid(selectedBid);
+    resetBiddingState();
+}
+
+function cancelBidSelection() {
+    resetBiddingState();
+
+    const biddingPrompt = document.querySelector('.bidding-prompt');
+    if (biddingPrompt) {
+        biddingPrompt.innerHTML = `How many tricks will you take?`;
+    }
+}
+
+function resetBiddingState() {
+    selectedBid = null;
+    confirmingBid = false;
+    updateBidButtons();
+}
+
+// RESULTS FORMATTING
 function formatCleanResults(results) {
     let html = '';
 
@@ -534,7 +655,6 @@ function formatCleanResults(results) {
 }
 
 function formatScoring(scoringText) {
-    // Split by " | " and format each piece nicely
     const parts = scoringText.split(' | ');
     return parts.map(part => {
         part = part.trim();
@@ -553,260 +673,112 @@ function formatScoring(scoringText) {
     }).join('');
 }
 
-function updateActionButtons() {
-    const actionButton = document.getElementById('actionButton');
-    const nextHandSection = document.getElementById('nextHandSection');
-
-    if (gameState.hand_over && !gameState.game_over) {
-        actionButton.style.display = 'none';
-        nextHandSection.style.display = 'block';
-    } else {
-        nextHandSection.style.display = 'none';
-
-        if (gameState.phase === 'discard') {
-            actionButton.textContent = 'Discard Selected';
-            actionButton.onclick = discardCard;
-            actionButton.style.display = 'inline-block';
-        } else if (gameState.phase === 'playing') {
-            actionButton.textContent = 'Play Selected';
-            actionButton.onclick = playCard;
-            actionButton.style.display = 'inline-block';
-        } else {
-            actionButton.style.display = 'none';
-        }
-    }
-
-    if (selectedCard === null && actionButton.style.display !== 'none') {
-        actionButton.disabled = true;
-        actionButton.textContent = gameState.phase === 'discard' ? 'Select Card to Discard' : 'Select Card to Play';
-    } else if (actionButton.style.display !== 'none') {
-        actionButton.disabled = false;
-        actionButton.textContent = gameState.phase === 'discard' ? 'Discard Selected' : 'Play Selected';
+// SCROLL PRESERVATION
+function preserveTrickHistoryScroll() {
+    const trickHistory = document.querySelector('.trick-history');
+    if (trickHistory) {
+        trickHistoryScrollPosition = trickHistory.scrollTop;
     }
 }
 
-function updatePlayArea() {
-    const trickDisplay = document.getElementById('trickDisplay');
-
-    if (gameState.current_trick.length === 0) {
-        trickDisplay.innerHTML = '<div style="color: #999; font-size: 14px;">Waiting for play...</div>';
-    } else {
-        let html = '<div class="trick-container">';
-
-        const playerCard = gameState.current_trick.find(play => play.player === 'player');
-        const computerCard = gameState.current_trick.find(play => play.player === 'computer');
-
-        // Always show side by side - You left, Marta right
-        if (playerCard) {
-            const card = playerCard.card;
-            const suitClass = getSuitClass(card.suit);
-            html += `
-                <div class="trick-card ${suitClass}">
-                    <div class="player-name">You</div>
-                    <div class="card-content">${card.rank}${card.suit}</div>
-                </div>
-            `;
-        } else {
-            html += '<div class="trick-card-placeholder"><div style="font-size: 10px; color: #999;">You</div></div>';
-        }
-
-        if (computerCard) {
-            const card = computerCard.card;
-            const suitClass = getSuitClass(card.suit);
-            html += `
-                <div class="trick-card ${suitClass}">
-                    <div class="player-name">Marta</div>
-                    <div class="card-content">${card.rank}${card.suit}</div>
-                </div>
-            `;
-        } else {
-            html += '<div class="trick-card-placeholder"><div style="font-size: 10px; color: #999;">Marta</div></div>';
-        }
-
-        html += '</div>';
-        trickDisplay.innerHTML = html;
+function restoreTrickHistoryScroll() {
+    const trickHistory = document.querySelector('.trick-history');
+    if (trickHistory && trickHistoryScrollPosition > 0) {
+        setTimeout(() => {
+            trickHistory.scrollTop = trickHistoryScrollPosition;
+        }, 10);
     }
 }
 
-function updatePlayerHand() {
-    const handEl = document.getElementById('playerHand');
-    const playerHandSection = document.getElementById('playerHandSection');
-    handEl.innerHTML = '';
-
-    // Hide entire hand section when hand is complete
-    if (gameState.hand_over && gameState.player_hand.length === 0) {
-        playerHandSection.style.display = 'none';
-        return;
-    } else {
-        playerHandSection.style.display = 'block';
-    }
-
-    // Hide cards during blind decision or blind bidding phases
-    if (gameState.phase === 'blind_decision' || gameState.phase === 'blind_bidding') {
-        handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">Cards hidden during blind bidding decision!</div>';
-        return;
-    }
-
-    gameState.player_hand.forEach((card, index) => {
-        const cardEl = document.createElement('div');
-        cardEl.className = `card ${getSuitClass(card.suit)}`;
-        cardEl.textContent = `${card.rank}${card.suit}`;
-
-        cardEl.onclick = () => selectCard(index);
-        cardEl.ontouchstart = (e) => {
-            e.preventDefault();
-            selectCard(index);
-        };
-
-        if (selectedCard === index) {
-            cardEl.classList.add('selected');
-        }
-
-        if (!canPlayCard(card, index)) {
-            cardEl.classList.add('disabled');
-        }
-
-        handEl.appendChild(cardEl);
-    });
+function resetTrickHistoryScroll() {
+    trickHistoryScrollPosition = 0;
 }
 
-function updateComputerHand() {
-    const handEl = document.getElementById('computerHand');
-    const computerHandSection = handEl.closest('.hand-section');
-
-    // Hide entire computer hand section if debug mode is off
-    if (!gameState.debug_mode) {
-        computerHandSection.style.display = 'none';
-        return;
-    }
-
-    // Show computer hand section if debug mode is on
-    computerHandSection.style.display = 'block';
-    handEl.innerHTML = '';
-
-    // Only show cards if debug mode is on AND show_computer_hand is true
-    if (gameState.debug_mode && gameState.show_computer_hand && gameState.computer_hand) {
-        // Show actual cards
-        gameState.computer_hand.forEach((card, index) => {
-            const cardEl = document.createElement('div');
-            cardEl.className = `card ${getSuitClass(card.suit)}`;
-            cardEl.textContent = `${card.rank}${card.suit}`;
-            cardEl.style.cursor = 'default';
-            handEl.appendChild(cardEl);
-        });
-    } else {
-        // Show hidden cards with count (only in debug mode)
-        const cardCount = gameState.computer_hand_count || 0;
-        for (let i = 0; i < cardCount; i++) {
-            const cardEl = document.createElement('div');
-            cardEl.className = 'card';
-            cardEl.style.background = '#666';
-            cardEl.style.color = '#999';
-            cardEl.textContent = '?';
-            cardEl.style.cursor = 'default';
-            handEl.appendChild(cardEl);
-        }
-    }
-}
-
-function updateDiscards() {
-    const discardsSection = document.getElementById('discardsSection');
-
-    if (gameState.hand_over && (gameState.player_discarded || gameState.computer_discarded)) {
-        discardsSection.style.display = 'block';
-
-        // Show player discard
-        const playerDiscardEl = document.getElementById('playerDiscard');
-        if (gameState.player_discarded) {
-            const card = gameState.player_discarded;
-            playerDiscardEl.innerHTML = `<div class="card ${getSuitClass(card.suit)}">${card.rank}${card.suit}</div>`;
-        } else {
-            playerDiscardEl.innerHTML = '<div class="card" style="opacity: 0.5;">None</div>';
-        }
-
-        // Show computer discard
-        const computerDiscardEl = document.getElementById('computerDiscard');
-        if (gameState.computer_discarded) {
-            const card = gameState.computer_discarded;
-            computerDiscardEl.innerHTML = `<div class="card ${getSuitClass(card.suit)}">${card.rank}${card.suit}</div>`;
-        } else {
-            computerDiscardEl.innerHTML = '<div class="card" style="opacity: 0.5;">None</div>';
-        }
-    } else {
-        discardsSection.style.display = 'none';
-    }
-}
-
-async function nextHand() {
+// API FUNCTIONS
+async function chooseBlindNil() {
     try {
-        const response = await fetch('/next_hand', { method: 'POST' });
+        const response = await fetch('/choose_blind_nil', { method: 'POST' });
         if (response.ok) {
-            if (trickDisplayTimeout) {
-                clearTimeout(trickDisplayTimeout);
-                trickDisplayTimeout = null;
-            }
-            selectedCard = null;
-            resetBiddingState();
-            resetTrickHistoryScroll();
             await loadGameState();
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
         }
     } catch (error) {
-        console.error('Error starting next hand:', error);
-        showMessage('Error starting next hand', 'error');
+        console.error('Error choosing blind nil:', error);
+        showMessage('Error choosing blind nil', 'error');
     }
 }
 
-function getSuitClass(suit) {
-    switch (suit) {
-        case '♠': return 'spade';
-        case '♥': return 'heart';
-        case '♦': return 'diamond';
-        case '♣': return 'club';
-        default: return '';
+async function chooseBlindBidding() {
+    try {
+        const response = await fetch('/choose_blind_bidding', { method: 'POST' });
+        if (response.ok) {
+            await loadGameState();
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error choosing blind bidding:', error);
+        showMessage('Error choosing blind bidding', 'error');
     }
 }
 
-function canPlayCard(card, index) {
-    if (gameState.phase === 'discard') return true;
-    if (gameState.turn !== 'player') return false;
-
-    if (gameState.current_trick.length === 1) {
-        const leadSuit = gameState.current_trick[0].card.suit;
-        const hasSuit = gameState.player_hand.some(c => c.suit === leadSuit);
-        if (hasSuit) {
-            return card.suit === leadSuit;
+async function chooseNormalBidding() {
+    try {
+        const response = await fetch('/choose_normal_bidding', { method: 'POST' });
+        if (response.ok) {
+            await loadGameState();
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
         }
-        return true;
+    } catch (error) {
+        console.error('Error choosing normal bidding:', error);
+        showMessage('Error choosing normal bidding', 'error');
     }
-
-    if (gameState.current_trick.length === 0) {
-        if (card.suit === '♠' && !gameState.spades_broken) {
-            return gameState.player_hand.every(c => c.suit === '♠');
-        }
-        return true;
-    }
-
-    return false;
 }
 
-function selectCard(index) {
-    if (!canPlayCard(gameState.player_hand[index], index)) {
-        showMessage('Cannot play this card!', 'error');
-        if (navigator.vibrate) {
-            navigator.vibrate(100);
+async function makeBid(bidAmount) {
+    try {
+        const response = await fetch('/bid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bid: bidAmount })
+        });
+
+        if (response.ok) {
+            await loadGameState();
+            if (navigator.vibrate) navigator.vibrate(50);
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
         }
-        return;
+    } catch (error) {
+        console.error('Error making bid:', error);
+        showMessage('Error making bid', 'error');
     }
+}
 
-    selectedCard = index;
-    updatePlayerHand();
-    updateActionButtons();
+async function makeBlindBid(bidAmount) {
+    try {
+        const response = await fetch('/blind_bid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bid: bidAmount })
+        });
 
-    if (navigator.vibrate) {
-        navigator.vibrate(50);
+        if (response.ok) {
+            await loadGameState();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error making blind bid:', error);
+        showMessage('Error making blind bid', 'error');
     }
 }
 
@@ -872,48 +844,6 @@ async function performAction() {
     }
 }
 
-async function makeBid(bidAmount) {
-    try {
-        const response = await fetch('/bid', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bid: bidAmount })
-        });
-
-        if (response.ok) {
-            await loadGameState();
-            if (navigator.vibrate) navigator.vibrate(50);
-        } else {
-            const error = await response.json();
-            showMessage(error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error making bid:', error);
-        showMessage('Error making bid', 'error');
-    }
-}
-
-async function makeBlindBid(bidAmount) {
-    try {
-        const response = await fetch('/blind_bid', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bid: bidAmount })
-        });
-
-        if (response.ok) {
-            await loadGameState();
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-        } else {
-            const error = await response.json();
-            showMessage(error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error making blind bid:', error);
-        showMessage('Error making blind bid', 'error');
-    }
-}
-
 async function toggleComputerHand() {
     try {
         const response = await fetch('/toggle_computer_hand', { method: 'POST' });
@@ -926,6 +856,28 @@ async function toggleComputerHand() {
     } catch (error) {
         console.error('Error toggling computer hand:', error);
         showMessage('Error toggling computer hand', 'error');
+    }
+}
+
+async function nextHand() {
+    try {
+        const response = await fetch('/next_hand', { method: 'POST' });
+        if (response.ok) {
+            if (trickDisplayTimeout) {
+                clearTimeout(trickDisplayTimeout);
+                trickDisplayTimeout = null;
+            }
+            selectedCard = null;
+            resetBiddingState();
+            resetTrickHistoryScroll();
+            await loadGameState();
+        } else {
+            const error = await response.json();
+            showMessage(error.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error starting next hand:', error);
+        showMessage('Error starting next hand', 'error');
     }
 }
 
@@ -947,21 +899,7 @@ async function startNewGame() {
     }
 }
 
-async function startNewGameWithRedirect() {
-    window.location.href = '/?new=true';
-}
-
-// Fixed showMessage function - no auto-scroll behavior
-function showMessage(text, type = '') {
-    const messageEl = document.getElementById('message');
-    if (messageEl) {
-        messageEl.textContent = text;
-        messageEl.className = 'message ' + type;
-        // Removed all auto-scroll behavior - let users control their own scrolling
-    }
-}
-
-// Initialize game on load
+// INITIALIZATION
 document.addEventListener('DOMContentLoaded', function () {
     loadGameState();
 
