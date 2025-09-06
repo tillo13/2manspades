@@ -153,8 +153,14 @@ def check_special_cards_in_trick(trick, winner):
         'explanation': explanation
     }
 
-def calculate_discard_score_with_winner(player_discard, computer_discard, player_parity, computer_parity):
-    """Calculate the bonus points from discarded cards and determine winner."""
+def calculate_discard_score_with_winner(player_discard, computer_discard, player_parity, computer_parity, game_state=None):
+    """
+    Calculate the bonus points from discarded cards and determine winner.
+    
+    DENIAL RULE: If discard points would end the game, the losing player who wins
+    the discard pile automatically SUBTRACTS those points from opponent instead.
+    This keeps the game alive for another hand!
+    """
     if not player_discard or not computer_discard:
         return {
             'player_bonus': 0,
@@ -162,7 +168,8 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
             'total': 0,
             'is_double': False,
             'winner': None,
-            'explanation': 'No discards to score'
+            'explanation': 'No discards to score',
+            'denial_option_used': False
         }
     
     # Calculate total value
@@ -177,27 +184,90 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
     # Determine base points (10 for normal, 20 for doubles)
     base_points = 20 if is_double else 10
     
-    # Award points based on parity and determine winner
-    player_bonus = 0
-    computer_bonus = 0
+    # Determine who wins the discard pile based on parity
+    is_total_even = (total % 2 == 0)
     winner = None
     
-    is_total_even = (total % 2 == 0)
-    
     if is_total_even and player_parity == 'even':
-        player_bonus = base_points
         winner = 'player'
     elif not is_total_even and player_parity == 'odd':
-        player_bonus = base_points
         winner = 'player'
     elif is_total_even and computer_parity == 'even':
-        computer_bonus = base_points
         winner = 'computer'
     elif not is_total_even and computer_parity == 'odd':
-        computer_bonus = base_points
         winner = 'computer'
     
-    # Create explanation
+    # Initialize default bonuses
+    player_bonus = 0
+    computer_bonus = 0
+    denial_option_used = False
+    
+    # Check if we should apply the denial rule
+    if game_state and winner:
+        # Get current scores (before any discard bonus)
+        player_score = game_state.get('player_score', 0)
+        computer_score = game_state.get('computer_score', 0)
+        player_bags = game_state.get('player_bags', 0)
+        computer_bags = game_state.get('computer_bags', 0)
+        target_score = game_state.get('target_score', 300)
+        
+        # Calculate display scores (what players see)
+        def calc_display_score(base_score, bags):
+            if bags >= 0:
+                if base_score < 0:
+                    tens_and_higher = (base_score // 10) * 10
+                    return tens_and_higher - bags
+                else:
+                    tens_and_higher = (base_score // 10) * 10
+                    return tens_and_higher + bags
+            else:
+                return base_score
+        
+        player_display = calc_display_score(player_score, player_bags)
+        computer_display = calc_display_score(computer_score, computer_bags)
+        
+        # Determine if denial should be used (automatic for both players)
+        if winner == 'player':
+            # Player wins the discard pile
+            new_player_display = calc_display_score(player_score + base_points, player_bags)
+            
+            # Check if either player would reach target score
+            if new_player_display >= target_score or computer_display >= target_score:
+                if player_display < computer_display:
+                    # Player is losing - USE DENIAL to keep game alive!
+                    computer_bonus = -base_points  # Subtract from Marta instead
+                    denial_option_used = True
+                else:
+                    # Player is already winning - take the points normally
+                    player_bonus = base_points
+            else:
+                # Game continues either way - normal points
+                player_bonus = base_points
+                
+        else:  # winner == 'computer'
+            # Computer wins the discard pile
+            new_computer_display = calc_display_score(computer_score + base_points, computer_bags)
+            
+            # Check if either player would reach target score
+            if new_computer_display >= target_score or player_display >= target_score:
+                if computer_display < player_display:
+                    # Marta is losing - USE DENIAL to keep game alive!
+                    player_bonus = -base_points  # Subtract from player instead
+                    denial_option_used = True
+                else:
+                    # Marta is already winning - take the points normally
+                    computer_bonus = base_points
+            else:
+                # Game continues either way - normal points
+                computer_bonus = base_points
+    else:
+        # No game state provided - use normal rules
+        if winner == 'player':
+            player_bonus = base_points
+        elif winner == 'computer':
+            computer_bonus = base_points
+    
+    # Create explanation text
     double_text = ""
     if is_double:
         if player_discard['suit'] == computer_discard['suit']:
@@ -209,8 +279,14 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
     
     explanation = f"Discards: {player_discard['rank']}{player_discard['suit']} ({player_value}) + {computer_discard['rank']}{computer_discard['suit']} ({computer_value}) = {total} ({parity_text}){double_text}"
     
-    if player_bonus > 0:
-        explanation += f" → You gets {player_bonus} pts!"
+    # Add outcome to explanation
+    if denial_option_used:
+        if winner == 'player':
+            explanation += f" → You use DENIAL! Marta loses {base_points} pts (keeps game alive!)"
+        else:
+            explanation += f" → Marta uses DENIAL! You lose {base_points} pts (keeps game alive!)"
+    elif player_bonus > 0:
+        explanation += f" → You get {player_bonus} pts!"
     elif computer_bonus > 0:
         explanation += f" → Marta gets {computer_bonus} pts!"
     else:
@@ -222,7 +298,8 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
         'total': total,
         'is_double': is_double,
         'winner': winner,
-        'explanation': explanation
+        'explanation': explanation,
+        'denial_option_used': denial_option_used
     }
 
 def apply_bags_penalty(score, bags):

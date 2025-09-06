@@ -343,11 +343,16 @@ def computer_lead(game):
     if card['suit'] == '♠':
         game['spades_broken'] = True
 
+
 def check_game_over(game):
     """
     Check if the game is over (someone reached target score OR down by 300+ points)
     Updates game state with winner information if game is over
-    Uses proper tie-breaking logic considering base scores and bags
+    
+    SIMPLE RULE: Higher display score ALWAYS wins!
+    - 302 beats 300 (regardless of bags)
+    - 301 beats 300 (regardless of bags)
+    - Bags only matter as tie-breaker when display scores are EXACTLY tied
     """
     player_base_score = game['player_score']
     computer_base_score = game['computer_score']
@@ -386,6 +391,7 @@ def check_game_over(game):
     if player_display_score >= target_score or computer_display_score >= target_score:
         game['game_over'] = True
         
+        # SIMPLE: Higher display score wins. Period.
         if player_display_score > computer_display_score:
             game['winner'] = 'player'
             game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score}!"
@@ -393,30 +399,43 @@ def check_game_over(game):
             game['winner'] = 'computer'
             game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score}!"
         else:
-            # Tie-breaking logic
+            # Display scores are EXACTLY tied (e.g., both 300)
+            # Only NOW do we look at tie-breakers
+            
+            # First tie-breaker: Higher base score
             if player_base_score > computer_base_score:
                 game['winner'] = 'player'
-                game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (tie-breaker)!"
+                game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (higher base score tie-breaker)!"
             elif computer_base_score > player_base_score:
                 game['winner'] = 'computer'
-                game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (tie-breaker)!"
+                game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (higher base score tie-breaker)!"
             else:
-                # Bags tie-breaker - negative bags lose
-                if player_bags < 0 and computer_bags >= 0:
+                # Second tie-breaker: Fewer bags (positive bags are better than negative)
+                # If one has positive bags and one has negative, positive wins
+                if player_bags >= 0 and computer_bags < 0:
+                    game['winner'] = 'player'
+                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (positive bags beat negative)!"
+                elif computer_bags >= 0 and player_bags < 0:
                     game['winner'] = 'computer'
-                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (negative bags lose)!"
-                elif computer_bags < 0 and player_bags >= 0:
+                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (positive bags beat negative)!"
+                elif player_bags < computer_bags and player_bags >= 0 and computer_bags >= 0:
+                    # Both positive: fewer is better
                     game['winner'] = 'player'
-                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (negative bags lose)!"
-                elif player_bags < computer_bags:
+                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (fewer bags: {player_bags} vs {computer_bags})!"
+                elif computer_bags < player_bags and player_bags >= 0 and computer_bags >= 0:
+                    game['winner'] = 'computer'
+                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (fewer bags: {computer_bags} vs {player_bags})!"
+                elif player_bags > computer_bags and player_bags < 0 and computer_bags < 0:
+                    # Both negative: less negative (closer to 0) is better
                     game['winner'] = 'player'
-                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (fewer bags)!"
-                elif computer_bags < player_bags:
-                    game['winner'] = 'computer' 
-                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (fewer bags)!"
+                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (less negative bags: {player_bags} vs {computer_bags})!"
+                elif computer_bags > player_bags and player_bags < 0 and computer_bags < 0:
+                    game['winner'] = 'computer'
+                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (less negative bags: {computer_bags} vs {player_bags})!"
                 else:
+                    # Absolute tie - same everything
                     game['winner'] = 'tie'
-                    game['message'] = f"GAME OVER! TIE at {player_display_score} points each!"
+                    game['message'] = f"GAME OVER! ABSOLUTE TIE at {player_display_score} points each!"
         
         return True
     

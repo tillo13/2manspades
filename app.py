@@ -777,7 +777,8 @@ def discard_card():
         game['player_discarded'],
         game['computer_discarded'],
         game.get('player_parity', 'even'),
-        game.get('computer_parity', 'odd')
+        game.get('computer_parity', 'odd'),
+        game  # Pass game state for denial rule
     )
     
     # Store discard results for later reveal
