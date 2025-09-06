@@ -44,8 +44,13 @@ class ClaudeGameChat:
        print(f"[CLAUDE] API key found: {self.api_key[:10]}...{self.api_key[-4:] if len(self.api_key) > 14 else 'SHORT'}")
        
        try:
-           self.client = anthropic.Anthropic(api_key=self.api_key)
-           print("[CLAUDE] Anthropic client initialized successfully")
+           # FIXED: Proper client configuration with retries and timeout
+           self.client = anthropic.Anthropic(
+               api_key=self.api_key,
+               max_retries=5,  # Increase from default 2 to 5
+               timeout=60.0,   # Set 60 second timeout instead of 10 minute default
+           )
+           print("[CLAUDE] Anthropic client initialized successfully with retry config")
        except Exception as e:
            print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
            raise e
@@ -60,6 +65,7 @@ class ClaudeGameChat:
            "This is a custom variant with parity scoring, blind bidding, and special bag-reduction cards. "
            "You can see the current game state, your opponent's played cards, discard pile results, scores, "
            "bidding patterns, and trick outcomes - but you cannot see cards still in your opponent's hand. "
+           "IMPORTANT: You also cannot see discard results until the hand is completely over. "
            "Reference specific details from what you can legitimately know: current scores, recent plays, "
            "bidding accuracy, your own strategic decisions, bag situations, parity advantages, and trick results. "
            "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
@@ -71,6 +77,8 @@ class ClaudeGameChat:
        print(f"  Model: {self.model}")
        print(f"  Max tokens: {self.max_tokens}")
        print(f"  Temperature: {self.temperature}")
+       print(f"  Max retries: 5")
+       print(f"  Timeout: 60.0 seconds")
        print(f"  System prompt length: {len(self.system_prompt)} chars")
        print(f"  Mode: Marta as active player")
    
@@ -126,8 +134,26 @@ class ClaudeGameChat:
            print(f"[CLAUDE] SUCCESS: Returning Marta's active player response")
            return api_response
            
+       except anthropic.APITimeoutError as e:
+           print(f"[CLAUDE] API Timeout Error: {e}")
+           fallback = self._fallback_marta_response(game_context)
+           print(f"[CLAUDE] Using timeout fallback: '{fallback}'")
+           return fallback
+           
+       except anthropic.RateLimitError as e:
+           print(f"[CLAUDE] Rate Limit Error: {e}")
+           fallback = self._fallback_marta_response(game_context)
+           print(f"[CLAUDE] Using rate limit fallback: '{fallback}'")
+           return fallback
+           
+       except anthropic.APIConnectionError as e:
+           print(f"[CLAUDE] Connection Error: {e}")
+           fallback = self._fallback_marta_response(game_context)
+           print(f"[CLAUDE] Using connection error fallback: '{fallback}'")
+           return fallback
+           
        except anthropic.APIError as e:
-           print(f"[CLAUDE] Anthropic API Error: {e}")
+           print(f"[CLAUDE] General API Error: {e}")
            fallback = self._fallback_marta_response(game_context)
            print(f"[CLAUDE] Using API error fallback: '{fallback}'")
            return fallback
@@ -146,13 +172,24 @@ class ClaudeGameChat:
            print(f"[CLAUDE] No game context provided")
            return "[MY_VISIBLE_GAME_STATE: No context available] "
        
-       # Create Marta's visible context (exclude her hidden hand)
+       # Create Marta's visible context (exclude her hidden hand AND secret discard info)
        marta_visible_context = {}
        
        for key, value in game_context.items():
-           # Skip internal/hidden information
-           if key in {'computer_hand', 'client_info', 'game_id', 'show_computer_hand', 
-                     'current_hand_id', 'game_started_at', 'action_sequence', 'trick_display_timer'}:
+           # Skip internal/hidden information AND discard results until hand is over
+           excluded_keys = {
+               'computer_hand', 'client_info', 'game_id', 'show_computer_hand', 
+               'current_hand_id', 'game_started_at', 'action_sequence', 'trick_display_timer'
+           }
+           
+           # Also exclude discard information until hand is complete
+           if not game_context.get('hand_over', False):
+               excluded_keys.update({
+                   'player_discarded', 'computer_discarded', 'discard_bonus_explanation',
+                   'pending_discard_result', 'pending_special_discard_result'
+               })
+           
+           if key in excluded_keys:
                continue
                
            # Convert and rename from Marta's perspective
@@ -179,8 +216,9 @@ class ClaudeGameChat:
                    }
                    for trick in value
                ]
-           elif key in ['player_discarded', 'computer_discarded'] and value:
-               # Rename for Marta's perspective
+           # Handle discard cards ONLY if hand is over
+           elif key in ['player_discarded', 'computer_discarded'] and value and game_context.get('hand_over', False):
+               # Only show discard results after hand completion
                new_key = 'my_discarded' if key == 'computer_discarded' else 'opponent_discarded'
                marta_visible_context[new_key] = f"{value['rank']}{value['suit']}"
            elif key.startswith('player_'):
@@ -232,7 +270,9 @@ class ClaudeGameChat:
                else:
                    marta_visible_context[key] = value
            else:
-               # Keep other fields as-is
+               # Keep other fields as-is (but exclude discard explanation during active play)
+               if key == 'discard_bonus_explanation' and not game_context.get('hand_over', False):
+                   continue
                marta_visible_context[key] = value
        
        # Convert to compact JSON for Claude
@@ -242,6 +282,10 @@ class ClaudeGameChat:
        summary_parts = []
        summary_parts.append(f"Hand {marta_visible_context.get('hand_number', 1)}")
        summary_parts.append(f"Phase: {marta_visible_context.get('phase', 'unknown')}")
+       
+       # Add hand completion status
+       if marta_visible_context.get('hand_over', False):
+           summary_parts.append("(Hand Complete)")
        
        my_score = marta_visible_context.get('my_score', 0)
        opponent_score = marta_visible_context.get('opponent_score', 0)
@@ -287,7 +331,8 @@ class ClaudeGameChat:
                "You're keeping me on my toes.",
                "That's one way to look at it."
            ]
-           selected = fallbacks[0]
+           import random
+           selected = random.choice(fallbacks)
            print(f"[CLAUDE] No context fallback: '{selected}'")
            return selected
        
@@ -321,7 +366,8 @@ class ClaudeGameChat:
                contextual_fallbacks.append(f"Hand {hand_number} already? Time's flying.")
            
            if contextual_fallbacks:
-               selected = contextual_fallbacks[0]
+               import random
+               selected = random.choice(contextual_fallbacks)
                print(f"[CLAUDE] Contextual Marta fallback: '{selected}'")
                return selected
                
@@ -473,6 +519,7 @@ def test_claude_connection():
            'computer_tricks': 3,  # Marta's tricks
            'player_bags': 1,  # Opponent's bags
            'computer_bags': 0,  # Marta's bags
+           'hand_over': False,  # Hand still in progress - no discard info
            'trick_history': [
                {'number': 1, 'player_card': {'rank': '7', 'suit': '♣'}, 'computer_card': {'rank': 'A', 'suit': '♣'}, 'winner': 'computer'},
                {'number': 2, 'player_card': {'rank': 'K', 'suit': '♠'}, 'computer_card': {'rank': 'Q', 'suit': '♠'}, 'winner': 'player'}
