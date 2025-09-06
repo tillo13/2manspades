@@ -169,79 +169,79 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Using greeting fallback: '{fallback}'")
             return fallback
     
+
+
     def _build_enhanced_context(self, game_context: Optional[Dict[str, Any]]) -> str:
-        """Build enhanced context for snarky, informed responses with logging"""
-        print(f"[CLAUDE] Building enhanced context...")
+        """Build comprehensive context with ALL game data for Claude"""
+        print(f"[CLAUDE] Building comprehensive context...")
         
         if not game_context:
             print(f"[CLAUDE] No game context provided")
             return "[Two-Man Spades game context unknown] "
         
-        # Core game info
-        hand = game_context.get('hand_number', 1)
-        phase = game_context.get('phase', 'playing')
-        player_score = game_context.get('player_score', 0)
-        marta_score = game_context.get('computer_score', 0)
-        player_parity = game_context.get('player_parity', 'even')
-        computer_parity = game_context.get('computer_parity', 'odd')
+        import json
         
-        print(f"[CLAUDE] Core context - Hand: {hand}, Phase: {phase}")
-        print(f"[CLAUDE] Scores - Player: {player_score}, Marta: {marta_score}")
-        print(f"[CLAUDE] Parity - Player: {player_parity}, Marta: {computer_parity}")
+        # Create a cleaned version of the game context for Claude
+        # Remove internal/technical fields that aren't relevant for Marta's personality
+        excluded_keys = {
+            'client_info', 'game_id', 'current_hand_id', 'game_started_at', 
+            'trick_display_timer', 'action_sequence', 'show_computer_hand'
+        }
         
-        context_parts = [
-            f"Two-Man Spades Hand {hand}, {phase} phase",
-            f"Parity: You({player_parity}) vs Me({computer_parity})",
-            f"Scores: You {player_score}, Me {marta_score}"
-        ]
+        clean_context = {}
+        for key, value in game_context.items():
+            if key not in excluded_keys:
+                # Convert card objects to readable strings
+                if key in ['player_hand', 'computer_hand'] and isinstance(value, list):
+                    clean_context[key] = [f"{card['rank']}{card['suit']}" for card in value]
+                elif key in ['player_discarded', 'computer_discarded'] and value:
+                    clean_context[key] = f"{value['rank']}{value['suit']}"
+                elif key == 'current_trick' and isinstance(value, list):
+                    clean_context[key] = [
+                        {
+                            'player': play['player'],
+                            'card': f"{play['card']['rank']}{play['card']['suit']}"
+                        }
+                        for play in value
+                    ]
+                elif key == 'trick_history' and isinstance(value, list):
+                    clean_context[key] = [
+                        {
+                            'number': trick['number'],
+                            'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick.get('player_card') else None,
+                            'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick.get('computer_card') else None,
+                            'winner': trick['winner']
+                        }
+                        for trick in value
+                    ]
+                else:
+                    clean_context[key] = value
         
-        # Add bags context
-        player_bags = game_context.get('player_bags', 0)
-        marta_bags = game_context.get('computer_bags', 0)
-        print(f"[CLAUDE] Bags - Player: {player_bags}, Marta: {marta_bags}")
+        # Convert to compact JSON for Claude
+        context_json = json.dumps(clean_context, separators=(',', ':'))
         
-        if player_bags != 0 or marta_bags != 0:
-            context_parts.append(f"Bags: You {player_bags}, Me {marta_bags}")
+        # Create readable summary for logging
+        summary_parts = []
+        summary_parts.append(f"Hand {clean_context.get('hand_number', 1)}")
+        summary_parts.append(f"Phase: {clean_context.get('phase', 'unknown')}")
+        summary_parts.append(f"Scores: You {clean_context.get('player_score', 0)}, Me {clean_context.get('computer_score', 0)}")
         
-        # Add bidding context
-        player_bid = game_context.get('player_bid')
-        marta_bid = game_context.get('computer_bid')
-        print(f"[CLAUDE] Bids - Player: {player_bid}, Marta: {marta_bid}")
+        if clean_context.get('player_hand'):
+            summary_parts.append(f"Your cards: {len(clean_context['player_hand'])}")
+        if clean_context.get('computer_hand'):
+            summary_parts.append(f"My cards: {len(clean_context['computer_hand'])}")
+        if clean_context.get('trick_history'):
+            summary_parts.append(f"Tricks played: {len(clean_context['trick_history'])}")
         
-        if player_bid is not None and marta_bid is not None:
-            player_blind = " BLIND" if game_context.get('blind_bid') == player_bid else ""
-            marta_blind = " BLIND" if game_context.get('computer_blind_bid') == marta_bid else ""
-            context_parts.append(f"Bids: You {player_bid}{player_blind}, Me {marta_bid}{marta_blind}")
-            print(f"[CLAUDE] Blind bids - Player: {bool(player_blind)}, Marta: {bool(marta_blind)}")
+        summary = " | ".join(summary_parts)
         
-        # Add current trick progress
-        if phase == 'playing':
-            player_tricks = game_context.get('player_tricks', 0)
-            marta_tricks = game_context.get('computer_tricks', 0)
-            context_parts.append(f"Tricks taken: You {player_tricks}, Me {marta_tricks}")
-            print(f"[CLAUDE] Tricks taken - Player: {player_tricks}, Marta: {marta_tricks}")
-            
-            turn = game_context.get('turn', 'unknown')
-            if turn != 'unknown':
-                context_parts.append(f"Turn: {turn}")
-                print(f"[CLAUDE] Current turn: {turn}")
+        print(f"[CLAUDE] Context summary: {summary}")
+        print(f"[CLAUDE] Full context JSON length: {len(context_json)} chars")
         
-        # Add game status hints
-        score_diff = marta_score - player_score
-        if score_diff >= 100:
-            context_parts.append("(I'm winning big)")
-            print(f"[CLAUDE] Game status: Marta winning by {score_diff}")
-        elif score_diff <= -100:
-            context_parts.append("(You're ahead - for now)")
-            print(f"[CLAUDE] Game status: Player winning by {abs(score_diff)}")
-        elif abs(score_diff) <= 20:
-            context_parts.append("(Close game)")
-            print(f"[CLAUDE] Game status: Close game (diff: {abs(score_diff)})")
+        # Send complete context to Claude
+        final_context = f"[GAME_STATE: {context_json}] "
         
-        final_context = f"[{' | '.join(context_parts)}] "
-        print(f"[CLAUDE] Final context string: '{final_context}'")
-        print(f"[CLAUDE] Context length: {len(final_context)} chars")
-        
+        print(f"[CLAUDE] Final context length: {len(final_context)} chars")
         return final_context
     
     def _fallback_snarky_response(self, game_context: Optional[Dict[str, Any]]) -> str:
