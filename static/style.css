@@ -1321,10 +1321,6 @@ button:disabled {
     }
 
     /* Desktop chat adjustments */
-    .chat-bubble-icon {
-        right: calc(50% - 375px + 15px);
-    }
-
     .chat-window {
         left: 50%;
         right: auto;
