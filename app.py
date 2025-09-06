@@ -326,7 +326,190 @@ def new_game():
     )
     
     return jsonify({'success': True})
+@app.route('/chat_response', methods=['POST'])
+def chat_response():
+    """Handle chat messages with smart Marta responses"""
+    print("[CHAT] Received chat request")
+    
+    try:
+        data = request.get_json()
+        player_message = data.get('message', '')
+        print(f"[CHAT] Player message: '{player_message}'")
+        
+        if 'game' in session:
+            game_state = session['game']
+            print(f"[CHAT] Game state found: Hand {game_state.get('hand_number', 1)}, Phase {game_state.get('phase', 'unknown')}")
+            
+            # Import your claude utils
+            from utilities.claude_utils import get_smart_marta_response
+            
+            print("[CHAT] Calling Claude...")
+            response = get_smart_marta_response(player_message, game_state)
+            print(f"[CHAT] Final response: '{response}'")
+            
+            return jsonify({'response': response})
+        else:
+            print("[CHAT] No game session found")
+            return jsonify({'response': 'Hi there! Start a game and let\'s chat!'})
+            
+    except Exception as e:
+        print(f"[CHAT] Error: {e}")
+        # Fallback to random response
+        fallback_responses = [
+            "That's interesting!",
+            "I see what you mean...",
+            "Good point!",
+            "Let's focus on the game!",
+            "Hmm, tell me more..."
+        ]
+        import random
+        fallback = random.choice(fallback_responses)
+        print(f"[CHAT] Using fallback: '{fallback}'")
+        return jsonify({'response': fallback})
 
+@app.route('/smart_greeting', methods=['POST'])
+def smart_greeting():
+    """Get contextual greetings from Marta"""
+    print("[GREETING] Received greeting request")
+    
+    try:
+        data = request.get_json()
+        greeting_type = data.get('type', 'hand_start')
+        print(f"[GREETING] Type: {greeting_type}")
+        
+        if 'game' in session:
+            game_state = session['game']
+            print(f"[GREETING] Game state: Hand {game_state.get('hand_number', 1)}")
+            
+            from utilities.claude_utils import get_smart_marta_greeting
+            
+            print("[GREETING] Calling Claude for greeting...")
+            response = get_smart_marta_greeting(game_state)
+            print(f"[GREETING] Final greeting: '{response}'")
+            
+            return jsonify({'response': response})
+        else:
+            print("[GREETING] No game session found")
+            return jsonify({'response': 'Ready to play!'})
+            
+    except Exception as e:
+        print(f"[GREETING] Error: {e}")
+        fallback = 'Let\'s play some spades!' if greeting_type == 'game_start' else 'New hand, here we go!'
+        print(f"[GREETING] Using fallback: '{fallback}'")
+        return jsonify({'response': fallback})
+
+@app.route('/event_comment', methods=['POST'])
+def event_comment():
+    """Get contextual event comments from Marta"""
+    print("[EVENT] Received event comment request")
+    
+    try:
+        data = request.get_json()
+        event_type = data.get('event_type', 'unknown')
+        context = data.get('context', {})
+        print(f"[EVENT] Type: {event_type}, Context: {context}")
+        
+        if 'game' in session:
+            game_state = session['game']
+            
+            # Build a special prompt for event comments
+            event_prompt = f"React to this game event: {event_type}"
+            if context:
+                event_prompt += f" - {context}"
+            
+            from utilities.claude_utils import get_smart_marta_response
+            
+            print("[EVENT] Calling Claude for event comment...")
+            response = get_smart_marta_response(event_prompt, game_state)
+            print(f"[EVENT] Final comment: '{response}'")
+            
+            return jsonify({'response': response})
+        else:
+            print("[EVENT] No game session found")
+            return jsonify({'response': ''})
+            
+    except Exception as e:
+        print(f"[EVENT] Error: {e}")
+        return jsonify({'response': ''})  # Silent failure for events
+
+# Debug routes for testing Claude integration
+@app.route('/test_claude', methods=['GET'])
+def test_claude():
+    """Debug route to test Claude API integration"""
+    print("[DEBUG] Testing Claude API...")
+    
+    try:
+        from utilities.claude_utils import get_claude_chat
+        claude_chat = get_claude_chat()
+        
+        # Test with minimal context
+        test_response = claude_chat.get_marta_response(
+            "Test message", 
+            {
+                'hand_number': 1,
+                'phase': 'playing',
+                'player_score': 50,
+                'computer_score': 75,
+                'player_parity': 'even',
+                'computer_parity': 'odd'
+            }
+        )
+        
+        print(f"[DEBUG] Test successful: '{test_response}'")
+        
+        return jsonify({
+            'success': True,
+            'response': test_response,
+            'message': 'Claude API working!'
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] Test failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Claude API failed'
+        })
+
+@app.route('/debug_env', methods=['GET'])
+def debug_env():
+    """Debug route to check environment variables"""
+    print("[DEBUG] Checking environment variables...")
+    
+    env_info = {
+        'has_anthropic_key': bool(os.getenv('ANTHROPIC_API_KEY')),
+        'anthropic_key_length': len(os.getenv('ANTHROPIC_API_KEY', '')),
+        'gae_env': os.getenv('GAE_ENV'),
+        'google_project': os.getenv('GOOGLE_CLOUD_PROJECT'),
+        'flask_env': os.getenv('FLASK_ENV'),
+        'is_local': not bool(os.getenv('GAE_ENV'))
+    }
+    
+    print(f"[DEBUG] Environment info: {env_info}")
+    return jsonify(env_info)
+
+@app.route('/debug_claude_init', methods=['GET'])
+def debug_claude_init():
+    """Debug route to test Claude initialization"""
+    print("[DEBUG] Testing Claude initialization...")
+    
+    try:
+        from utilities.claude_utils import test_claude_connection
+        success, result = test_claude_connection()
+        
+        return jsonify({
+            'success': success,
+            'result': result,
+            'message': 'Claude initialization test complete'
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] Initialization test failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Claude initialization failed'
+        })
 
 @app.route('/state')
 def get_state():

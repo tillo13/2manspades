@@ -10,51 +10,16 @@ let confirmingBid = false;
 // Scroll preservation for trick history
 let trickHistoryScrollPosition = 0;
 
-// Chat system variables
+// Enhanced chat system variables
 let chatOpen = false;
 let unreadMessages = 0;
-let martaHasSpokenThisHand = false; // Track if Marta has initiated this hand
+let martaHasSpokenThisHand = false;
+let martaIsTyping = false;
+let typingTimeout = null;
 
 // =============================================================================
-// CHAT SYSTEM
+// ENHANCED CHAT SYSTEM WITH CLAUDE INTEGRATION
 // =============================================================================
-
-// Marta's predefined responses organized by category
-const martaResponses = {
-    hand_start: [
-        "Let's see what the cards bring us!",
-        "New hand, new opportunities!",
-        "Ready for another round?",
-        "May the best player win!",
-        "Time to shuffle up and deal!",
-        "What do the cards have in store this time?",
-        "Another hand, another chance!",
-        "Let's play some spades!",
-        "Hope you're feeling lucky!",
-        "Cards are dealt, let's go!"
-    ],
-    game_start: [
-        "Welcome to Two-Man Spades! Let's play!",
-        "Ready to test your skills against me?",
-        "A new game begins! Good luck!",
-        "Let's see who's the better spades player!",
-        "Game on! May the best strategist win!"
-    ],
-    default: [
-        "That's interesting!",
-        "I see what you mean...",
-        "Hmm, tell me more...",
-        "Oh really?",
-        "That's a good point!",
-        "You might be onto something...",
-        "I'll have to think about that...",
-        "Interesting perspective!",
-        "Fair enough!",
-        "Makes sense to me!",
-        "Good observation!",
-        "I hadn't thought of it that way."
-    ]
-};
 
 function toggleChat() {
     const chatWindow = document.getElementById('chatWindow');
@@ -78,17 +43,84 @@ function sendMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
 
-    if (!message) return;
+    if (!message || martaIsTyping) return;
 
     // Add player message
     addMessage(message, 'player');
     input.value = '';
 
-    // Marta responds after a brief delay (only when talked to)
-    setTimeout(() => {
-        const response = getRandomResponse('default');
-        addMessage(response, 'marta');
-    }, 500 + Math.random() * 1000);
+    // Show Marta typing indicator
+    showMartaTyping();
+
+    // Get smart response from Marta with enhanced context
+    fetch('/chat_response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.response) {
+                // Simulate realistic typing time based on response length
+                const typingDelay = Math.min(Math.max(data.response.length * 50, 800), 3000);
+
+                setTimeout(() => {
+                    hideMartaTyping();
+                    addMessage(data.response, 'marta');
+                }, typingDelay);
+            } else {
+                hideMartaTyping();
+                addMessage("...", 'marta'); // Mysterious fallback
+            }
+        })
+        .catch(error => {
+            console.error('Chat error:', error);
+            hideMartaTyping();
+            // Snarky fallback responses
+            const fallbacks = [
+                "Interesting move...",
+                "We'll see about that.",
+                "My cards are speaking to me.",
+                "Poker face activated.",
+                "You're full of surprises."
+            ];
+            const response = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+            setTimeout(() => {
+                addMessage(response, 'marta');
+            }, 800 + Math.random() * 1000);
+        });
+}
+
+function showMartaTyping() {
+    if (martaIsTyping) return;
+
+    martaIsTyping = true;
+    const messagesDiv = document.getElementById('chatMessages');
+
+    // Create typing indicator
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'martaTypingIndicator';
+    typingDiv.className = 'marta-message typing-indicator';
+    typingDiv.innerHTML = `
+        <div class="message-content">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+
+    messagesDiv.appendChild(typingDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function hideMartaTyping() {
+    martaIsTyping = false;
+    const typingIndicator = document.getElementById('martaTypingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
 }
 
 function addMessage(text, sender) {
@@ -144,38 +176,120 @@ function updateChatBadge() {
     }
 }
 
-function getRandomResponse(category) {
-    const responses = martaResponses[category] || martaResponses.default;
-    return responses[Math.floor(Math.random() * responses.length)];
-}
-
-// Trigger Marta to start conversation for new hands only
+// Enhanced greeting functions with Claude integration
 function triggerMartaHandStart() {
     if (!martaHasSpokenThisHand) {
         setTimeout(() => {
-            const response = getRandomResponse('hand_start');
-            addMessage(response, 'marta');
-            martaHasSpokenThisHand = true;
+            showMartaTyping();
+
+            fetch('/smart_greeting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'hand_start' })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    setTimeout(() => {
+                        hideMartaTyping();
+                        if (data.response) {
+                            addMessage(data.response, 'marta');
+                        } else {
+                            addMessage("Another hand begins...", 'marta');
+                        }
+                        martaHasSpokenThisHand = true;
+                    }, 1000 + Math.random() * 1500);
+                })
+                .catch(error => {
+                    console.error('Greeting error:', error);
+                    hideMartaTyping();
+                    // Fallback snarky greetings
+                    const fallbacks = [
+                        "Ready for round two?",
+                        "Let's see what you've got.",
+                        "Cards don't lie.",
+                        "My deal this time.",
+                        "Feeling lucky?"
+                    ];
+                    const greeting = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+                    addMessage(greeting, 'marta');
+                    martaHasSpokenThisHand = true;
+                });
         }, 1000 + Math.random() * 2000);
     }
 }
 
-// Trigger Marta to start conversation for new games
 function triggerMartaGameStart() {
     setTimeout(() => {
-        const response = getRandomResponse('game_start');
-        addMessage(response, 'marta');
-        martaHasSpokenThisHand = true; // Mark as spoken for this hand
+        showMartaTyping();
+
+        fetch('/smart_greeting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'game_start' })
+        })
+            .then(response => response.json())
+            .then(data => {
+                setTimeout(() => {
+                    hideMartaTyping();
+                    if (data.response) {
+                        addMessage(data.response, 'marta');
+                    } else {
+                        addMessage("Let's play.", 'marta');
+                    }
+                    martaHasSpokenThisHand = true;
+                }, 1200 + Math.random() * 1800);
+            })
+            .catch(error => {
+                console.error('Game start greeting error:', error);
+                hideMartaTyping();
+                addMessage("Game on.", 'marta');
+                martaHasSpokenThisHand = true;
+            });
     }, 1500 + Math.random() * 2000);
 }
 
-// Reset Marta's speaking status for new hand
 function resetMartaChatForNewHand() {
     martaHasSpokenThisHand = false;
+    hideMartaTyping(); // Clear any lingering typing indicators
+}
+
+// Contextual Marta comments on game events
+function triggerMartaGameEventComment(eventType, context = {}) {
+    if (martaIsTyping) return; // Don't interrupt if already typing
+
+    // Only comment on significant events, not every little thing
+    const commentableEvents = ['blind_bid', 'nil_attempt', 'bag_penalty', 'close_game', 'big_lead'];
+    if (!commentableEvents.includes(eventType)) return;
+
+    setTimeout(() => {
+        showMartaTyping();
+
+        fetch('/event_comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_type: eventType,
+                context: context
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                setTimeout(() => {
+                    hideMartaTyping();
+                    if (data.response) {
+                        addMessage(data.response, 'marta');
+                    }
+                }, 800 + Math.random() * 1200);
+            })
+            .catch(error => {
+                hideMartaTyping();
+                // Silent failure for event comments - don't spam chat
+            });
+    }, 2000 + Math.random() * 3000); // Delayed, sporadic comments
 }
 
 // =============================================================================
-// MAIN GAME FUNCTIONS
+// MAIN GAME FUNCTIONS (unchanged core logic)
 // =============================================================================
 
 async function loadGameState() {
@@ -213,6 +327,14 @@ function updateUI() {
     if (lastHandNumber !== null && gameState.hand_number > lastHandNumber) {
         resetMartaChatForNewHand();
         triggerMartaHandStart();
+
+        // Trigger contextual comments for interesting game states
+        if (Math.abs(gameState.player_score - gameState.computer_score) >= 100) {
+            triggerMartaGameEventComment('big_lead', {
+                leader: gameState.player_score > gameState.computer_score ? 'player' : 'marta',
+                deficit: Math.abs(gameState.player_score - gameState.computer_score)
+            });
+        }
     }
 
     lastHandNumber = gameState.hand_number;
@@ -220,7 +342,7 @@ function updateUI() {
 }
 
 // =============================================================================
-// UI UPDATE FUNCTIONS
+// UI UPDATE FUNCTIONS (unchanged from original)
 // =============================================================================
 
 function updateFloatingScores() {
@@ -628,9 +750,6 @@ function handleResultsDisplay() {
     if (gameState.hand_over && gameState.hand_results) {
         resultsSection.classList.add('show');
         resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
-
-        // Trigger Marta's comment on hand results
-        triggerMartaHandResults();
     } else {
         resultsSection.classList.remove('show');
     }
@@ -653,7 +772,7 @@ function handleTrickCompletion() {
 }
 
 // =============================================================================
-// HELPER FUNCTIONS
+// HELPER FUNCTIONS (unchanged from original)
 // =============================================================================
 
 function getSuitClass(suit) {
@@ -720,7 +839,7 @@ function isSpecialCard(card) {
 }
 
 // =============================================================================
-// BIDDING FUNCTIONS
+// BIDDING FUNCTIONS (unchanged from original)
 // =============================================================================
 
 function selectBid(bidAmount) {
@@ -763,7 +882,7 @@ function resetBiddingState() {
 }
 
 // =============================================================================
-// RESULTS FORMATTING
+// RESULTS FORMATTING (unchanged from original)
 // =============================================================================
 
 function formatCleanResults(results) {
@@ -853,7 +972,7 @@ function formatScoring(scoringText) {
 }
 
 // =============================================================================
-// SCROLL PRESERVATION
+// SCROLL PRESERVATION (unchanged from original)
 // =============================================================================
 
 function preserveTrickHistoryScroll() {
@@ -877,7 +996,7 @@ function resetTrickHistoryScroll() {
 }
 
 // =============================================================================
-// API FUNCTIONS
+// API FUNCTIONS (unchanged from original)
 // =============================================================================
 
 async function chooseBlindNil() {
@@ -885,6 +1004,8 @@ async function chooseBlindNil() {
         const response = await fetch('/choose_blind_nil', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
+            // Trigger Marta comment on blind nil attempt
+            triggerMartaGameEventComment('blind_bid', { type: 'blind_nil' });
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -936,6 +1057,11 @@ async function makeBid(bidAmount) {
         if (response.ok) {
             await loadGameState();
             if (navigator.vibrate) navigator.vibrate(50);
+
+            // Trigger Marta comment on nil attempts
+            if (bidAmount === 0) {
+                triggerMartaGameEventComment('nil_attempt', { player: 'player' });
+            }
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -957,6 +1083,12 @@ async function makeBlindBid(bidAmount) {
         if (response.ok) {
             await loadGameState();
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+            // Trigger Marta comment on blind bid
+            triggerMartaGameEventComment('blind_bid', {
+                amount: bidAmount,
+                player: 'player'
+            });
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1055,7 +1187,7 @@ async function nextHand() {
             selectedCard = null;
             resetBiddingState();
             resetTrickHistoryScroll();
-            resetMartaChatForNewHand(); // Reset for new hand
+            resetMartaChatForNewHand();
             await loadGameState();
             // Marta will greet when updateUI detects the new hand number
         } else {
@@ -1079,7 +1211,7 @@ async function startNewGame() {
         selectedCard = null;
         resetBiddingState();
         resetTrickHistoryScroll();
-        resetMartaChatForNewHand(); // Reset for new game
+        resetMartaChatForNewHand();
         await loadGameState();
         triggerMartaGameStart(); // Special greeting for new game
     } catch (error) {
@@ -1118,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Auto-refresh with mobile-friendly timing
 setInterval(() => {
-    if (gameState && !gameState.game_over && !trickDisplayTimeout) {
+    if (gameState && !gameState.game_over && !trickDisplayTimeout && !martaIsTyping) {
         loadGameState();
     }
 }, 2500);
