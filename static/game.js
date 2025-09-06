@@ -626,16 +626,18 @@ function handleResultsDisplay() {
 function handleTrickCompletion() {
     // Check for completed trick that needs to be displayed
     if (gameState.current_trick && gameState.current_trick.length === 2 && !trickDisplayTimeout) {
-        // Determine trick winner for chat comment
+        // Remove automatic chat comments for every trick - too spammy
+        // Only comment if it's a particularly notable trick (special cards, etc.)
+
         const playerCard = gameState.current_trick.find(play => play.player === 'player');
         const computerCard = gameState.current_trick.find(play => play.player === 'computer');
 
+        // Only comment on special card tricks
         if (playerCard && computerCard) {
-            const winner = determineTrickWinner(playerCard.card, computerCard.card);
-            if (winner === 'computer') {
-                triggerMartaComment('winning');
-            } else {
-                triggerMartaComment('losing');
+            const hasSpecialCard = (playerCard && isSpecialCard(playerCard.card)) ||
+                (computerCard && isSpecialCard(computerCard.card));
+            if (hasSpecialCard) {
+                triggerMartaComment('special_card');
             }
         }
 
