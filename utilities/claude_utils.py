@@ -1,7 +1,7 @@
 # utilities/claude_utils.py
 """
-Enhanced Claude API utilities for Two-Man Spades game
-Full logging and debugging version to track API calls and responses
+Marta AI Chat utilities for Two-Man Spades game
+Marta responds to direct user chat messages as an active player in the game
 """
 
 import os
@@ -16,406 +16,477 @@ logger = logging.getLogger(__name__)
 
 # For production Secret Manager
 try:
-    from google.cloud import secretmanager
-    GOOGLE_CLOUD_AVAILABLE = True
-    print("[CLAUDE] Google Cloud Secret Manager available")
+   from google.cloud import secretmanager
+   GOOGLE_CLOUD_AVAILABLE = True
+   print("[CLAUDE] Google Cloud Secret Manager available")
 except ImportError:
-    GOOGLE_CLOUD_AVAILABLE = False
-    print("[CLAUDE] Google Cloud Secret Manager NOT available")
+   GOOGLE_CLOUD_AVAILABLE = False
+   print("[CLAUDE] Google Cloud Secret Manager NOT available")
 
 # For local development
 try:
-    from dotenv import load_dotenv
-    load_dotenv()
-    print("[CLAUDE] dotenv loaded successfully")
+   from dotenv import load_dotenv
+   load_dotenv()
+   print("[CLAUDE] dotenv loaded successfully")
 except ImportError:
-    print("[CLAUDE] dotenv NOT available")
+   print("[CLAUDE] dotenv NOT available")
 
 class ClaudeGameChat:
-    def __init__(self):
-        print("[CLAUDE] Initializing ClaudeGameChat...")
-        
-        self.api_key = self._get_api_key()
-        if not self.api_key:
-            error_msg = "ANTHROPIC_API_KEY not found in environment or Secret Manager"
-            print(f"[CLAUDE] ERROR: {error_msg}")
-            raise ValueError(error_msg)
-        
-        print(f"[CLAUDE] API key found: {self.api_key[:10]}...{self.api_key[-4:] if len(self.api_key) > 14 else 'SHORT'}")
-        
-        try:
-            self.client = anthropic.Anthropic(api_key=self.api_key)
-            print("[CLAUDE] Anthropic client initialized successfully")
-        except Exception as e:
-            print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
-            raise e
-        
-        self.model = "claude-3-5-haiku-20241022"
-        self.max_tokens = 75
-        self.temperature = 0.6
-        
-        self.system_prompt = (
-            "You are Marta, a seasoned spades player with a poker face and sharp wit. "
-            "You're playing Two-Man Spades - a custom variant with parity scoring, blind bidding, and special bag-reduction cards. "
-            "Be snarky, witty, and competitive. Drop hints but never give away strategy. "
-            "Make poker-faced comments that could be bluffs. Keep responses under 15 words. "
-            "Reference the current game state cleverly without being helpful to your opponent."
-        )
-        
-        print(f"[CLAUDE] Configuration:")
-        print(f"  Model: {self.model}")
-        print(f"  Max tokens: {self.max_tokens}")
-        print(f"  Temperature: {self.temperature}")
-        print(f"  System prompt length: {len(self.system_prompt)} chars")
-    
-    def get_marta_response(self, 
-                          player_message: str, 
-                          game_context: Optional[Dict[str, Any]] = None) -> str:
-        """Get a witty, game-aware response from Marta with full logging"""
-        print(f"\n[CLAUDE] === NEW CHAT REQUEST ===")
-        print(f"[CLAUDE] Player message: '{player_message}'")
-        print(f"[CLAUDE] Game context received: {bool(game_context)}")
-        
-        if game_context:
-            print(f"[CLAUDE] Context keys: {list(game_context.keys())}")
-        
-        try:
-            context_str = self._build_enhanced_context(game_context)
-            print(f"[CLAUDE] Built context string: '{context_str}'")
-            
-            user_prompt = f"{context_str}Player said: '{player_message}'"
-            print(f"[CLAUDE] Full user prompt: '{user_prompt}'")
-            print(f"[CLAUDE] Prompt length: {len(user_prompt)} chars")
-            
-            print(f"[CLAUDE] Making API call to {self.model}...")
-            print(f"[CLAUDE] API call parameters:")
-            print(f"  - max_tokens: {self.max_tokens}")
-            print(f"  - temperature: {self.temperature}")
-            
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                system=self.system_prompt,
-                messages=[{
-                    "role": "user", 
-                    "content": user_prompt
-                }],
-            )
-            
-            print(f"[CLAUDE] API call successful!")
-            print(f"[CLAUDE] Response object type: {type(response)}")
-            print(f"[CLAUDE] Response content length: {len(response.content)}")
-            
-            api_response = response.content[0].text.strip()
-            print(f"[CLAUDE] Raw API response: '{api_response}'")
-            print(f"[CLAUDE] Response length: {len(api_response)} chars")
-            
-            if not api_response:
-                print(f"[CLAUDE] WARNING: Empty response from API")
-                return self._fallback_snarky_response(game_context)
-            
-            print(f"[CLAUDE] SUCCESS: Returning API response")
-            return api_response
-            
-        except anthropic.APIError as e:
-            print(f"[CLAUDE] Anthropic API Error: {e}")
-            print(f"[CLAUDE] Error type: {type(e)}")
-            fallback = self._fallback_snarky_response(game_context)
-            print(f"[CLAUDE] Using API error fallback: '{fallback}'")
-            return fallback
-            
-        except Exception as e:
-            print(f"[CLAUDE] Unexpected error: {e}")
-            print(f"[CLAUDE] Error type: {type(e)}")
-            fallback = self._fallback_snarky_response(game_context)
-            print(f"[CLAUDE] Using general error fallback: '{fallback}'")
-            return fallback
-    
-    def get_contextual_greeting(self, game_context: Dict[str, Any]) -> str:
-        """Get a context-aware snarky greeting with logging"""
-        print(f"\n[CLAUDE] === GREETING REQUEST ===")
-        print(f"[CLAUDE] Game context: {json.dumps(game_context, indent=2) if game_context else 'None'}")
-        
-        try:
-            context_str = self._build_enhanced_context(game_context)
-            print(f"[CLAUDE] Greeting context: '{context_str}'")
-            
-            if game_context.get('hand_number', 1) == 1:
-                prompt = f"{context_str}Give a brief, confident game start comment (8 words max)"
-                print(f"[CLAUDE] Game start greeting prompt")
-            else:
-                prompt = f"{context_str}Give a brief, snarky new hand comment (8 words max)"
-                print(f"[CLAUDE] New hand greeting prompt")
-            
-            print(f"[CLAUDE] Full greeting prompt: '{prompt}'")
-            
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=40,
-                temperature=0.7,
-                system=self.system_prompt,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            
-            greeting = response.content[0].text.strip()
-            print(f"[CLAUDE] Greeting API response: '{greeting}'")
-            
-            return greeting
-            
-        except Exception as e:
-            print(f"[CLAUDE] Greeting error: {e}")
-            fallback = self._fallback_greeting(game_context)
-            print(f"[CLAUDE] Using greeting fallback: '{fallback}'")
-            return fallback
-    
-
-
-    def _build_enhanced_context(self, game_context: Optional[Dict[str, Any]]) -> str:
-        """Build comprehensive context with ALL game data for Claude"""
-        print(f"[CLAUDE] Building comprehensive context...")
-        
-        if not game_context:
-            print(f"[CLAUDE] No game context provided")
-            return "[Two-Man Spades game context unknown] "
-        
-        import json
-        
-        # Create a cleaned version of the game context for Claude
-        # Remove internal/technical fields that aren't relevant for Marta's personality
-        excluded_keys = {
-            'client_info', 'game_id', 'current_hand_id', 'game_started_at', 
-            'trick_display_timer', 'action_sequence', 'show_computer_hand'
-        }
-        
-        clean_context = {}
-        for key, value in game_context.items():
-            if key not in excluded_keys:
-                # Convert card objects to readable strings
-                if key in ['player_hand', 'computer_hand'] and isinstance(value, list):
-                    clean_context[key] = [f"{card['rank']}{card['suit']}" for card in value]
-                elif key in ['player_discarded', 'computer_discarded'] and value:
-                    clean_context[key] = f"{value['rank']}{value['suit']}"
-                elif key == 'current_trick' and isinstance(value, list):
-                    clean_context[key] = [
-                        {
-                            'player': play['player'],
-                            'card': f"{play['card']['rank']}{play['card']['suit']}"
-                        }
-                        for play in value
-                    ]
-                elif key == 'trick_history' and isinstance(value, list):
-                    clean_context[key] = [
-                        {
-                            'number': trick['number'],
-                            'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick.get('player_card') else None,
-                            'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick.get('computer_card') else None,
-                            'winner': trick['winner']
-                        }
-                        for trick in value
-                    ]
-                else:
-                    clean_context[key] = value
-        
-        # Convert to compact JSON for Claude
-        context_json = json.dumps(clean_context, separators=(',', ':'))
-        
-        # Create readable summary for logging
-        summary_parts = []
-        summary_parts.append(f"Hand {clean_context.get('hand_number', 1)}")
-        summary_parts.append(f"Phase: {clean_context.get('phase', 'unknown')}")
-        summary_parts.append(f"Scores: You {clean_context.get('player_score', 0)}, Me {clean_context.get('computer_score', 0)}")
-        
-        if clean_context.get('player_hand'):
-            summary_parts.append(f"Your cards: {len(clean_context['player_hand'])}")
-        if clean_context.get('computer_hand'):
-            summary_parts.append(f"My cards: {len(clean_context['computer_hand'])}")
-        if clean_context.get('trick_history'):
-            summary_parts.append(f"Tricks played: {len(clean_context['trick_history'])}")
-        
-        summary = " | ".join(summary_parts)
-        
-        print(f"[CLAUDE] Context summary: {summary}")
-        print(f"[CLAUDE] Full context JSON length: {len(context_json)} chars")
-        
-        # Send complete context to Claude
-        final_context = f"[GAME_STATE: {context_json}] "
-        
-        print(f"[CLAUDE] Final context length: {len(final_context)} chars")
-        return final_context
-    
-    def _fallback_snarky_response(self, game_context: Optional[Dict[str, Any]]) -> str:
-        """Snarky fallback responses when API fails with logging"""
-        print(f"[CLAUDE] Generating fallback snarky response...")
-        
-        snarky_fallbacks = [
-            "Interesting move...",
-            "We'll see about that.",
-            "Playing it safe, are we?",
-            "Cute strategy.",
-            "My turn to surprise you.",
-            "You're full of surprises.",
-            "Let's see how this plays out.",
-            "Confidence is key, they say.",
-            "Bold choice.",
-            "I see what you're doing."
-        ]
-        
-        import random
-        selected = random.choice(snarky_fallbacks)
-        print(f"[CLAUDE] Selected fallback: '{selected}'")
-        return selected
-    
-    def _fallback_greeting(self, game_context: Dict[str, Any]) -> str:
-        """Snarky fallback greetings with logging"""
-        print(f"[CLAUDE] Generating fallback greeting...")
-        
-        if game_context.get('hand_number', 1) == 1:
-            greeting = "Ready to lose?"
-            print(f"[CLAUDE] Game start fallback: '{greeting}'")
-        else:
-            greeting = "Next victim... I mean, hand!"
-            print(f"[CLAUDE] New hand fallback: '{greeting}'")
-        
-        return greeting
-    
-    def _get_api_key(self) -> Optional[str]:
-        """Get API key from environment or Secret Manager with detailed logging"""
-        print(f"[CLAUDE] === API KEY DETECTION ===")
-        
-        # First try environment variable
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if api_key:
-            print(f"[CLAUDE] Found API key in environment variable")
-            print(f"[CLAUDE] Key length: {len(api_key)} chars")
-            print(f"[CLAUDE] Key starts with: {api_key[:10]}...")
-            return api_key
-        
-        print(f"[CLAUDE] No API key in environment variable")
-        
-        # Check if we're in Google Cloud
-        is_gcp = self._is_google_cloud_environment()
-        print(f"[CLAUDE] Running in Google Cloud: {is_gcp}")
-        
-        if is_gcp:
-            print(f"[CLAUDE] Attempting to get key from Secret Manager...")
-            return self._get_secret_from_manager()
-        
-        print(f"[CLAUDE] Not in Google Cloud environment")
-        print(f"[CLAUDE] No API key source available")
-        return None
-    
-    def _is_google_cloud_environment(self) -> bool:
-        """Detect if we're running in Google Cloud with logging"""
-        gae_env = os.getenv('GAE_ENV')
-        k_service = os.getenv('K_SERVICE')
-        gcp_project = os.getenv('GOOGLE_CLOUD_PROJECT')
-        
-        print(f"[CLAUDE] Environment check:")
-        print(f"  GAE_ENV: {gae_env}")
-        print(f"  K_SERVICE: {k_service}")
-        print(f"  GOOGLE_CLOUD_PROJECT: {gcp_project}")
-        
-        is_gcp = (
-            gae_env == 'standard' or
-            k_service is not None or
-            gcp_project is not None
-        )
-        
-        print(f"[CLAUDE] Is Google Cloud: {is_gcp}")
-        return is_gcp
-    
-    def _get_secret_from_manager(self) -> Optional[str]:
-        """Get API key from Google Secret Manager with detailed logging"""
-        print(f"[CLAUDE] === SECRET MANAGER ACCESS ===")
-        
-        if not GOOGLE_CLOUD_AVAILABLE:
-            print(f"[CLAUDE] ERROR: Google Cloud libraries not available")
-            return None
-        
-        try:
-            project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
-            print(f"[CLAUDE] Project ID: {project_id}")
-            
-            if not project_id:
-                print(f"[CLAUDE] ERROR: GOOGLE_CLOUD_PROJECT not set")
-                return None
-            
-            print(f"[CLAUDE] Creating Secret Manager client...")
-            client = secretmanager.SecretManagerServiceClient()
-            
-            secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
-            print(f"[CLAUDE] Secret path: {secret_name}")
-            
-            print(f"[CLAUDE] Accessing secret...")
-            response = client.access_secret_version(request={"name": secret_name})
-            
-            secret_value = response.payload.data.decode("UTF-8")
-            print(f"[CLAUDE] Secret retrieved successfully")
-            print(f"[CLAUDE] Secret length: {len(secret_value)} chars")
-            print(f"[CLAUDE] Secret starts with: {secret_value[:10]}...")
-            
-            return secret_value
-            
-        except Exception as e:
-            print(f"[CLAUDE] ERROR accessing Secret Manager: {e}")
-            print(f"[CLAUDE] Error type: {type(e)}")
-            return None
+   def __init__(self):
+       print("[CLAUDE] Initializing ClaudeGameChat for Marta's responses...")
+       
+       self.api_key = self._get_api_key()
+       if not self.api_key:
+           error_msg = "ANTHROPIC_API_KEY not found in environment or Secret Manager"
+           print(f"[CLAUDE] ERROR: {error_msg}")
+           raise ValueError(error_msg)
+       
+       print(f"[CLAUDE] API key found: {self.api_key[:10]}...{self.api_key[-4:] if len(self.api_key) > 14 else 'SHORT'}")
+       
+       try:
+           self.client = anthropic.Anthropic(api_key=self.api_key)
+           print("[CLAUDE] Anthropic client initialized successfully")
+       except Exception as e:
+           print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
+           raise e
+       
+       self.model = "claude-3-5-haiku-20241022"
+       self.max_tokens = 150
+       self.temperature = 0.8
+       
+       self.system_prompt = (
+           "You are Marta, playing Two-Man Spades against a human opponent. "
+           "You're a seasoned spades player with a poker face and sharp wit, actively competing in this match. "
+           "This is a custom variant with parity scoring, blind bidding, and special bag-reduction cards. "
+           "You can see the current game state, your opponent's played cards, discard pile results, scores, "
+           "bidding patterns, and trick outcomes - but you cannot see cards still in your opponent's hand. "
+           "Reference specific details from what you can legitimately know: current scores, recent plays, "
+           "bidding accuracy, your own strategic decisions, bag situations, parity advantages, and trick results. "
+           "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
+           "Speak as an active player in the match, not as an outside observer. "
+           "You only respond when your opponent directly talks to you - never initiate conversation."
+       )
+       
+       print(f"[CLAUDE] Configuration:")
+       print(f"  Model: {self.model}")
+       print(f"  Max tokens: {self.max_tokens}")
+       print(f"  Temperature: {self.temperature}")
+       print(f"  System prompt length: {len(self.system_prompt)} chars")
+       print(f"  Mode: Marta as active player")
+   
+   def get_marta_response(self, 
+                         player_message: str, 
+                         game_context: Optional[Dict[str, Any]] = None) -> str:
+       """Get a response from Marta as an active player in the game"""
+       print(f"\n[CLAUDE] === MARTA CHAT REQUEST ===")
+       print(f"[CLAUDE] Opponent message: '{player_message}'")
+       print(f"[CLAUDE] Game context received: {bool(game_context)}")
+       
+       if game_context:
+           print(f"[CLAUDE] Context keys: {list(game_context.keys())}")
+       
+       try:
+           context_str = self._build_marta_visible_context(game_context)
+           print(f"[CLAUDE] Built Marta's visible context")
+           
+           user_prompt = (
+               f"{context_str}"
+               f"My opponent said: '{player_message}'\n\n"
+               f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
+               f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
+               f"recent cards played, bidding situation, bags, parity positions, trick history, or strategic implications "
+               f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
+               f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
+           )
+           
+           print(f"[CLAUDE] Prompt length: {len(user_prompt)} chars")
+           print(f"[CLAUDE] Making API call to {self.model}...")
+           
+           response = self.client.messages.create(
+               model=self.model,
+               max_tokens=self.max_tokens,
+               temperature=self.temperature,
+               system=self.system_prompt,
+               messages=[{
+                   "role": "user", 
+                   "content": user_prompt
+               }]
+           )
+           
+           print(f"[CLAUDE] API call successful!")
+           
+           api_response = response.content[0].text.strip()
+           print(f"[CLAUDE] Raw API response: '{api_response}'")
+           print(f"[CLAUDE] Response length: {len(api_response)} chars")
+           
+           if not api_response:
+               print(f"[CLAUDE] WARNING: Empty response from API")
+               return self._fallback_marta_response(game_context)
+           
+           print(f"[CLAUDE] SUCCESS: Returning Marta's active player response")
+           return api_response
+           
+       except anthropic.APIError as e:
+           print(f"[CLAUDE] Anthropic API Error: {e}")
+           fallback = self._fallback_marta_response(game_context)
+           print(f"[CLAUDE] Using API error fallback: '{fallback}'")
+           return fallback
+           
+       except Exception as e:
+           print(f"[CLAUDE] Unexpected error: {e}")
+           fallback = self._fallback_marta_response(game_context)
+           print(f"[CLAUDE] Using general error fallback: '{fallback}'")
+           return fallback
+   
+   def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
+       """Build context showing only what Marta can legitimately see during play"""
+       print(f"[CLAUDE] Building Marta's visible context...")
+       
+       if not game_context:
+           print(f"[CLAUDE] No game context provided")
+           return "[MY_VISIBLE_GAME_STATE: No context available] "
+       
+       # Create Marta's visible context (exclude her hidden hand)
+       marta_visible_context = {}
+       
+       for key, value in game_context.items():
+           # Skip internal/hidden information
+           if key in {'computer_hand', 'client_info', 'game_id', 'show_computer_hand', 
+                     'current_hand_id', 'game_started_at', 'action_sequence', 'trick_display_timer'}:
+               continue
+               
+           # Convert and rename from Marta's perspective
+           if key == 'player_hand' and isinstance(value, list):
+               # Marta can only see count, not actual cards in opponent's hand
+               marta_visible_context['opponent_hand_size'] = len(value)
+           elif key == 'computer_hand_count':
+               marta_visible_context['my_hand_size'] = value
+           elif key == 'current_trick' and isinstance(value, list):
+               marta_visible_context[key] = [
+                   {
+                       'player': 'me' if play['player'] == 'computer' else 'opponent',
+                       'card': f"{play['card']['rank']}{play['card']['suit']}"
+                   }
+                   for play in value
+               ]
+           elif key == 'trick_history' and isinstance(value, list):
+               marta_visible_context[key] = [
+                   {
+                       'number': trick['number'],
+                       'my_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick.get('computer_card') else None,
+                       'opponent_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick.get('player_card') else None,
+                       'winner': 'me' if trick['winner'] == 'computer' else 'opponent'
+                   }
+                   for trick in value
+               ]
+           elif key in ['player_discarded', 'computer_discarded'] and value:
+               # Rename for Marta's perspective
+               new_key = 'my_discarded' if key == 'computer_discarded' else 'opponent_discarded'
+               marta_visible_context[new_key] = f"{value['rank']}{value['suit']}"
+           elif key.startswith('player_'):
+               # Rename player stats to opponent stats for Marta's perspective
+               new_key = key.replace('player_', 'opponent_')
+               marta_visible_context[new_key] = value
+           elif key.startswith('computer_'):
+               # Rename computer stats to my stats for Marta's perspective
+               new_key = key.replace('computer_', 'my_')
+               marta_visible_context[new_key] = value
+           elif key == 'player_parity':
+               marta_visible_context['opponent_parity'] = value
+           elif key == 'computer_parity':
+               marta_visible_context['my_parity'] = value
+           elif key == 'player_name':
+               marta_visible_context['opponent_name'] = value
+           elif key == 'computer_name':
+               marta_visible_context['my_name'] = value
+           elif key == 'turn':
+               # Convert turn to Marta's perspective
+               if value == 'computer':
+                   marta_visible_context[key] = 'my_turn'
+               elif value == 'player':
+                   marta_visible_context[key] = 'opponent_turn'
+               else:
+                   marta_visible_context[key] = value
+           elif key == 'trick_leader':
+               # Convert trick leader to Marta's perspective
+               if value == 'computer':
+                   marta_visible_context[key] = 'me'
+               elif value == 'player':
+                   marta_visible_context[key] = 'opponent'
+               else:
+                   marta_visible_context[key] = value
+           elif key == 'first_leader':
+               # Convert first leader to Marta's perspective
+               if value == 'computer':
+                   marta_visible_context[key] = 'me'
+               elif value == 'player':
+                   marta_visible_context[key] = 'opponent'
+               else:
+                   marta_visible_context[key] = value
+           elif key == 'winner':
+               # Convert winner to Marta's perspective
+               if value == 'computer':
+                   marta_visible_context[key] = 'me'
+               elif value == 'player':
+                   marta_visible_context[key] = 'opponent'
+               else:
+                   marta_visible_context[key] = value
+           else:
+               # Keep other fields as-is
+               marta_visible_context[key] = value
+       
+       # Convert to compact JSON for Claude
+       context_json = json.dumps(marta_visible_context, separators=(',', ':'))
+       
+       # Create strategic summary for logging
+       summary_parts = []
+       summary_parts.append(f"Hand {marta_visible_context.get('hand_number', 1)}")
+       summary_parts.append(f"Phase: {marta_visible_context.get('phase', 'unknown')}")
+       
+       my_score = marta_visible_context.get('my_score', 0)
+       opponent_score = marta_visible_context.get('opponent_score', 0)
+       summary_parts.append(f"Scores: Me {my_score}, Opponent {opponent_score}")
+       
+       score_diff = my_score - opponent_score
+       if score_diff > 0:
+           summary_parts.append(f"(I'm +{score_diff})")
+       elif score_diff < 0:
+           summary_parts.append(f"(Opponent +{abs(score_diff)})")
+       else:
+           summary_parts.append("(Tied)")
+       
+       # Add bidding context
+       my_bid = marta_visible_context.get('my_bid')
+       opponent_bid = marta_visible_context.get('opponent_bid')
+       if my_bid is not None and opponent_bid is not None:
+           summary_parts.append(f"Bids: Me{my_bid}/Opp{opponent_bid}")
+       
+       # Add trick progress
+       if marta_visible_context.get('phase') == 'playing':
+           my_tricks = marta_visible_context.get('my_tricks', 0)
+           opponent_tricks = marta_visible_context.get('opponent_tricks', 0)
+           summary_parts.append(f"Tricks: Me{my_tricks}/Opp{opponent_tricks}")
+       
+       summary = " | ".join(summary_parts)
+       
+       print(f"[CLAUDE] Marta's view summary: {summary}")
+       print(f"[CLAUDE] Full context JSON length: {len(context_json)} chars")
+       
+       final_context = f"[MY_VISIBLE_GAME_STATE: {context_json}] "
+       
+       print(f"[CLAUDE] Final context length: {len(final_context)} chars")
+       return final_context
+   
+   def _fallback_marta_response(self, game_context: Optional[Dict[str, Any]]) -> str:
+       """Game-aware fallback responses from Marta's perspective as active player"""
+       print(f"[CLAUDE] Generating Marta's fallback response...")
+       
+       if not game_context:
+           fallbacks = [
+               "Interesting question...",
+               "You're keeping me on my toes.",
+               "That's one way to look at it."
+           ]
+           selected = fallbacks[0]
+           print(f"[CLAUDE] No context fallback: '{selected}'")
+           return selected
+       
+       # Try to make contextual fallbacks from Marta's perspective
+       try:
+           my_score = game_context.get('computer_score', 0)  # Marta's score
+           opponent_score = game_context.get('player_score', 0)  # Player's score
+           phase = game_context.get('phase', 'unknown')
+           hand_number = game_context.get('hand_number', 1)
+           
+           contextual_fallbacks = []
+           
+           # Score-based fallbacks from Marta's perspective
+           if my_score > opponent_score:
+               contextual_fallbacks.append(f"I'm up by {my_score - opponent_score} points. Feeling good about this.")
+           elif opponent_score > my_score:
+               contextual_fallbacks.append(f"You're ahead by {opponent_score - my_score}, but I'm not worried.")
+           else:
+               contextual_fallbacks.append("We're tied up - makes this interesting.")
+           
+           # Phase-based fallbacks
+           if phase == 'bidding':
+               contextual_fallbacks.append("Think carefully about that bid.")
+           elif phase == 'playing':
+               contextual_fallbacks.append("Your move. Choose wisely.")
+           elif phase == 'discard':
+               contextual_fallbacks.append("That discard better be strategic.")
+           
+           # Hand progression fallbacks
+           if hand_number > 1:
+               contextual_fallbacks.append(f"Hand {hand_number} already? Time's flying.")
+           
+           if contextual_fallbacks:
+               selected = contextual_fallbacks[0]
+               print(f"[CLAUDE] Contextual Marta fallback: '{selected}'")
+               return selected
+               
+       except Exception as e:
+           print(f"[CLAUDE] Error creating contextual fallback: {e}")
+       
+       # Default fallbacks if context parsing fails
+       generic_fallbacks = [
+           "Fair point.",
+           "We'll see how that plays out.",
+           "Keeping my cards close to my chest.",
+           "Game's not over yet.",
+           "Interesting perspective.",
+           "That's a bold strategy."
+       ]
+       
+       import random
+       selected = random.choice(generic_fallbacks)
+       print(f"[CLAUDE] Generic Marta fallback: '{selected}'")
+       return selected
+   
+   def _get_api_key(self) -> Optional[str]:
+       """Get API key from environment or Secret Manager with detailed logging"""
+       print(f"[CLAUDE] === API KEY DETECTION ===")
+       
+       # First try environment variable
+       api_key = os.getenv('ANTHROPIC_API_KEY')
+       if api_key:
+           print(f"[CLAUDE] Found API key in environment variable")
+           print(f"[CLAUDE] Key length: {len(api_key)} chars")
+           print(f"[CLAUDE] Key starts with: {api_key[:10]}...")
+           return api_key
+       
+       print(f"[CLAUDE] No API key in environment variable")
+       
+       # Check if we're in Google Cloud
+       is_gcp = self._is_google_cloud_environment()
+       print(f"[CLAUDE] Running in Google Cloud: {is_gcp}")
+       
+       if is_gcp:
+           print(f"[CLAUDE] Attempting to get key from Secret Manager...")
+           return self._get_secret_from_manager()
+       
+       print(f"[CLAUDE] Not in Google Cloud environment")
+       print(f"[CLAUDE] No API key source available")
+       return None
+   
+   def _is_google_cloud_environment(self) -> bool:
+       """Detect if we're running in Google Cloud with logging"""
+       gae_env = os.getenv('GAE_ENV')
+       k_service = os.getenv('K_SERVICE')
+       gcp_project = os.getenv('GOOGLE_CLOUD_PROJECT')
+       
+       print(f"[CLAUDE] Environment check:")
+       print(f"  GAE_ENV: {gae_env}")
+       print(f"  K_SERVICE: {k_service}")
+       print(f"  GOOGLE_CLOUD_PROJECT: {gcp_project}")
+       
+       is_gcp = (
+           gae_env == 'standard' or
+           k_service is not None or
+           gcp_project is not None
+       )
+       
+       print(f"[CLAUDE] Is Google Cloud: {is_gcp}")
+       return is_gcp
+   
+   def _get_secret_from_manager(self) -> Optional[str]:
+       """Get API key from Google Secret Manager with detailed logging"""
+       print(f"[CLAUDE] === SECRET MANAGER ACCESS ===")
+       
+       if not GOOGLE_CLOUD_AVAILABLE:
+           print(f"[CLAUDE] ERROR: Google Cloud libraries not available")
+           return None
+       
+       try:
+           project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+           print(f"[CLAUDE] Project ID: {project_id}")
+           
+           if not project_id:
+               print(f"[CLAUDE] ERROR: GOOGLE_CLOUD_PROJECT not set")
+               return None
+           
+           print(f"[CLAUDE] Creating Secret Manager client...")
+           client = secretmanager.SecretManagerServiceClient()
+           
+           secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
+           print(f"[CLAUDE] Secret path: {secret_name}")
+           
+           print(f"[CLAUDE] Accessing secret...")
+           response = client.access_secret_version(request={"name": secret_name})
+           
+           secret_value = response.payload.data.decode("UTF-8")
+           print(f"[CLAUDE] Secret retrieved successfully")
+           print(f"[CLAUDE] Secret length: {len(secret_value)} chars")
+           print(f"[CLAUDE] Secret starts with: {secret_value[:10]}...")
+           
+           return secret_value
+           
+       except Exception as e:
+           print(f"[CLAUDE] ERROR accessing Secret Manager: {e}")
+           print(f"[CLAUDE] Error type: {type(e)}")
+           return None
 
 # Singleton instance
 _claude_chat = None
 
 def get_claude_chat() -> ClaudeGameChat:
-    """Get singleton Claude chat instance with logging"""
-    global _claude_chat
-    if _claude_chat is None:
-        print("[CLAUDE] Creating new ClaudeGameChat singleton instance")
-        _claude_chat = ClaudeGameChat()
-    else:
-        print("[CLAUDE] Using existing ClaudeGameChat singleton")
-    return _claude_chat
+   """Get singleton Claude chat instance for Marta responses"""
+   global _claude_chat
+   if _claude_chat is None:
+       print("[CLAUDE] Creating new ClaudeGameChat singleton instance (Marta as player)")
+       _claude_chat = ClaudeGameChat()
+   else:
+       print("[CLAUDE] Using existing ClaudeGameChat singleton (Marta as player)")
+   return _claude_chat
 
 def get_smart_marta_response(player_message: str, game_state: Dict[str, Any]) -> str:
-    """Convenience function to get Marta's response with logging"""
-    print(f"[CLAUDE] get_smart_marta_response called")
-    print(f"[CLAUDE] Message: '{player_message}'")
-    print(f"[CLAUDE] Game state keys: {list(game_state.keys()) if game_state else 'None'}")
-    
-    claude = get_claude_chat()
-    response = claude.get_marta_response(player_message, game_state)
-    
-    print(f"[CLAUDE] Final response from get_smart_marta_response: '{response}'")
-    return response
-
-def get_smart_marta_greeting(game_state: Dict[str, Any]) -> str:
-    """Convenience function to get Marta's contextual greeting with logging"""
-    print(f"[CLAUDE] get_smart_marta_greeting called")
-    print(f"[CLAUDE] Game state keys: {list(game_state.keys()) if game_state else 'None'}")
-    
-    claude = get_claude_chat()
-    greeting = claude.get_contextual_greeting(game_state)
-    
-    print(f"[CLAUDE] Final greeting from get_smart_marta_greeting: '{greeting}'")
-    return greeting
+   """Convenience function to get Marta's response as active player"""
+   print(f"[CLAUDE] get_smart_marta_response called (Marta as active player)")
+   print(f"[CLAUDE] Opponent message: '{player_message}'")
+   print(f"[CLAUDE] Game state keys: {list(game_state.keys()) if game_state else 'None'}")
+   
+   claude = get_claude_chat()
+   response = claude.get_marta_response(player_message, game_state)
+   
+   print(f"[CLAUDE] Final Marta response: '{response}'")
+   return response
 
 # Test function for debugging
 def test_claude_connection():
-    """Test function to verify Claude API connectivity"""
-    print(f"[CLAUDE] === TESTING CLAUDE CONNECTION ===")
-    
-    try:
-        claude = get_claude_chat()
-        test_response = claude.get_marta_response(
-            "Hello test", 
-            {'hand_number': 1, 'phase': 'testing', 'player_score': 0, 'computer_score': 0}
-        )
-        print(f"[CLAUDE] Test successful: '{test_response}'")
-        return True, test_response
-    except Exception as e:
-        print(f"[CLAUDE] Test failed: {e}")
-        return False, str(e)
+   """Test function to verify Claude API connectivity with Marta as player"""
+   print(f"[CLAUDE] === TESTING CLAUDE CONNECTION (MARTA AS PLAYER) ===")
+   
+   try:
+       claude = get_claude_chat()
+       
+       # Test with rich game context - simulating opponent asking about game state
+       test_context = {
+           'hand_number': 2,
+           'phase': 'playing',
+           'player_score': 89,  # Opponent's score
+           'computer_score': 127,  # Marta's score
+           'player_parity': 'odd',  # Opponent's parity
+           'computer_parity': 'even',  # Marta's parity
+           'player_bid': 4,  # Opponent's bid
+           'computer_bid': 6,  # Marta's bid
+           'player_tricks': 2,  # Opponent's tricks
+           'computer_tricks': 3,  # Marta's tricks
+           'player_bags': 1,  # Opponent's bags
+           'computer_bags': 0,  # Marta's bags
+           'trick_history': [
+               {'number': 1, 'player_card': {'rank': '7', 'suit': '♣'}, 'computer_card': {'rank': 'A', 'suit': '♣'}, 'winner': 'computer'},
+               {'number': 2, 'player_card': {'rank': 'K', 'suit': '♠'}, 'computer_card': {'rank': 'Q', 'suit': '♠'}, 'winner': 'player'}
+           ]
+       }
+       
+       test_response = claude.get_marta_response("How do you think this hand is going?", test_context)
+       print(f"[CLAUDE] Marta player test successful: '{test_response}'")
+       return True, test_response
+   except Exception as e:
+       print(f"[CLAUDE] Marta player test failed: {e}")
+       return False, str(e)
 
 if __name__ == "__main__":
-    # Run test when script is executed directly
-    success, result = test_claude_connection()
-    print(f"Test result: {success} - {result}")
+   # Run test when script is executed directly
+   success, result = test_claude_connection()
+   print(f"Marta player test result: {success} - {result}")
