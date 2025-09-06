@@ -367,6 +367,38 @@ def chat_response():
         print(f"[CHAT] Using fallback: '{fallback}'")
         return jsonify({'response': fallback})
 
+@app.route('/debug_secret_value', methods=['GET'])
+def debug_secret_value():
+    try:
+        from google.cloud import secretmanager
+        import os
+        
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+        client = secretmanager.SecretManagerServiceClient()
+        secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
+        response = client.access_secret_version(request={"name": secret_name})
+        secret_value = response.payload.data.decode("UTF-8")
+        
+        # Check for common issues
+        issues = []
+        if len(secret_value) != 108:
+            issues.append(f"Wrong length: {len(secret_value)} (should be 108)")
+        if not secret_value.startswith('sk-ant-api03-'):
+            issues.append(f"Wrong prefix: starts with '{secret_value[:15]}'")
+        if ' ' in secret_value:
+            issues.append("Contains spaces")
+        if '\n' in secret_value:
+            issues.append("Contains newlines")
+        
+        return jsonify({
+            'secret_length': len(secret_value),
+            'secret_starts': secret_value[:20],
+            'secret_ends': secret_value[-10:],
+            'issues_found': issues,
+            'exact_bytes': [ord(c) for c in secret_value[-5:]]  # Check for hidden chars
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 # Debug routes for testing Claude integration
 @app.route('/test_claude', methods=['GET'])
