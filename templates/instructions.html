@@ -163,6 +163,14 @@
         li {
             margin-bottom: 8px;
         }
+
+        .ai-update {
+            background: #f0f8ff;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
     </style>
 </head>
 
@@ -184,6 +192,18 @@
                         target="_blank" style="color: #3182ce;">Chicken-scratched 2manSpades rules...</a></p>
             </div>
         </div>
+
+        <div class="section">
+            <div class="ai-update">
+                <h3>Recent AI Improvement</h3>
+                <p><strong>Marta now plays much smarter!</strong> When she's made her bid, she actively forces you into
+                    difficult decisions by leading high cards when you have 5+ bags, and strategically dumps her highest
+                    losing cards (like playing Queen instead of 2 when you lead King) to avoid getting stuck with
+                    dangerous high cards later. This creates realistic pressure and makes bag management much more
+                    challenging.</p>
+            </div>
+        </div>
+
         <div class="section">
             <h2>Install as Mobile App</h2>
             <p>You can install Two-Man Spades as an app on your phone for a better full-screen experience:</p>
@@ -210,6 +230,7 @@
 
             <p>Once installed, the game will open in full-screen mode without browser bars, just like a native app!</p>
         </div>
+
         <div class="section">
             <h2>Overview</h2>
             <p>Two-Man Spades is a trick-taking card game where you compete against Marta (the computer) to reach 300
@@ -255,6 +276,9 @@
                         tricks, lose -200 points and gain that many bags.</li>
                     <li><strong>Blind Bidding:</strong> When down by 100+ points, you can bid "blind" (5-10 tricks) for
                         double points/penalties before seeing your cards!</li>
+                    <li><strong>Blind NIL:</strong> When down by 100+ points, you can attempt Blind NIL - if successful,
+                        you instantly win the entire game. If you fail by taking any tricks, you instantly lose the
+                        game!</li>
                 </ul>
             </div>
 
@@ -314,6 +338,14 @@
                     <td>Blind bid failure</td>
                     <td>Double normal penalty</td>
                 </tr>
+                <tr>
+                    <td>Blind NIL success</td>
+                    <td>INSTANT GAME WIN</td>
+                </tr>
+                <tr>
+                    <td>Blind NIL failure</td>
+                    <td>INSTANT GAME LOSS</td>
+                </tr>
             </table>
 
             <h3>Bags System</h3>
@@ -326,7 +358,8 @@
 
             <div class="tip">
                 <strong>Bag Strategy:</strong> Sometimes it's better to let your opponent win a trick rather than
-                accumulate bags, especially when you're close to a 7-bag penalty!
+                accumulate bags, especially when you're close to a 7-bag penalty! Watch out - Marta now actively tries
+                to force you to take unwanted tricks when you have 5+ bags.
             </div>
         </div>
 
@@ -346,6 +379,8 @@
             <ul>
                 <li><strong>Target Reached:</strong> Someone reaches 300 points (winner has highest score)</li>
                 <li><strong>Mercy Rule:</strong> Someone leads by 300+ points (automatic win)</li>
+                <li><strong>Blind NIL:</strong> Successful Blind NIL instantly wins the game, failed Blind NIL instantly
+                    loses</li>
             </ul>
 
             <h3>Tie-Breaking</h3>
@@ -365,7 +400,11 @@
                 the other has none), the game automatically plays out the remaining cards to save time while showing you
                 exactly what happened.</p>
 
-
+            <h3>Smart AI Opponent</h3>
+            <p>Marta now uses advanced strategy when she's made her bid - she'll lead high cards to force you into
+                difficult decisions when you have lots of bags, and she'll strategically dump her dangerous high cards
+                on tricks she's going to lose anyway. This creates realistic pressure similar to playing against an
+                experienced human opponent.</p>
         </div>
 
         <div class="section">
@@ -378,6 +417,7 @@
                     <li>Look for aces in other suits, but remember they can be trumped</li>
                     <li>Consider void suits (suits you have no cards in) - you can trump them</li>
                     <li>Be conservative when you have many bags</li>
+                    <li>Consider Blind NIL as a last resort when far behind - it's all or nothing!</li>
                 </ul>
             </div>
 
@@ -388,6 +428,7 @@
                     <li>Count cards to know what's still in play</li>
                     <li>Use your spades wisely - they're powerful but limited</li>
                     <li>Sometimes let your opponent win tricks if you've already made your bid</li>
+                    <li>Be extra careful about bag management - Marta will exploit your weaknesses!</li>
                 </ul>
             </div>
 
@@ -416,7 +457,8 @@
         <div class="section">
             <p style="text-align: center; margin-top: 40px; font-style: italic; color: #666;">
                 Two-Man Spades combines strategy, memory, and calculated risk-taking. Each hand is a puzzle to solve,
-                and each game tells a story. Good luck, and may your bids be true!
+                and each game tells a story. With Marta's improved AI, you'll face tougher decisions and more realistic
+                pressure. Good luck, and may your bids be true!
             </p>
         </div>
     </div>
