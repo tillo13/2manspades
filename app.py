@@ -237,7 +237,8 @@ def computer_lead_with_logging(game, session_obj=None):
     
     # Use enhanced leading strategy from computer_logic
     from utilities.computer_logic import computer_lead_strategy
-    chosen_idx = computer_lead_strategy(hand, game['spades_broken'])
+
+    chosen_idx = computer_lead_strategy(hand, game['spades_broken'], game)
     
     if chosen_idx is None:
         # Fallback to original simple logic if strategy fails

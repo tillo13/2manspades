@@ -175,9 +175,10 @@ def analyze_suit_distribution(hand):
 # DISCARD STRATEGY
 # =============================================================================
 
+
 def computer_discard_strategy(computer_hand, game_state):
     """
-    Enhanced discard strategy prioritizing singleton special cards and void creation
+    Enhanced discard strategy - special cards are ONLY discarded if singleton, otherwise protected
     Returns index of card to discard
     """
     player_parity = game_state.get('player_parity', 'even')
@@ -187,43 +188,41 @@ def computer_discard_strategy(computer_hand, game_state):
     suit_distribution = analyze_suit_distribution(computer_hand)
     
     discard_candidates = []
+    special_card_candidates = []  # Track special cards separately
     
     for i, card in enumerate(computer_hand):
         score = 0
         suit_info = suit_distribution[card['suit']]
+        is_special, bag_value = is_special_card(card)
         
-        # PRIORITY 1: Singleton special cards - MUST discard these
-        if suit_info['is_singleton'] and card['suit'] != '♠':
-            is_special, _ = is_special_card(card)
-            if is_special:
-                score += SINGLETON_SPECIAL_PRIORITY
-                discard_candidates.append((i, score))
-                continue  # Don't apply other penalties to singleton specials
+        # SPECIAL CARDS: Only consider discarding if singleton AND not spades
+        if is_special and SPECIAL_CARD_EXTREME_PROTECTION:
+            if suit_info['is_singleton'] and card['suit'] != '♠':
+                # Singleton special card - actually good to discard for void creation
+                score = SINGLETON_SPECIAL_PRIORITY
+                special_card_candidates.append((i, score, 'singleton_special'))
+            else:
+                # Protected special card - NEVER discard unless no choice
+                special_card_candidates.append((i, -10000, 'protected_special'))
+                continue  # Don't add to normal candidates
         
-        # PRIORITY 2: Void creation (singleton non-specials in non-spade suits)
+        # PRIORITY 1: Non-special singletons for void creation
         elif suit_info['is_singleton'] and card['suit'] != '♠':
             spade_count = suit_distribution['♠']['count']
-            # More spades = void is more valuable
             void_value = (spade_count * VOID_CREATION_PRIORITY) // 10
-            if spade_count >= 4:  # Strong spade holding
+            if spade_count >= 4:
                 void_value += (VOID_CREATION_PRIORITY // 4)
             void_value -= card['value']  # Prefer discarding low cards
             score += void_value
         
-        # PRIORITY 3: Normal special card protection (protected specials)
-        else:
-            is_special, _ = is_special_card(card)
-            if is_special:
-                score += SPECIAL_CARD_PROTECTION  # Negative score
-        
-        # PRIORITY 4: Avoid discarding spades
+        # PRIORITY 2: Avoid discarding spades
         if card['suit'] == '♠':
             score -= card['value'] * SPADE_DISCARD_PENALTY
         else:
             # Prefer discarding low cards from other suits
             score += (15 - card['value'])
         
-        # PRIORITY 5: Light parity consideration
+        # PRIORITY 3: Light parity consideration
         discard_value = get_discard_value(card)
         if computer_parity == 'even' and discard_value % 2 == 1:
             score += PARITY_CONSIDERATION
@@ -232,8 +231,28 @@ def computer_discard_strategy(computer_hand, game_state):
         
         discard_candidates.append((i, score))
     
-    # Return index of card with highest discard score
-    return max(discard_candidates, key=lambda x: x[1])[0]
+    # Choose from regular candidates first
+    if discard_candidates:
+        return max(discard_candidates, key=lambda x: x[1])[0]
+    
+    # Only if no regular cards, consider special cards
+    # Prioritize singleton specials over protected specials
+    singleton_specials = [c for c in special_card_candidates if c[2] == 'singleton_special']
+    if singleton_specials:
+        return max(singleton_specials, key=lambda x: x[1])[0]
+    
+    # Absolute last resort - discard a protected special card (choose 10♣ over 7♦)
+    protected_specials = [c for c in special_card_candidates if c[2] == 'protected_special']
+    if protected_specials:
+        for idx, _, _ in protected_specials:
+            card = computer_hand[idx]
+            if card['rank'] == '10' and card['suit'] == '♣':
+                return idx  # Prefer discarding 10♣
+        # If no 10♣, discard 7♦
+        return protected_specials[0][0]
+    
+    # Failsafe - should never reach here
+    return 0
 
 # =============================================================================
 # BIDDING STRATEGY
@@ -380,66 +399,31 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
 # PLAYING STRATEGY
 # =============================================================================
 
-def computer_lead_strategy(computer_hand, spades_broken):
-    """
-    Enhanced leading strategy - avoid leading into special cards when possible
-    Returns index of best card to lead, or None if no valid leads
-    """
+def computer_lead_strategy(computer_hand, spades_broken, game_state=None):
+    """Simple leading strategy with basic bag forcing"""
     if not computer_hand:
         return None
     
-    # Find all valid leads
-    valid_leads = []
+    # Find valid leads
+    valid = []
     for i, card in enumerate(computer_hand):
         if card['suit'] != '♠' or spades_broken or all(c['suit'] == '♠' for c in computer_hand):
-            valid_leads.append((i, card))
+            valid.append((i, card))
     
-    if not valid_leads:
+    if not valid:
         return None
     
-    # Categorize leads by danger level (if safety consideration is enabled)
-    if LEAD_SAFETY_CONSIDERATION:
-        safe_leads = []
-        risky_leads = []
-        dangerous_leads = []
+    # Simple bag forcing: if made bid and player has 5+ bags, lead high
+    if game_state:
+        computer_bid = game_state.get('computer_bid', 0)
+        computer_tricks = game_state.get('computer_tricks', 0) 
+        player_bags = game_state.get('player_bags', 0)
         
-        for i, card in valid_leads:
-            suit = card['suit']
-            rank = card['rank']
-            
-            # Check if leading this suit could give opponent special cards
-            if suit == '♣':
-                # Leading clubs could set up 10♣ for opponent
-                if rank in ['J', 'Q', 'K', 'A']:
-                    dangerous_leads.append((i, card))
-                elif rank in ['8', '9', '10']:
-                    risky_leads.append((i, card))
-                else:
-                    safe_leads.append((i, card))
-            elif suit == '♦':
-                # Leading diamonds could set up 7♦ for opponent  
-                if rank in ['J', 'Q', 'K', 'A']:
-                    dangerous_leads.append((i, card))
-                elif rank in ['6', '7', '8']:
-                    risky_leads.append((i, card))
-                else:
-                    safe_leads.append((i, card))
-            else:
-                # Hearts and spades are generally safer
-                safe_leads.append((i, card))
-        
-        # Choose lead in order of preference: safe > risky > dangerous
-        if safe_leads:
-            chosen = min(safe_leads, key=lambda x: x[1]['value'])
-        elif risky_leads:
-            chosen = min(risky_leads, key=lambda x: x[1]['value'])
-        else:
-            chosen = min(dangerous_leads, key=lambda x: x[1]['value'])
-    else:
-        # Simple strategy - just lead lowest valid card
-        chosen = min(valid_leads, key=lambda x: x[1]['value'])
+        if computer_tricks >= computer_bid > 0 and player_bags >= 5:
+            return max(valid, key=lambda x: x[1]['value'])[0]  # Lead highest
     
-    return chosen[0]
+    # Normal: lead lowest
+    return min(valid, key=lambda x: x[1]['value'])[0]
 
 def computer_follow_strategy(computer_hand, current_trick, game_state):
     """
