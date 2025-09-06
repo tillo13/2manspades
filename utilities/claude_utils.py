@@ -175,6 +175,7 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Using general error fallback: '{fallback}'")
             return fallback
     
+
     def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
         """Build context showing only what Marta can legitimately see during play"""
         print(f"[CLAUDE] Building Marta's visible context...")
@@ -191,16 +192,17 @@ class ClaudeGameChat:
         for key, value in game_context.items():
             print(f"[CLAUDE] Processing key: {key} (type: {type(value).__name__})")
             
-            # Skip internal/hidden information AND discard results until hand is over
+            # Skip internal/hidden information
             excluded_keys = {
                 'computer_hand', 'client_info', 'game_id', 'show_computer_hand', 
                 'current_hand_id', 'game_started_at', 'action_sequence', 'trick_display_timer'
             }
             
-            # Also exclude discard information until hand is complete
-            if not game_context.get('hand_over', False):
+            # Check if we should exclude discard information
+            hand_is_over = game_context.get('hand_over', False)
+            if not hand_is_over:
                 excluded_keys.update({
-                    'player_discarded', 'computer_discarded', 'discard_bonus_explanation',
+                    'discard_bonus_explanation',
                     'pending_discard_result', 'pending_special_discard_result'
                 })
             
@@ -249,12 +251,15 @@ class ClaudeGameChat:
                             converted_history.append(converted_trick)
                     marta_visible_context[key] = converted_history
                     print(f"[CLAUDE] Converted trick_history: {len(converted_history)} tricks")
-                # Handle discard cards ONLY if hand is over
-                elif key in ['player_discarded', 'computer_discarded'] and value and game_context.get('hand_over', False):
+                # Handle discard cards ONLY if hand is over AND they exist
+                elif key == 'player_discarded' and value and hand_is_over:
                     if isinstance(value, dict) and 'rank' in value and 'suit' in value:
-                        new_key = 'my_discarded' if key == 'computer_discarded' else 'opponent_discarded'
-                        marta_visible_context[new_key] = f"{value['rank']}{value['suit']}"
-                        print(f"[CLAUDE] Converted {key} to {new_key}")
+                        marta_visible_context['opponent_discarded'] = f"{value['rank']}{value['suit']}"
+                        print(f"[CLAUDE] Converted player_discarded to opponent_discarded")
+                elif key == 'computer_discarded' and value and hand_is_over:
+                    if isinstance(value, dict) and 'rank' in value and 'suit' in value:
+                        marta_visible_context['my_discarded'] = f"{value['rank']}{value['suit']}"
+                        print(f"[CLAUDE] Converted computer_discarded to my_discarded")
                 elif key.startswith('player_'):
                     # Rename player stats to opponent stats for Marta's perspective
                     new_key = key.replace('player_', 'opponent_')
@@ -307,7 +312,7 @@ class ClaudeGameChat:
                         marta_visible_context[key] = value
                 else:
                     # Keep other fields as-is (but exclude discard explanation during active play)
-                    if key == 'discard_bonus_explanation' and not game_context.get('hand_over', False):
+                    if key == 'discard_bonus_explanation' and not hand_is_over:
                         print(f"[CLAUDE] Excluding discard_bonus_explanation (hand not over)")
                         continue
                     # Only include serializable values
