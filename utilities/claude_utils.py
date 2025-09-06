@@ -66,6 +66,9 @@ class ClaudeGameChat:
             "You can see the current game state, your opponent's played cards, discard pile results, scores, "
             "bidding patterns, and trick outcomes - but you cannot see cards still in your opponent's hand. "
             "IMPORTANT: You also cannot see discard results until the hand is completely over. "
+            "CRITICAL: When referencing specific cards played in tricks, be absolutely accurate about who played what. "
+            "Never claim to have played a card that your opponent actually played. The context clearly shows "
+            "'my_card' vs 'opponent_card' and 'outcome' descriptions. Use these to avoid factual errors. "
             "Reference specific details from what you can legitimately know: current scores, recent plays, "
             "bidding accuracy, your own strategic decisions, bag situations, parity advantages, and trick results. "
             "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
@@ -176,6 +179,7 @@ class ClaudeGameChat:
             return fallback
     
 
+
     def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
         """Build context showing only what Marta can legitimately see during play"""
         print(f"[CLAUDE] Building Marta's visible context...")
@@ -225,10 +229,19 @@ class ClaudeGameChat:
                         if isinstance(play, dict) and 'card' in play:
                             card = play['card']
                             if isinstance(card, dict) and 'rank' in card and 'suit' in card:
-                                converted_trick.append({
-                                    'player': 'me' if play['player'] == 'computer' else 'opponent',
-                                    'card': f"{card['rank']}{card['suit']}"
-                                })
+                                card_str = f"{card['rank']}{card['suit']}"
+                                if play['player'] == 'computer':
+                                    converted_trick.append({
+                                        'player': 'me',
+                                        'card': card_str,
+                                        'card_details': f"I played {card_str}"
+                                    })
+                                else:
+                                    converted_trick.append({
+                                        'player': 'opponent',
+                                        'card': card_str,
+                                        'card_details': f"Opponent played {card_str}"
+                                    })
                     marta_visible_context[key] = converted_trick
                     print(f"[CLAUDE] Converted current_trick: {len(converted_trick)} plays")
                 elif key == 'trick_history' and isinstance(value, list):
@@ -239,26 +252,47 @@ class ClaudeGameChat:
                                 'number': trick.get('number'),
                                 'winner': 'me' if trick.get('winner') == 'computer' else 'opponent'
                             }
-                            # Safely convert card objects to strings
+                            
+                            # CRITICAL: Clearly identify who played which card
+                            my_card = None
+                            opponent_card = None
+                            
                             if trick.get('computer_card') and isinstance(trick['computer_card'], dict):
                                 card = trick['computer_card']
                                 if 'rank' in card and 'suit' in card:
-                                    converted_trick['my_card'] = f"{card['rank']}{card['suit']}"
+                                    my_card = f"{card['rank']}{card['suit']}"
+                                    converted_trick['my_card'] = my_card
+                                    
                             if trick.get('player_card') and isinstance(trick['player_card'], dict):
                                 card = trick['player_card']
                                 if 'rank' in card and 'suit' in card:
-                                    converted_trick['opponent_card'] = f"{card['rank']}{card['suit']}"
+                                    opponent_card = f"{card['rank']}{card['suit']}"
+                                    converted_trick['opponent_card'] = opponent_card
+                            
+                            # Add explicit play description to prevent confusion
+                            if my_card and opponent_card:
+                                converted_trick['play_summary'] = f"I played {my_card}, opponent played {opponent_card}"
+                                if converted_trick['winner'] == 'me':
+                                    converted_trick['outcome'] = f"I won with my {my_card} beating opponent's {opponent_card}"
+                                else:
+                                    converted_trick['outcome'] = f"Opponent won with their {opponent_card} beating my {my_card}"
+                            
                             converted_history.append(converted_trick)
+                            
                     marta_visible_context[key] = converted_history
                     print(f"[CLAUDE] Converted trick_history: {len(converted_history)} tricks")
                 # Handle discard cards ONLY if hand is over AND they exist
                 elif key == 'player_discarded' and value and hand_is_over:
                     if isinstance(value, dict) and 'rank' in value and 'suit' in value:
-                        marta_visible_context['opponent_discarded'] = f"{value['rank']}{value['suit']}"
+                        opponent_discard = f"{value['rank']}{value['suit']}"
+                        marta_visible_context['opponent_discarded'] = opponent_discard
+                        marta_visible_context['opponent_discard_details'] = f"Opponent discarded {opponent_discard}"
                         print(f"[CLAUDE] Converted player_discarded to opponent_discarded")
                 elif key == 'computer_discarded' and value and hand_is_over:
                     if isinstance(value, dict) and 'rank' in value and 'suit' in value:
-                        marta_visible_context['my_discarded'] = f"{value['rank']}{value['suit']}"
+                        my_discard = f"{value['rank']}{value['suit']}"
+                        marta_visible_context['my_discarded'] = my_discard
+                        marta_visible_context['my_discard_details'] = f"I discarded {my_discard}"
                         print(f"[CLAUDE] Converted computer_discarded to my_discarded")
                 elif key.startswith('player_'):
                     # Rename player stats to opponent stats for Marta's perspective
@@ -326,6 +360,7 @@ class ClaudeGameChat:
                 print(f"[CLAUDE] Error processing key {key}: {e}")
                 continue
         
+        # Rest of the function remains the same...
         print(f"[CLAUDE] Final context keys: {list(marta_visible_context.keys())}")
         
         # Test JSON conversion with detailed error handling
@@ -334,55 +369,9 @@ class ClaudeGameChat:
             print(f"[CLAUDE] JSON conversion successful, length: {len(context_json)} chars")
         except Exception as e:
             print(f"[CLAUDE] JSON conversion FAILED: {e}")
-            print(f"[CLAUDE] Problematic data types:")
-            for k, v in marta_visible_context.items():
-                try:
-                    json.dumps(v)
-                    print(f"  {k}: {type(v).__name__} - OK")
-                except:
-                    print(f"  {k}: {type(v).__name__} - FAILS JSON: {v}")
             return "[MY_VISIBLE_GAME_STATE: JSON conversion failed] "
         
-        # Create strategic summary for logging
-        summary_parts = []
-        summary_parts.append(f"Hand {marta_visible_context.get('hand_number', 1)}")
-        summary_parts.append(f"Phase: {marta_visible_context.get('phase', 'unknown')}")
-        
-        # Add hand completion status
-        if marta_visible_context.get('hand_over', False):
-            summary_parts.append("(Hand Complete)")
-        
-        my_score = marta_visible_context.get('my_score', 0)
-        opponent_score = marta_visible_context.get('opponent_score', 0)
-        summary_parts.append(f"Scores: Me {my_score}, Opponent {opponent_score}")
-        
-        score_diff = my_score - opponent_score
-        if score_diff > 0:
-            summary_parts.append(f"(I'm +{score_diff})")
-        elif score_diff < 0:
-            summary_parts.append(f"(Opponent +{abs(score_diff)})")
-        else:
-            summary_parts.append("(Tied)")
-        
-        # Add bidding context
-        my_bid = marta_visible_context.get('my_bid')
-        opponent_bid = marta_visible_context.get('opponent_bid')
-        if my_bid is not None and opponent_bid is not None:
-            summary_parts.append(f"Bids: Me{my_bid}/Opp{opponent_bid}")
-        
-        # Add trick progress
-        if marta_visible_context.get('phase') == 'playing':
-            my_tricks = marta_visible_context.get('my_tricks', 0)
-            opponent_tricks = marta_visible_context.get('opponent_tricks', 0)
-            summary_parts.append(f"Tricks: Me{my_tricks}/Opp{opponent_tricks}")
-        
-        summary = " | ".join(summary_parts)
-        
-        print(f"[CLAUDE] Marta's view summary: {summary}")
-        print(f"[CLAUDE] Full context JSON length: {len(context_json)} chars")
-        
         final_context = f"[MY_VISIBLE_GAME_STATE: {context_json}] "
-        
         print(f"[CLAUDE] Final context length: {len(final_context)} chars")
         return final_context
     
