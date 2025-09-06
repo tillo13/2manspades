@@ -401,6 +401,93 @@ def debug_secret_value():
         return jsonify({'error': str(e)})
 
 # Debug routes for testing Claude integration
+
+@app.route('/debug_claude_detailed', methods=['GET'])
+def debug_claude_detailed():
+    """Test Claude API connection with detailed debugging"""
+    try:
+        import anthropic
+        import os
+        from google.cloud import secretmanager
+        
+        results = {}
+        
+        # Get the API key the same way ClaudeGameChat does
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+        client = secretmanager.SecretManagerServiceClient()
+        secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
+        response = client.access_secret_version(request={"name": secret_name})
+        api_key = response.payload.data.decode("UTF-8")
+        
+        results['api_key_length'] = len(api_key)
+        results['api_key_starts'] = api_key[:15]
+        results['api_key_ends'] = api_key[-15:]
+        results['secret_version'] = response.name
+        
+        # Check for hidden characters
+        results['has_newlines'] = '\n' in api_key
+        results['has_spaces'] = ' ' in api_key
+        results['has_tabs'] = '\t' in api_key
+        results['raw_bytes_end'] = [ord(c) for c in api_key[-5:]]
+        
+        # Test direct Anthropic client creation with exact same key
+        try:
+            direct_client = anthropic.Anthropic(api_key=api_key, timeout=5.0)
+            test_response = direct_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=10,
+                messages=[{"role": "user", "content": "hi"}]
+            )
+            results['direct_test'] = 'SUCCESS'
+            results['direct_response'] = test_response.content[0].text
+        except anthropic.AuthenticationError as e:
+            results['direct_test'] = 'AUTH_FAILED'
+            results['direct_error'] = str(e)
+        except Exception as e:
+            results['direct_test'] = 'OTHER_ERROR'
+            results['direct_error'] = str(e)
+            results['direct_error_type'] = type(e).__name__
+            
+        return jsonify({
+            'success': True,
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        })
+
+@app.route('/debug_key_comparison', methods=['GET'])
+def debug_key_comparison():
+    """Compare key format without exposing the actual key"""
+    try:
+        import os
+        from google.cloud import secretmanager
+        
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+        client = secretmanager.SecretManagerServiceClient()
+        secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
+        response = client.access_secret_version(request={"name": secret_name})
+        prod_key = response.payload.data.decode("UTF-8")
+        
+        return jsonify({
+            'prod_key_length': len(prod_key),
+            'prod_key_starts': prod_key[:15],
+            'prod_key_ends': prod_key[-15:],
+            'has_correct_prefix': prod_key.startswith('sk-ant-api03-'),
+            'secret_version_name': response.name,
+            'appears_valid_format': len(prod_key) > 100 and prod_key.startswith('sk-ant-api03-')
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__
+        })
+
 @app.route('/test_claude', methods=['GET'])
 def test_claude():
     """Debug route to test Claude API integration"""
