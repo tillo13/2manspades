@@ -379,39 +379,63 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
 
 def computer_lead_strategy(computer_hand, spades_broken, game_state=None):
     """
-    Leading strategy with simple bag forcing
+    Enhanced leading strategy with absolute special card protection
     """
     if not computer_hand:
         return None
     
-    # Find valid leads
-    valid = []
+    # Import special card check
+    from .custom_rules import is_special_card
+    
+    # Find all valid leads (respecting spades rules)
+    valid_leads = []
     for i, card in enumerate(computer_hand):
         if card['suit'] != '♠' or spades_broken or all(c['suit'] == '♠' for c in computer_hand):
-            valid.append((i, card))
+            valid_leads.append((i, card))
     
-    if not valid:
+    if not valid_leads:
         return None
     
-    # Simple bag forcing: if made bid and player has 5+ bags, lead high
-    if game_state:
+    # CRITICAL: Never lead special cards unless absolutely no choice
+    non_special_leads = []
+    special_leads = []
+    
+    for i, card in valid_leads:
+        is_special, _ = is_special_card(card)
+        if is_special:
+            special_leads.append((i, card))
+        else:
+            non_special_leads.append((i, card))
+    
+    # If we have ANY non-special cards to lead, NEVER lead special cards
+    if non_special_leads:
+        leads_to_consider = non_special_leads
+    else:
+        # Only consider special cards if we literally have no other choice
+        leads_to_consider = special_leads
+    
+    # Advanced bag forcing logic (only if we have non-special cards)
+    if game_state and leads_to_consider == non_special_leads:
         computer_bid = game_state.get('computer_bid', 0)
         computer_tricks = game_state.get('computer_tricks', 0) 
         player_bags = game_state.get('player_bags', 0)
         
+        # If we've made our bid and player has 5+ bags, lead high to force them
         if computer_tricks >= computer_bid > 0 and player_bags >= 5:
-            return max(valid, key=lambda x: x[1]['value'])[0]  # Lead highest
+            return max(leads_to_consider, key=lambda x: x[1]['value'])[0]
     
-    # Normal: lead lowest
-    return min(valid, key=lambda x: x[1]['value'])[0]
+    # Normal strategy: lead lowest safe card
+    return min(leads_to_consider, key=lambda x: x[1]['value'])[0]
 
 def computer_follow_strategy(computer_hand, current_trick, game_state):
     """
-    Smart strategy for when computer must follow suit - sheds high cards when bid is made
+    Enhanced following strategy with special card protection and acquisition
     Returns index of best card to play
     """
     if not current_trick or not computer_hand:
         return None
+
+    from .custom_rules import is_special_card
 
     computer_bid = game_state.get('computer_bid', 0)
     computer_tricks = game_state.get('computer_tricks', 0)
@@ -423,6 +447,9 @@ def computer_follow_strategy(computer_hand, current_trick, game_state):
     lead_suit = lead_card['suit']
     lead_value = lead_card['value']
 
+    # Check if player played a special card that we want to win
+    player_has_special = is_special_card(lead_card)[0]
+
     # Find valid plays
     same_suit = [(i, c) for i, c in enumerate(computer_hand) if c['suit'] == lead_suit]
     spades = [(i, c) for i, c in enumerate(computer_hand) if c['suit'] == '♠']
@@ -433,38 +460,85 @@ def computer_follow_strategy(computer_hand, current_trick, game_state):
         winners = [(i, c) for i, c in same_suit if c['value'] > lead_value]
         losers = [(i, c) for i, c in same_suit if c['value'] <= lead_value]
         
+        # Separate special and non-special cards in same suit
+        special_winners = [(i, c) for i, c in winners if is_special_card(c)[0]]
+        non_special_winners = [(i, c) for i, c in winners if not is_special_card(c)[0]]
+        special_losers = [(i, c) for i, c in losers if is_special_card(c)[0]]
+        non_special_losers = [(i, c) for i, c in losers if not is_special_card(c)[0]]
+        
+        # PRIORITY 1: If player played special card, try to win it (but not with our special cards)
+        if player_has_special and non_special_winners:
+            return min(non_special_winners, key=lambda x: x[1]['value'])[0]
+        
+        # PRIORITY 2: If we can win without special cards, prefer that
         if made_bid:
-            # Already made bid - avoid taking more tricks
-            if losers:
-                # Play HIGHEST losing card (shed dangerous high cards)
-                return max(losers, key=lambda x: x[1]['value'])[0]
+            # Already made bid - avoid taking more tricks, but protect special cards
+            if non_special_losers:
+                # Play highest non-special losing card to shed dangerous cards
+                return max(non_special_losers, key=lambda x: x[1]['value'])[0]
+            elif special_losers:
+                # Only play special losing cards if no choice
+                return min(special_losers, key=lambda x: x[1]['value'])[0]
+            elif non_special_winners:
+                # Must win - use lowest non-special winner
+                return min(non_special_winners, key=lambda x: x[1]['value'])[0]
             else:
-                # Must win - play lowest winning card
-                return min(winners, key=lambda x: x[1]['value'])[0]
+                # Only special winners left - use lowest
+                return min(special_winners, key=lambda x: x[1]['value'])[0]
         else:
-            # Still need tricks - try to win if possible
-            if winners:
-                return min(winners, key=lambda x: x[1]['value'])[0]
+            # Still need tricks - try to win, but protect special cards
+            if non_special_winners:
+                return min(non_special_winners, key=lambda x: x[1]['value'])[0]
+            elif special_winners and player_has_special:
+                # Worth using special card to win player's special card
+                return min(special_winners, key=lambda x: x[1]['value'])[0]
+            elif non_special_losers:
+                # Can't win without special cards - play lowest non-special loser
+                return min(non_special_losers, key=lambda x: x[1]['value'])[0]
             else:
-                # Can't win - play lowest losing card
-                return min(losers, key=lambda x: x[1]['value'])[0]
+                # Only special cards left - play lowest special loser
+                return min(special_losers, key=lambda x: x[1]['value'])[0]
                 
     elif lead_suit != '♠' and spades:
         # Can trump with spade
+        special_spades = [(i, c) for i, c in spades if is_special_card(c)[0]]
+        non_special_spades = [(i, c) for i, c in spades if not is_special_card(c)[0]]
+        
+        # If player has special card, trump to win it (but not with special spades)
+        if player_has_special and non_special_spades:
+            return min(non_special_spades, key=lambda x: x[1]['value'])[0]
+        
         if made_bid:
             # Avoid trumping if possible - discard from other suits instead
             if other:
-                return min(other, key=lambda x: x[1]['value'])[0]
+                # Prefer discarding non-special cards from other suits
+                non_special_other = [(i, c) for i, c in other if not is_special_card(c)[0]]
+                if non_special_other:
+                    return min(non_special_other, key=lambda x: x[1]['value'])[0]
+                else:
+                    return min(other, key=lambda x: x[1]['value'])[0]
+            elif non_special_spades:
+                # Must trump - use lowest non-special spade
+                return min(non_special_spades, key=lambda x: x[1]['value'])[0]
             else:
-                # Must trump - use lowest spade
-                return min(spades, key=lambda x: x[1]['value'])[0]
+                # Only special spades - use lowest
+                return min(special_spades, key=lambda x: x[1]['value'])[0]
         else:
-            # Still need tricks - trump with lowest spade
-            return min(spades, key=lambda x: x[1]['value'])[0]
+            # Still need tricks - trump with lowest spade, prefer non-special
+            if non_special_spades:
+                return min(non_special_spades, key=lambda x: x[1]['value'])[0]
+            else:
+                return min(special_spades, key=lambda x: x[1]['value'])[0]
     else:
-        # Can't follow or trump - discard lowest
+        # Can't follow or trump - discard lowest, protect special cards
         all_cards = [(i, c) for i, c in enumerate(computer_hand)]
-        return min(all_cards, key=lambda x: x[1]['value'])[0]
+        non_special_cards = [(i, c) for i, c in all_cards if not is_special_card(c)[0]]
+        
+        if non_special_cards:
+            return min(non_special_cards, key=lambda x: x[1]['value'])[0]
+        else:
+            # Only special cards left - discard lowest special
+            return min(all_cards, key=lambda x: x[1]['value'])[0]
 
 def autoplay_remaining_cards(game, session_obj=None):
     """
