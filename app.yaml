@@ -10,7 +10,6 @@ automatic_scaling:
 env_variables:
   FLASK_ENV: "production"
   GOOGLE_CLOUD_PROJECT: "twomanspades"
-  ANTHROPIC_API_KEY: projects/twomanspades/secrets/ANTHROPIC_API_KEY/versions/latest
 
 handlers:
   - url: /static

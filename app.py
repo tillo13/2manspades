@@ -484,7 +484,22 @@ def debug_chat_path():
             'error': str(e),
             'error_type': type(e).__name__
         })
+
+@app.route('/debug_api_source', methods=['GET'])
+def debug_api_source():
+    """Show which source provided the API key"""
+    import os
     
+    env_key = os.getenv('ANTHROPIC_API_KEY')
+    is_gcp = os.getenv('GAE_ENV') == 'standard'
+    
+    return jsonify({
+        'has_env_variable': bool(env_key),
+        'env_key_preview': f"{env_key[:15]}..." if env_key else None,
+        'is_gcp_environment': is_gcp,
+        'will_use_secret_manager': is_gcp and not env_key
+    })
+
 @app.route('/debug_key_comparison', methods=['GET'])
 def debug_key_comparison():
     """Compare key format without exposing the actual key"""
