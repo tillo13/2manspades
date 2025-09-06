@@ -24,11 +24,13 @@ SPADE_DISCARD_PENALTY = 3           # Multiplier for avoiding spade discards
 PARITY_CONSIDERATION = 1            # Small bonus for parity-favorable discards
 
 # Bidding Strategy Settings  
-BID_ACCURACY_BOOST = 0.8            # How much to boost base expectations (higher = more aggressive)
+BID_ACCURACY_BOOST = 0.3            # How much to boost base expectations (higher = more aggressive)
 NIL_RISK_TOLERANCE = 0.8            # Threshold for nil bidding (lower = more nil attempts)
 BLIND_DESPERATION_THRESHOLD = 120   # Points behind before considering blind bids
 SCORE_BASED_ADJUSTMENT = 0.05       # How much score differential affects bidding
 NIL_STRICTNESS = 0.8                # Lower = more likely to nil (minimum expectation for non-nil)
+MAX_REASONABLE_BID = 6              # mnost she can bid
+
 
 # Playing Strategy Settings
 BAG_AVOIDANCE_STRENGTH = 0.92       # Multiplier when trying to avoid bags (lower = more avoidance)
@@ -350,26 +352,28 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
             base_expectation += 0.15
         elif player_bid >= 7:  # Player bid high
             base_expectation -= 0.2
-    
+
     # Convert to bid
     raw_bid = max(0, min(10, round(base_expectation)))
-    
+
+    # Apply maximum reasonable bid cap
+    raw_bid = min(raw_bid, MAX_REASONABLE_BID)
+
     # Bid range preferences
     if 2.5 <= base_expectation <= 5.5:
         if raw_bid < 3:
             raw_bid = 3  # Minimum reasonable bid is 3
         elif raw_bid == 5 and random.random() < 0.4:
             raw_bid = 4  # Sometimes prefer 4 over 5
-    
+
     # Avoid obvious total-10 scenarios
     if player_bid is not None and abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
         if raw_bid > 3:
             raw_bid -= 1
-        elif raw_bid < 7:
-            raw_bid += 1
-    
-    # Final bounds check
-    raw_bid = max(1, min(10, raw_bid))
+        # Remove the elif raw_bid < 7 clause since we're capping at 6
+
+    # Final bounds check with new maximum
+    raw_bid = max(1, min(MAX_REASONABLE_BID, raw_bid))
     
     return raw_bid, False
 

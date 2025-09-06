@@ -84,16 +84,35 @@ def init_new_hand(game):
     current_first_leader = game.get('first_leader', 'player')
     next_first_leader = 'computer' if current_first_leader == 'player' else 'player'
     
-    # Check blind bidding eligibility before setting phase
-    from .custom_rules import check_blind_bidding_eligibility
+    # Check blind bidding eligibility using display scores (what players actually see)
     player_base_score = game.get('player_score', 0)
     computer_base_score = game.get('computer_score', 0)
-    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+    player_bags = game.get('player_bags', 0)
+    computer_bags = game.get('computer_bags', 0)
+    
+    # Calculate display scores for eligibility check
+    def calc_display_score(base_score, bags):
+        if bags >= 0:
+            if base_score < 0:
+                tens_and_higher = (base_score // 10) * 10
+                return tens_and_higher - bags
+            else:
+                tens_and_higher = (base_score // 10) * 10
+                return tens_and_higher + bags
+        else:
+            return base_score
+    
+    player_display_score = calc_display_score(player_base_score, player_bags)
+    computer_display_score = calc_display_score(computer_base_score, computer_bags)
+    
+    # Check eligibility based on display scores
+    from .custom_rules import check_blind_bidding_eligibility
+    blind_eligibility = check_blind_bidding_eligibility(player_display_score, computer_display_score)
     
     # Set initial phase and message based on blind eligibility
     if blind_eligibility['player_eligible']:
         initial_phase = 'blind_decision'
-        deficit = computer_base_score - player_base_score
+        deficit = computer_display_score - player_display_score
         initial_message = f'You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
     else:
         initial_phase = 'discard'
@@ -354,6 +373,7 @@ def check_game_over(game):
     - 302 beats 300 (regardless of bags)
     - 301 beats 300 (regardless of bags)
     - Bags only matter as tie-breaker when display scores are EXACTLY tied
+    - More bags (further from 0) is always worse, whether positive or negative
     """
     player_base_score = game['player_score']
     computer_base_score = game['computer_score']
@@ -411,28 +431,19 @@ def check_game_over(game):
                 game['winner'] = 'computer'
                 game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (higher base score tie-breaker)!"
             else:
-                # Second tie-breaker: Fewer bags (positive bags are better than negative)
-                # If one has positive bags and one has negative, positive wins
-                if player_bags >= 0 and computer_bags < 0:
-                    game['winner'] = 'player'
-                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (positive bags beat negative)!"
-                elif computer_bags >= 0 and player_bags < 0:
-                    game['winner'] = 'computer'
-                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (positive bags beat negative)!"
-                elif player_bags < computer_bags and player_bags >= 0 and computer_bags >= 0:
-                    # Both positive: fewer is better
+                # Second tie-breaker: Fewer bags (closer to 0 is better)
+                # Convert to absolute values to compare distance from 0
+                player_bag_distance = abs(player_bags)
+                computer_bag_distance = abs(computer_bags)
+                
+                if player_bag_distance < computer_bag_distance:
+                    # Player has fewer bags (closer to 0)
                     game['winner'] = 'player'
                     game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (fewer bags: {player_bags} vs {computer_bags})!"
-                elif computer_bags < player_bags and player_bags >= 0 and computer_bags >= 0:
+                elif computer_bag_distance < player_bag_distance:
+                    # Computer has fewer bags (closer to 0)
                     game['winner'] = 'computer'
                     game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (fewer bags: {computer_bags} vs {player_bags})!"
-                elif player_bags > computer_bags and player_bags < 0 and computer_bags < 0:
-                    # Both negative: less negative (closer to 0) is better
-                    game['winner'] = 'player'
-                    game['message'] = f"GAME OVER! You WIN {player_display_score} to {computer_display_score} (less negative bags: {player_bags} vs {computer_bags})!"
-                elif computer_bags > player_bags and player_bags < 0 and computer_bags < 0:
-                    game['winner'] = 'computer'
-                    game['message'] = f"GAME OVER! Marta WINS {computer_display_score} to {player_display_score} (less negative bags: {computer_bags} vs {player_bags})!"
                 else:
                     # Absolute tie - same everything
                     game['winner'] = 'tie'
