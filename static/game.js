@@ -10,7 +10,149 @@ let confirmingBid = false;
 // Scroll preservation for trick history
 let trickHistoryScrollPosition = 0;
 
-// MAIN FUNCTIONS
+// Chat system variables
+let chatOpen = false;
+
+// =============================================================================
+// CHAT SYSTEM
+// =============================================================================
+
+// Marta's predefined responses
+const martaResponses = {
+    thinking: [
+        "Hmm, what should I do here...",
+        "Let me think about this one...",
+        "Interesting hand...",
+        "I need to be careful here...",
+        "This is a tricky situation..."
+    ],
+    bidding: [
+        "Time to make my bid!",
+        "Let's see what I can make with these cards...",
+        "Bidding is always the hardest part...",
+        "I think I know what I'm doing here...",
+        "This hand looks promising!",
+        "Gotta be smart about this bid..."
+    ],
+    playing: [
+        "Your move!",
+        "That was unexpected...",
+        "Nice play!",
+        "I didn't see that coming...",
+        "This hand is getting interesting...",
+        "Let's see how this plays out..."
+    ],
+    winning: [
+        "That worked out well for me!",
+        "Sometimes the cards just fall right...",
+        "I'll take that trick!",
+        "Experience pays off sometimes...",
+        "Not bad for an old AI!",
+        "Thanks for the trick!"
+    ],
+    losing: [
+        "Well played!",
+        "You got me there...",
+        "I should have seen that coming...",
+        "Nice strategy!",
+        "Ouch, that hurt!",
+        "I walked right into that one..."
+    ],
+    discard: [
+        "Time to get rid of a card...",
+        "What should I throw away?",
+        "Discarding is always tough...",
+        "Hope I make the right choice here..."
+    ],
+    special_card: [
+        "Ooh, special cards in play!",
+        "Those bag reducers are valuable!",
+        "I need to be careful with special cards...",
+        "The 7 of diamonds is so important!"
+    ],
+    blind_bidding: [
+        "Going blind! This is risky!",
+        "Blind bidding time - feeling lucky!",
+        "Double or nothing!",
+        "Sometimes you gotta take big risks!"
+    ],
+    game_start: [
+        "Let's see what the cards bring us!",
+        "New hand, new opportunities!",
+        "Ready for another round?",
+        "May the best player win!"
+    ],
+    default: [
+        "That's interesting!",
+        "I see what you mean...",
+        "Hmm, tell me more...",
+        "Oh really?",
+        "That's a good point!",
+        "You might be onto something...",
+        "I'll have to think about that..."
+    ]
+};
+
+function toggleChat() {
+    const chatWindow = document.getElementById('chatWindow');
+    const chatIcon = document.getElementById('chatBubbleIcon');
+
+    chatOpen = !chatOpen;
+
+    if (chatOpen) {
+        chatWindow.classList.add('open');
+        chatIcon.style.display = 'none';
+    } else {
+        chatWindow.classList.remove('open');
+        chatIcon.style.display = 'flex';
+    }
+}
+
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Add player message
+    addMessage(message, 'player');
+    input.value = '';
+
+    // Marta responds after a brief delay
+    setTimeout(() => {
+        const response = getRandomResponse('default');
+        addMessage(response, 'marta');
+    }, 500 + Math.random() * 1000);
+}
+
+function addMessage(text, sender) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = sender === 'marta' ? 'marta-message' : 'player-message';
+    messageDiv.textContent = text;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function getRandomResponse(category) {
+    const responses = martaResponses[category] || martaResponses.default;
+    return responses[Math.floor(Math.random() * responses.length)];
+}
+
+// Trigger Marta comments during gameplay
+function triggerMartaComment(situation) {
+    if (!chatOpen) return; // Only comment if chat is open
+
+    setTimeout(() => {
+        const response = getRandomResponse(situation);
+        addMessage(response, 'marta');
+    }, 1000 + Math.random() * 2000);
+}
+
+// =============================================================================
+// MAIN GAME FUNCTIONS
+// =============================================================================
+
 async function loadGameState() {
     try {
         const response = await fetch('/state');
@@ -46,7 +188,10 @@ function updateUI() {
     restoreTrickHistoryScroll();
 }
 
+// =============================================================================
 // UI UPDATE FUNCTIONS
+// =============================================================================
+
 function updateFloatingScores() {
     const gameScoreEl = document.getElementById('floatingGameScore');
     if (gameScoreEl) {
@@ -148,6 +293,13 @@ function updateGameOverState() {
         winnerTextEl.textContent = gameState.message;
         hideInteractiveSections();
 
+        // Trigger chat comment for game over
+        if (gameState.winner === 'player') {
+            triggerMartaComment('losing');
+        } else if (gameState.winner === 'computer') {
+            triggerMartaComment('winning');
+        }
+
         // Show results for blind nil games
         if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
             handleResultsDisplay();
@@ -183,14 +335,19 @@ function updatePhaseVisibility() {
 
     if (gameState.phase === 'blind_decision') {
         if (blindDecisionSection) blindDecisionSection.style.display = 'block';
+        triggerMartaComment('thinking');
     } else if (gameState.phase === 'blind_bidding') {
         discardBlindSection.style.display = 'block';
+        triggerMartaComment('blind_bidding');
     } else if (gameState.phase === 'bidding') {
         biddingSection.style.display = 'block';
         if (!biddingSection.classList.contains('active')) {
             biddingSection.classList.add('active');
             resetBiddingState();
+            triggerMartaComment('bidding');
         }
+    } else if (gameState.phase === 'discard') {
+        triggerMartaComment('discard');
     } else {
         biddingSection.classList.remove('active');
     }
@@ -203,8 +360,6 @@ function updateMessages() {
     }
 
     let messageToShow = gameState.message;
-
-
 
     // Avoid showing detailed results if structured results are shown
     if (gameState.hand_over && gameState.hand_results) {
@@ -254,6 +409,15 @@ function updatePlayArea() {
 
         html += '</div>';
         trickDisplay.innerHTML = html;
+
+        // Check for special cards in trick
+        if (playerCard || computerCard) {
+            const hasSpecialCard = (playerCard && isSpecialCard(playerCard.card)) ||
+                (computerCard && isSpecialCard(computerCard.card));
+            if (hasSpecialCard) {
+                triggerMartaComment('special_card');
+            }
+        }
     }
 }
 
@@ -462,6 +626,19 @@ function handleResultsDisplay() {
 function handleTrickCompletion() {
     // Check for completed trick that needs to be displayed
     if (gameState.current_trick && gameState.current_trick.length === 2 && !trickDisplayTimeout) {
+        // Determine trick winner for chat comment
+        const playerCard = gameState.current_trick.find(play => play.player === 'player');
+        const computerCard = gameState.current_trick.find(play => play.player === 'computer');
+
+        if (playerCard && computerCard) {
+            const winner = determineTrickWinner(playerCard.card, computerCard.card);
+            if (winner === 'computer') {
+                triggerMartaComment('winning');
+            } else {
+                triggerMartaComment('losing');
+            }
+        }
+
         trickDisplayTimeout = setTimeout(async () => {
             try {
                 await fetch('/clear_trick', { method: 'POST' });
@@ -475,7 +652,10 @@ function handleTrickCompletion() {
     }
 }
 
+// =============================================================================
 // HELPER FUNCTIONS
+// =============================================================================
+
 function getSuitClass(suit) {
     switch (suit) {
         case '♠': return 'spade';
@@ -535,7 +715,27 @@ function showMessage(text, type = '') {
     }
 }
 
+function isSpecialCard(card) {
+    return (card.rank === '7' && card.suit === '♦') || (card.rank === '10' && card.suit === '♣');
+}
+
+function determineTrickWinner(playerCard, computerCard) {
+    // Simplified trick winner determination for chat comments
+    if (playerCard.suit === computerCard.suit) {
+        return playerCard.value > computerCard.value ? 'player' : 'computer';
+    } else if (playerCard.suit === '♠') {
+        return 'player';
+    } else if (computerCard.suit === '♠') {
+        return 'computer';
+    } else {
+        return 'player'; // Leader wins if different suits, no trump
+    }
+}
+
+// =============================================================================
 // BIDDING FUNCTIONS
+// =============================================================================
+
 function selectBid(bidAmount) {
     if (confirmingBid) return;
 
@@ -575,7 +775,10 @@ function resetBiddingState() {
     updateBidButtons();
 }
 
+// =============================================================================
 // RESULTS FORMATTING
+// =============================================================================
+
 function formatCleanResults(results) {
     let html = '';
 
@@ -662,7 +865,10 @@ function formatScoring(scoringText) {
     }).join('');
 }
 
+// =============================================================================
 // SCROLL PRESERVATION
+// =============================================================================
+
 function preserveTrickHistoryScroll() {
     const trickHistory = document.querySelector('.trick-history');
     if (trickHistory) {
@@ -683,12 +889,16 @@ function resetTrickHistoryScroll() {
     trickHistoryScrollPosition = 0;
 }
 
+// =============================================================================
 // API FUNCTIONS
+// =============================================================================
+
 async function chooseBlindNil() {
     try {
         const response = await fetch('/choose_blind_nil', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
+            triggerMartaComment('blind_bidding');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -704,6 +914,7 @@ async function chooseBlindBidding() {
         const response = await fetch('/choose_blind_bidding', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
+            triggerMartaComment('blind_bidding');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -719,6 +930,7 @@ async function chooseNormalBidding() {
         const response = await fetch('/choose_normal_bidding', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
+            triggerMartaComment('thinking');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -740,6 +952,7 @@ async function makeBid(bidAmount) {
         if (response.ok) {
             await loadGameState();
             if (navigator.vibrate) navigator.vibrate(50);
+            triggerMartaComment('playing');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -761,6 +974,7 @@ async function makeBlindBid(bidAmount) {
         if (response.ok) {
             await loadGameState();
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            triggerMartaComment('playing');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -788,6 +1002,7 @@ async function discardCard() {
         if (response.ok) {
             selectedCard = null;
             await loadGameState();
+            triggerMartaComment('thinking');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -815,6 +1030,7 @@ async function playCard() {
         if (response.ok) {
             selectedCard = null;
             await loadGameState();
+            triggerMartaComment('playing');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -860,6 +1076,7 @@ async function nextHand() {
             resetBiddingState();
             resetTrickHistoryScroll();
             await loadGameState();
+            triggerMartaComment('game_start');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -882,15 +1099,29 @@ async function startNewGame() {
         resetBiddingState();
         resetTrickHistoryScroll();
         await loadGameState();
+        triggerMartaComment('game_start');
     } catch (error) {
         console.error('Error starting new game:', error);
         showMessage('Error starting new game', 'error');
     }
 }
 
-// INITIALIZATION
+// =============================================================================
+// INITIALIZATION AND EVENT HANDLERS
+// =============================================================================
+
 document.addEventListener('DOMContentLoaded', function () {
     loadGameState();
+
+    // Handle Enter key in chat input
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    }
 
     // Prevent zoom on double-tap for mobile
     let lastTouchEnd = 0;

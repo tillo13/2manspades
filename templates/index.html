@@ -223,6 +223,26 @@
         </div>
     </div>
 
+    <!-- Chat bubble icon (floating bottom right) -->
+    <div class="chat-bubble-icon" id="chatBubbleIcon" onclick="toggleChat()">
+        💬
+    </div>
+
+    <!-- Chat window (slides up from bottom) -->
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <span>Chat with Marta</span>
+            <button class="chat-close" onclick="toggleChat()">×</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="marta-message">Hey there! Ready to play some spades?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='game.js') }}"></script>
 </body>
 
