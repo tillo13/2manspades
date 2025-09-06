@@ -628,6 +628,9 @@ function handleResultsDisplay() {
     if (gameState.hand_over && gameState.hand_results) {
         resultsSection.classList.add('show');
         resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
+
+        // Trigger Marta's comment on hand results
+        triggerMartaHandResults();
     } else {
         resultsSection.classList.remove('show');
     }
