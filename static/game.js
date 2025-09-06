@@ -12,80 +12,33 @@ let trickHistoryScrollPosition = 0;
 
 // Chat system variables
 let chatOpen = false;
+let unreadMessages = 0;
+let martaHasSpokenThisHand = false; // Track if Marta has initiated this hand
 
 // =============================================================================
 // CHAT SYSTEM
 // =============================================================================
 
-// Marta's predefined responses
+// Marta's predefined responses organized by category
 const martaResponses = {
-    thinking: [
-        "Hmm, what should I do here...",
-        "Let me think about this one...",
-        "Interesting hand...",
-        "I need to be careful here...",
-        "This is a tricky situation..."
-    ],
-    bidding: [
-        "Time to make my bid!",
-        "Let's see what I can make with these cards...",
-        "Bidding is always the hardest part...",
-        "I think I know what I'm doing here...",
-        "This hand looks promising!",
-        "Gotta be smart about this bid...",
-        "Eeny, meeny, miny, moe... just kidding!",
-        "Let me consult my crystal ball...",
-        "Time to put on my poker face!",
-        "Crossing my fingers and hoping for the best!",
-        "These cards are whispering secrets to me..."
-    ],
-    playing: [
-        "Your move!",
-        "That was unexpected...",
-        "Nice play!",
-        "I didn't see that coming...",
-        "This hand is getting interesting...",
-        "Let's see how this plays out..."
-    ],
-    winning: [
-        "That worked out well for me!",
-        "Sometimes the cards just fall right...",
-        "I'll take that trick!",
-        "Experience pays off sometimes...",
-        "Not bad for an old AI!",
-        "Thanks for the trick!"
-    ],
-    losing: [
-        "Well played!",
-        "You got me there...",
-        "I should have seen that coming...",
-        "Nice strategy!",
-        "Ouch, that hurt!",
-        "I walked right into that one..."
-    ],
-    discard: [
-        "Time to get rid of a card...",
-        "What should I throw away?",
-        "Discarding is always tough...",
-        "Hope I make the right choice here..."
-    ],
-    special_card: [
-        "Ooh, special cards in play!",
-        "Those bag reducers are valuable!",
-        "I need to be careful with special cards...",
-        "The 7 of diamonds is so important!"
-    ],
-    blind_bidding: [
-        "Going blind! This is risky!",
-        "Blind bidding time - feeling lucky!",
-        "Double or nothing!",
-        "Sometimes you gotta take big risks!"
-    ],
-    game_start: [
+    hand_start: [
         "Let's see what the cards bring us!",
         "New hand, new opportunities!",
         "Ready for another round?",
-        "May the best player win!"
+        "May the best player win!",
+        "Time to shuffle up and deal!",
+        "What do the cards have in store this time?",
+        "Another hand, another chance!",
+        "Let's play some spades!",
+        "Hope you're feeling lucky!",
+        "Cards are dealt, let's go!"
+    ],
+    game_start: [
+        "Welcome to Two-Man Spades! Let's play!",
+        "Ready to test your skills against me?",
+        "A new game begins! Good luck!",
+        "Let's see who's the better spades player!",
+        "Game on! May the best strategist win!"
     ],
     default: [
         "That's interesting!",
@@ -94,7 +47,12 @@ const martaResponses = {
         "Oh really?",
         "That's a good point!",
         "You might be onto something...",
-        "I'll have to think about that..."
+        "I'll have to think about that...",
+        "Interesting perspective!",
+        "Fair enough!",
+        "Makes sense to me!",
+        "Good observation!",
+        "I hadn't thought of it that way."
     ]
 };
 
@@ -107,6 +65,9 @@ function toggleChat() {
     if (chatOpen) {
         chatWindow.classList.add('open');
         chatIcon.style.display = 'none';
+        // Clear unread messages when chat is opened
+        unreadMessages = 0;
+        updateChatBadge();
     } else {
         chatWindow.classList.remove('open');
         chatIcon.style.display = 'flex';
@@ -123,7 +84,7 @@ function sendMessage() {
     addMessage(message, 'player');
     input.value = '';
 
-    // Marta responds after a brief delay
+    // Marta responds after a brief delay (only when talked to)
     setTimeout(() => {
         const response = getRandomResponse('default');
         addMessage(response, 'marta');
@@ -188,14 +149,29 @@ function getRandomResponse(category) {
     return responses[Math.floor(Math.random() * responses.length)];
 }
 
-// Trigger Marta comments during gameplay
-function triggerMartaComment(situation) {
-    if (!chatOpen) return; // Only comment if chat is open
+// Trigger Marta to start conversation for new hands only
+function triggerMartaHandStart() {
+    if (!martaHasSpokenThisHand) {
+        setTimeout(() => {
+            const response = getRandomResponse('hand_start');
+            addMessage(response, 'marta');
+            martaHasSpokenThisHand = true;
+        }, 1000 + Math.random() * 2000);
+    }
+}
 
+// Trigger Marta to start conversation for new games
+function triggerMartaGameStart() {
     setTimeout(() => {
-        const response = getRandomResponse(situation);
+        const response = getRandomResponse('game_start');
         addMessage(response, 'marta');
-    }, 1000 + Math.random() * 2000);
+        martaHasSpokenThisHand = true; // Mark as spoken for this hand
+    }, 1500 + Math.random() * 2000);
+}
+
+// Reset Marta's speaking status for new hand
+function resetMartaChatForNewHand() {
+    martaHasSpokenThisHand = false;
 }
 
 // =============================================================================
@@ -232,6 +208,12 @@ function updateUI() {
     updateDiscards();
     handleResultsDisplay();
     handleTrickCompletion();
+
+    // Check if this is a new hand and trigger Marta's greeting
+    if (lastHandNumber !== null && gameState.hand_number > lastHandNumber) {
+        resetMartaChatForNewHand();
+        triggerMartaHandStart();
+    }
 
     lastHandNumber = gameState.hand_number;
     restoreTrickHistoryScroll();
@@ -342,13 +324,6 @@ function updateGameOverState() {
         winnerTextEl.textContent = gameState.message;
         hideInteractiveSections();
 
-        // Trigger chat comment for game over
-        if (gameState.winner === 'player') {
-            triggerMartaComment('losing');
-        } else if (gameState.winner === 'computer') {
-            triggerMartaComment('winning');
-        }
-
         // Show results for blind nil games
         if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
             handleResultsDisplay();
@@ -384,19 +359,14 @@ function updatePhaseVisibility() {
 
     if (gameState.phase === 'blind_decision') {
         if (blindDecisionSection) blindDecisionSection.style.display = 'block';
-        triggerMartaComment('thinking');
     } else if (gameState.phase === 'blind_bidding') {
         discardBlindSection.style.display = 'block';
-        triggerMartaComment('blind_bidding');
     } else if (gameState.phase === 'bidding') {
         biddingSection.style.display = 'block';
         if (!biddingSection.classList.contains('active')) {
             biddingSection.classList.add('active');
             resetBiddingState();
-            triggerMartaComment('bidding');
         }
-    } else if (gameState.phase === 'discard') {
-        triggerMartaComment('discard');
     } else {
         biddingSection.classList.remove('active');
     }
@@ -458,15 +428,6 @@ function updatePlayArea() {
 
         html += '</div>';
         trickDisplay.innerHTML = html;
-
-        // Check for special cards in trick
-        if (playerCard || computerCard) {
-            const hasSpecialCard = (playerCard && isSpecialCard(playerCard.card)) ||
-                (computerCard && isSpecialCard(computerCard.card));
-            if (hasSpecialCard) {
-                triggerMartaComment('special_card');
-            }
-        }
     }
 }
 
@@ -675,21 +636,6 @@ function handleResultsDisplay() {
 function handleTrickCompletion() {
     // Check for completed trick that needs to be displayed
     if (gameState.current_trick && gameState.current_trick.length === 2 && !trickDisplayTimeout) {
-        // Remove automatic chat comments for every trick - too spammy
-        // Only comment if it's a particularly notable trick (special cards, etc.)
-
-        const playerCard = gameState.current_trick.find(play => play.player === 'player');
-        const computerCard = gameState.current_trick.find(play => play.player === 'computer');
-
-        // Only comment on special card tricks
-        if (playerCard && computerCard) {
-            const hasSpecialCard = (playerCard && isSpecialCard(playerCard.card)) ||
-                (computerCard && isSpecialCard(computerCard.card));
-            if (hasSpecialCard) {
-                triggerMartaComment('special_card');
-            }
-        }
-
         trickDisplayTimeout = setTimeout(async () => {
             try {
                 await fetch('/clear_trick', { method: 'POST' });
@@ -768,19 +714,6 @@ function showMessage(text, type = '') {
 
 function isSpecialCard(card) {
     return (card.rank === '7' && card.suit === '♦') || (card.rank === '10' && card.suit === '♣');
-}
-
-function determineTrickWinner(playerCard, computerCard) {
-    // Simplified trick winner determination for chat comments
-    if (playerCard.suit === computerCard.suit) {
-        return playerCard.value > computerCard.value ? 'player' : 'computer';
-    } else if (playerCard.suit === '♠') {
-        return 'player';
-    } else if (computerCard.suit === '♠') {
-        return 'computer';
-    } else {
-        return 'player'; // Leader wins if different suits, no trump
-    }
 }
 
 // =============================================================================
@@ -949,7 +882,6 @@ async function chooseBlindNil() {
         const response = await fetch('/choose_blind_nil', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
-            triggerMartaComment('blind_bidding');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -965,7 +897,6 @@ async function chooseBlindBidding() {
         const response = await fetch('/choose_blind_bidding', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
-            triggerMartaComment('blind_bidding');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -981,7 +912,6 @@ async function chooseNormalBidding() {
         const response = await fetch('/choose_normal_bidding', { method: 'POST' });
         if (response.ok) {
             await loadGameState();
-            triggerMartaComment('thinking');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1003,7 +933,6 @@ async function makeBid(bidAmount) {
         if (response.ok) {
             await loadGameState();
             if (navigator.vibrate) navigator.vibrate(50);
-            triggerMartaComment('playing');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1025,7 +954,6 @@ async function makeBlindBid(bidAmount) {
         if (response.ok) {
             await loadGameState();
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            triggerMartaComment('playing');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1053,7 +981,6 @@ async function discardCard() {
         if (response.ok) {
             selectedCard = null;
             await loadGameState();
-            triggerMartaComment('thinking');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1081,7 +1008,6 @@ async function playCard() {
         if (response.ok) {
             selectedCard = null;
             await loadGameState();
-            triggerMartaComment('playing');
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1126,8 +1052,9 @@ async function nextHand() {
             selectedCard = null;
             resetBiddingState();
             resetTrickHistoryScroll();
+            resetMartaChatForNewHand(); // Reset for new hand
             await loadGameState();
-            triggerMartaComment('game_start');
+            // Marta will greet when updateUI detects the new hand number
         } else {
             const error = await response.json();
             showMessage(error.error, 'error');
@@ -1149,8 +1076,9 @@ async function startNewGame() {
         selectedCard = null;
         resetBiddingState();
         resetTrickHistoryScroll();
+        resetMartaChatForNewHand(); // Reset for new game
         await loadGameState();
-        triggerMartaComment('game_start');
+        triggerMartaGameStart(); // Special greeting for new game
     } catch (error) {
         console.error('Error starting new game:', error);
         showMessage('Error starting new game', 'error');
