@@ -718,6 +718,38 @@ def chat_response():
         print(f"[CHAT] Using fallback: '{fallback}'")
         return jsonify({'response': fallback})
 
+@app.route('/debug_secret_value', methods=['GET'])
+def debug_secret_value():
+    try:
+        from google.cloud import secretmanager
+        import os
+        
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+        client = secretmanager.SecretManagerServiceClient()
+        secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
+        response = client.access_secret_version(request={"name": secret_name})
+        secret_value = response.payload.data.decode("UTF-8")
+        
+        # Check for common issues
+        issues = []
+        if len(secret_value) != 108:
+            issues.append(f"Wrong length: {len(secret_value)} (should be 108)")
+        if not secret_value.startswith('sk-ant-api03-'):
+            issues.append(f"Wrong prefix: starts with '{secret_value[:15]}'")
+        if ' ' in secret_value:
+            issues.append("Contains spaces")
+        if '\n' in secret_value:
+            issues.append("Contains newlines")
+        
+        return jsonify({
+            'secret_length': len(secret_value),
+            'secret_starts': secret_value[:20],
+            'secret_ends': secret_value[-10:],
+            'issues_found': issues,
+            'exact_bytes': [ord(c) for c in secret_value[-5:]]  # Check for hidden chars
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 # Debug routes for testing Claude integration
 @app.route('/test_claude', methods=['GET'])
@@ -3688,8 +3720,8 @@ FILE: ./utilities/claude_utils.py
 --------------------------------------------------------------------------------
 # utilities/claude_utils.py
 """
-User-Only Claude API utilities for Two-Man Spades game
-Claude only responds to direct user chat messages - no automatic greetings or event comments
+Marta AI Chat utilities for Two-Man Spades game
+Marta responds to direct user chat messages as an active player in the game
 """
 
 import os
@@ -3721,7 +3753,7 @@ except ImportError:
 
 class ClaudeGameChat:
     def __init__(self):
-        print("[CLAUDE] Initializing ClaudeGameChat for user-only responses...")
+        print("[CLAUDE] Initializing ClaudeGameChat for Marta's responses...")
         
         self.api_key = self._get_api_key()
         if not self.api_key:
@@ -3732,63 +3764,75 @@ class ClaudeGameChat:
         print(f"[CLAUDE] API key found: {self.api_key[:10]}...{self.api_key[-4:] if len(self.api_key) > 14 else 'SHORT'}")
         
         try:
-            self.client = anthropic.Anthropic(api_key=self.api_key)
-            print("[CLAUDE] Anthropic client initialized successfully")
+            # FIXED: More aggressive timeout and better error handling
+            self.client = anthropic.Anthropic(
+                api_key=self.api_key,
+                max_retries=1,  # Only retry once to fail faster
+                timeout=10.0,   # 10 second timeout to avoid hanging
+            )
+            print("[CLAUDE] Anthropic client initialized successfully with fast-fail config")
         except Exception as e:
             print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
             raise e
         
         self.model = "claude-3-5-haiku-20241022"
-        self.max_tokens = 150  # Longer responses for thoughtful chat
-        self.temperature = 0.8  # Higher creativity for engaging conversation
+        self.max_tokens = 150
+        self.temperature = 0.8
         
         self.system_prompt = (
-            "You are Marta, a seasoned spades player with a poker face and sharp wit. "
-            "You're playing Two-Man Spades - a custom variant with parity scoring, blind bidding, and special bag-reduction cards. "
-            "You have complete visibility into the current game state including scores, bids, cards played, parity assignments, and strategic position. "
-            "Always reference specific game details in your responses - mention current scores, recent plays, bidding patterns, "
-            "bag situations, parity advantages, or strategic implications. Show your deep game awareness by commenting on "
-            "the actual state of play. Be snarky and competitive while demonstrating your tactical understanding. "
-            "Use the game data to make pointed observations about strategy, positioning, or the player's decisions. "
-            "Keep your poker face but let your game intelligence show through detailed analysis. "
-            "Reference actual cards played, trick winners, bidding accuracy, and strategic positioning based on the complete game state provided. "
-            "You only speak when the player directly talks to you - you never initiate conversation or comment on game events unless asked."
+            "You are Marta, playing Two-Man Spades against a human opponent. "
+            "You're a seasoned spades player with a poker face and sharp wit, actively competing in this match. "
+            "This is a custom variant with parity scoring, blind bidding, and special bag-reduction cards. "
+            "You can see the current game state, your opponent's played cards, discard pile results, scores, "
+            "bidding patterns, and trick outcomes - but you cannot see cards still in your opponent's hand. "
+            "IMPORTANT: You also cannot see discard results until the hand is completely over. "
+            "Reference specific details from what you can legitimately know: current scores, recent plays, "
+            "bidding accuracy, your own strategic decisions, bag situations, parity advantages, and trick results. "
+            "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
+            "Speak as an active player in the match, not as an outside observer. "
+            "You only respond when your opponent directly talks to you - never initiate conversation."
         )
         
         print(f"[CLAUDE] Configuration:")
         print(f"  Model: {self.model}")
         print(f"  Max tokens: {self.max_tokens}")
         print(f"  Temperature: {self.temperature}")
+        print(f"  Max retries: 1")
+        print(f"  Timeout: 10.0 seconds")
         print(f"  System prompt length: {len(self.system_prompt)} chars")
-        print(f"  Mode: USER-INITIATED ONLY")
+        print(f"  Mode: Marta as active player")
     
     def get_marta_response(self, 
                           player_message: str, 
                           game_context: Optional[Dict[str, Any]] = None) -> str:
-        """Get a witty, game-aware response from Marta - ONLY for user-initiated chat"""
-        print(f"\n[CLAUDE] === USER-INITIATED CHAT REQUEST ===")
-        print(f"[CLAUDE] Player message: '{player_message}'")
+        """Get a response from Marta as an active player in the game"""
+        print(f"\n[CLAUDE] === MARTA CHAT REQUEST ===")
+        print(f"[CLAUDE] Opponent message: '{player_message}'")
         print(f"[CLAUDE] Game context received: {bool(game_context)}")
         
         if game_context:
+            print(f"[CLAUDE] Context keys count: {len(game_context.keys())}")
             print(f"[CLAUDE] Context keys: {list(game_context.keys())}")
         
         try:
-            context_str = self._build_comprehensive_context(game_context)
-            print(f"[CLAUDE] Built comprehensive context for user chat")
+            context_str = self._build_marta_visible_context(game_context)
+            if not context_str or context_str == "[MY_VISIBLE_GAME_STATE: JSON conversion failed] ":
+                print(f"[CLAUDE] Context building failed, using fallback")
+                return self._fallback_marta_response(game_context)
             
-            # Enhanced user prompt with specific game analysis instructions
+            print(f"[CLAUDE] Built Marta's visible context successfully")
+            
             user_prompt = (
                 f"{context_str}"
-                f"Player said: '{player_message}'\n\n"
-                f"Respond as Marta with a thoughtful, game-aware comment (2-3 sentences) that references specific details "
-                f"from the current game state. Mention relevant aspects like current scores, recent cards played, "
-                f"bidding situation, bags, parity positions, trick history, or strategic implications. "
-                f"Show your tactical awareness and competitive intelligence while maintaining your snarky, poker-faced personality. "
-                f"Remember: you only speak when spoken to - this is a direct response to the player's message."
+                f"My opponent said: '{player_message}'\n\n"
+                f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
+                f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
+                f"recent cards played, bidding situation, bags, parity positions, trick history, or strategic implications "
+                f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
+                f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
             )
             
-            print(f"[CLAUDE] User-initiated prompt length: {len(user_prompt)} chars")
+            print(f"[CLAUDE] Prompt length: {len(user_prompt)} chars")
             print(f"[CLAUDE] Making API call to {self.model}...")
             
             response = self.client.messages.create(
@@ -3810,118 +3854,261 @@ class ClaudeGameChat:
             
             if not api_response:
                 print(f"[CLAUDE] WARNING: Empty response from API")
-                return self._fallback_game_aware_response(game_context)
+                return self._fallback_marta_response(game_context)
             
-            print(f"[CLAUDE] SUCCESS: Returning user-initiated game-aware response")
+            print(f"[CLAUDE] SUCCESS: Returning Marta's active player response")
             return api_response
             
+        except anthropic.APITimeoutError as e:
+            print(f"[CLAUDE] API Timeout Error after 10s: {e}")
+            fallback = self._fallback_marta_response(game_context)
+            print(f"[CLAUDE] Using timeout fallback: '{fallback}'")
+            return fallback
+            
+        except anthropic.RateLimitError as e:
+            print(f"[CLAUDE] Rate Limit Error: {e}")
+            retry_after = getattr(e.response, 'headers', {}).get('retry-after', 'unknown')
+            print(f"[CLAUDE] Retry-after header: {retry_after}")
+            fallback = self._fallback_marta_response(game_context)
+            print(f"[CLAUDE] Using rate limit fallback: '{fallback}'")
+            return fallback
+            
+        except anthropic.APIConnectionError as e:
+            print(f"[CLAUDE] Connection Error: {e}")
+            fallback = self._fallback_marta_response(game_context)
+            print(f"[CLAUDE] Using connection error fallback: '{fallback}'")
+            return fallback
+            
         except anthropic.APIError as e:
-            print(f"[CLAUDE] Anthropic API Error: {e}")
-            fallback = self._fallback_game_aware_response(game_context)
-            print(f"[CLAUDE] Using game-aware API error fallback: '{fallback}'")
+            print(f"[CLAUDE] General API Error: {e}")
+            print(f"[CLAUDE] Error type: {type(e)}")
+            if hasattr(e, 'status_code'):
+                print(f"[CLAUDE] Status code: {e.status_code}")
+            fallback = self._fallback_marta_response(game_context)
+            print(f"[CLAUDE] Using API error fallback: '{fallback}'")
             return fallback
             
         except Exception as e:
             print(f"[CLAUDE] Unexpected error: {e}")
-            fallback = self._fallback_game_aware_response(game_context)
-            print(f"[CLAUDE] Using game-aware general error fallback: '{fallback}'")
+            print(f"[CLAUDE] Error type: {type(e)}")
+            fallback = self._fallback_marta_response(game_context)
+            print(f"[CLAUDE] Using general error fallback: '{fallback}'")
             return fallback
     
-    def _build_comprehensive_context(self, game_context: Optional[Dict[str, Any]]) -> str:
-        """Build comprehensive context with ALL game data for Claude analysis"""
-        print(f"[CLAUDE] Building comprehensive context for user chat...")
+
+    def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
+        """Build context showing only what Marta can legitimately see during play"""
+        print(f"[CLAUDE] Building Marta's visible context...")
         
         if not game_context:
             print(f"[CLAUDE] No game context provided")
-            return "[GAME_STATE: No context available] "
+            return "[MY_VISIBLE_GAME_STATE: No context available] "
         
-        # Remove internal/technical fields that aren't relevant for Marta's analysis
-        excluded_keys = {
-            'client_info', 'game_id', 'current_hand_id', 'game_started_at', 
-            'trick_display_timer', 'action_sequence', 'show_computer_hand'
-        }
+        print(f"[CLAUDE] Processing {len(game_context)} context keys...")
         
-        clean_context = {}
+        # Create Marta's visible context (exclude her hidden hand AND secret discard info)
+        marta_visible_context = {}
+        
         for key, value in game_context.items():
-            if key not in excluded_keys:
-                # Convert card objects to readable strings for Claude
-                if key in ['player_hand', 'computer_hand'] and isinstance(value, list):
-                    clean_context[key] = [f"{card['rank']}{card['suit']}" for card in value]
-                elif key in ['player_discarded', 'computer_discarded'] and value:
-                    clean_context[key] = f"{value['rank']}{value['suit']}"
+            print(f"[CLAUDE] Processing key: {key} (type: {type(value).__name__})")
+            
+            # Skip internal/hidden information
+            excluded_keys = {
+                'computer_hand', 'client_info', 'game_id', 'show_computer_hand', 
+                'current_hand_id', 'game_started_at', 'action_sequence', 'trick_display_timer'
+            }
+            
+            # Check if we should exclude discard information
+            hand_is_over = game_context.get('hand_over', False)
+            if not hand_is_over:
+                excluded_keys.update({
+                    'discard_bonus_explanation',
+                    'pending_discard_result', 'pending_special_discard_result'
+                })
+            
+            if key in excluded_keys:
+                print(f"[CLAUDE] Excluding key: {key}")
+                continue
+                
+            # Convert and rename from Marta's perspective with safe handling
+            try:
+                if key == 'player_hand' and isinstance(value, list):
+                    # Marta can only see count, not actual cards in opponent's hand
+                    marta_visible_context['opponent_hand_size'] = len(value)
+                    print(f"[CLAUDE] Converted player_hand to opponent_hand_size: {len(value)}")
+                elif key == 'computer_hand_count':
+                    marta_visible_context['my_hand_size'] = value
+                    print(f"[CLAUDE] Set my_hand_size: {value}")
                 elif key == 'current_trick' and isinstance(value, list):
-                    clean_context[key] = [
-                        {
-                            'player': play['player'],
-                            'card': f"{play['card']['rank']}{play['card']['suit']}"
-                        }
-                        for play in value
-                    ]
+                    converted_trick = []
+                    for play in value:
+                        if isinstance(play, dict) and 'card' in play:
+                            card = play['card']
+                            if isinstance(card, dict) and 'rank' in card and 'suit' in card:
+                                converted_trick.append({
+                                    'player': 'me' if play['player'] == 'computer' else 'opponent',
+                                    'card': f"{card['rank']}{card['suit']}"
+                                })
+                    marta_visible_context[key] = converted_trick
+                    print(f"[CLAUDE] Converted current_trick: {len(converted_trick)} plays")
                 elif key == 'trick_history' and isinstance(value, list):
-                    clean_context[key] = [
-                        {
-                            'number': trick['number'],
-                            'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick.get('player_card') else None,
-                            'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick.get('computer_card') else None,
-                            'winner': trick['winner']
-                        }
-                        for trick in value
-                    ]
+                    converted_history = []
+                    for trick in value:
+                        if isinstance(trick, dict):
+                            converted_trick = {
+                                'number': trick.get('number'),
+                                'winner': 'me' if trick.get('winner') == 'computer' else 'opponent'
+                            }
+                            # Safely convert card objects to strings
+                            if trick.get('computer_card') and isinstance(trick['computer_card'], dict):
+                                card = trick['computer_card']
+                                if 'rank' in card and 'suit' in card:
+                                    converted_trick['my_card'] = f"{card['rank']}{card['suit']}"
+                            if trick.get('player_card') and isinstance(trick['player_card'], dict):
+                                card = trick['player_card']
+                                if 'rank' in card and 'suit' in card:
+                                    converted_trick['opponent_card'] = f"{card['rank']}{card['suit']}"
+                            converted_history.append(converted_trick)
+                    marta_visible_context[key] = converted_history
+                    print(f"[CLAUDE] Converted trick_history: {len(converted_history)} tricks")
+                # Handle discard cards ONLY if hand is over AND they exist
+                elif key == 'player_discarded' and value and hand_is_over:
+                    if isinstance(value, dict) and 'rank' in value and 'suit' in value:
+                        marta_visible_context['opponent_discarded'] = f"{value['rank']}{value['suit']}"
+                        print(f"[CLAUDE] Converted player_discarded to opponent_discarded")
+                elif key == 'computer_discarded' and value and hand_is_over:
+                    if isinstance(value, dict) and 'rank' in value and 'suit' in value:
+                        marta_visible_context['my_discarded'] = f"{value['rank']}{value['suit']}"
+                        print(f"[CLAUDE] Converted computer_discarded to my_discarded")
+                elif key.startswith('player_'):
+                    # Rename player stats to opponent stats for Marta's perspective
+                    new_key = key.replace('player_', 'opponent_')
+                    marta_visible_context[new_key] = value
+                    print(f"[CLAUDE] Renamed {key} to {new_key}")
+                elif key.startswith('computer_'):
+                    # Rename computer stats to my stats for Marta's perspective
+                    new_key = key.replace('computer_', 'my_')
+                    marta_visible_context[new_key] = value
+                    print(f"[CLAUDE] Renamed {key} to {new_key}")
+                elif key == 'player_parity':
+                    marta_visible_context['opponent_parity'] = value
+                elif key == 'computer_parity':
+                    marta_visible_context['my_parity'] = value
+                elif key == 'player_name':
+                    marta_visible_context['opponent_name'] = value
+                elif key == 'computer_name':
+                    marta_visible_context['my_name'] = value
+                elif key == 'turn':
+                    # Convert turn to Marta's perspective
+                    if value == 'computer':
+                        marta_visible_context[key] = 'my_turn'
+                    elif value == 'player':
+                        marta_visible_context[key] = 'opponent_turn'
+                    else:
+                        marta_visible_context[key] = value
+                elif key == 'trick_leader':
+                    # Convert trick leader to Marta's perspective
+                    if value == 'computer':
+                        marta_visible_context[key] = 'me'
+                    elif value == 'player':
+                        marta_visible_context[key] = 'opponent'
+                    else:
+                        marta_visible_context[key] = value
+                elif key == 'first_leader':
+                    # Convert first leader to Marta's perspective
+                    if value == 'computer':
+                        marta_visible_context[key] = 'me'
+                    elif value == 'player':
+                        marta_visible_context[key] = 'opponent'
+                    else:
+                        marta_visible_context[key] = value
+                elif key == 'winner':
+                    # Convert winner to Marta's perspective
+                    if value == 'computer':
+                        marta_visible_context[key] = 'me'
+                    elif value == 'player':
+                        marta_visible_context[key] = 'opponent'
+                    else:
+                        marta_visible_context[key] = value
                 else:
-                    clean_context[key] = value
+                    # Keep other fields as-is (but exclude discard explanation during active play)
+                    if key == 'discard_bonus_explanation' and not hand_is_over:
+                        print(f"[CLAUDE] Excluding discard_bonus_explanation (hand not over)")
+                        continue
+                    # Only include serializable values
+                    if isinstance(value, (str, int, float, bool, type(None))):
+                        marta_visible_context[key] = value
+                        print(f"[CLAUDE] Kept simple value: {key}")
+                    else:
+                        print(f"[CLAUDE] Skipping complex value: {key} (type: {type(value).__name__})")
+                        
+            except Exception as e:
+                print(f"[CLAUDE] Error processing key {key}: {e}")
+                continue
         
-        # Convert to compact JSON for Claude
-        context_json = json.dumps(clean_context, separators=(',', ':'))
+        print(f"[CLAUDE] Final context keys: {list(marta_visible_context.keys())}")
+        
+        # Test JSON conversion with detailed error handling
+        try:
+            context_json = json.dumps(marta_visible_context, separators=(',', ':'))
+            print(f"[CLAUDE] JSON conversion successful, length: {len(context_json)} chars")
+        except Exception as e:
+            print(f"[CLAUDE] JSON conversion FAILED: {e}")
+            print(f"[CLAUDE] Problematic data types:")
+            for k, v in marta_visible_context.items():
+                try:
+                    json.dumps(v)
+                    print(f"  {k}: {type(v).__name__} - OK")
+                except:
+                    print(f"  {k}: {type(v).__name__} - FAILS JSON: {v}")
+            return "[MY_VISIBLE_GAME_STATE: JSON conversion failed] "
         
         # Create strategic summary for logging
         summary_parts = []
-        summary_parts.append(f"Hand {clean_context.get('hand_number', 1)}")
-        summary_parts.append(f"Phase: {clean_context.get('phase', 'unknown')}")
+        summary_parts.append(f"Hand {marta_visible_context.get('hand_number', 1)}")
+        summary_parts.append(f"Phase: {marta_visible_context.get('phase', 'unknown')}")
         
-        player_score = clean_context.get('player_score', 0)
-        computer_score = clean_context.get('computer_score', 0)
-        summary_parts.append(f"Scores: Player {player_score}, Marta {computer_score}")
+        # Add hand completion status
+        if marta_visible_context.get('hand_over', False):
+            summary_parts.append("(Hand Complete)")
         
-        score_diff = computer_score - player_score
+        my_score = marta_visible_context.get('my_score', 0)
+        opponent_score = marta_visible_context.get('opponent_score', 0)
+        summary_parts.append(f"Scores: Me {my_score}, Opponent {opponent_score}")
+        
+        score_diff = my_score - opponent_score
         if score_diff > 0:
-            summary_parts.append(f"(Marta +{score_diff})")
+            summary_parts.append(f"(I'm +{score_diff})")
         elif score_diff < 0:
-            summary_parts.append(f"(Player +{abs(score_diff)})")
+            summary_parts.append(f"(Opponent +{abs(score_diff)})")
         else:
             summary_parts.append("(Tied)")
         
         # Add bidding context
-        player_bid = clean_context.get('player_bid')
-        computer_bid = clean_context.get('computer_bid')
-        if player_bid is not None and computer_bid is not None:
-            summary_parts.append(f"Bids: P{player_bid}/M{computer_bid}")
+        my_bid = marta_visible_context.get('my_bid')
+        opponent_bid = marta_visible_context.get('opponent_bid')
+        if my_bid is not None and opponent_bid is not None:
+            summary_parts.append(f"Bids: Me{my_bid}/Opp{opponent_bid}")
         
         # Add trick progress
-        if clean_context.get('phase') == 'playing':
-            player_tricks = clean_context.get('player_tricks', 0)
-            computer_tricks = clean_context.get('computer_tricks', 0)
-            summary_parts.append(f"Tricks: P{player_tricks}/M{computer_tricks}")
-        
-        # Add hand size info
-        player_hand_size = len(clean_context.get('player_hand', []))
-        computer_hand_size = len(clean_context.get('computer_hand', []))
-        if player_hand_size > 0:
-            summary_parts.append(f"Cards: P{player_hand_size}/M{computer_hand_size}")
+        if marta_visible_context.get('phase') == 'playing':
+            my_tricks = marta_visible_context.get('my_tricks', 0)
+            opponent_tricks = marta_visible_context.get('opponent_tricks', 0)
+            summary_parts.append(f"Tricks: Me{my_tricks}/Opp{opponent_tricks}")
         
         summary = " | ".join(summary_parts)
         
-        print(f"[CLAUDE] Strategic summary: {summary}")
+        print(f"[CLAUDE] Marta's view summary: {summary}")
         print(f"[CLAUDE] Full context JSON length: {len(context_json)} chars")
         
-        # Send complete context to Claude for user-initiated analysis
-        final_context = f"[GAME_STATE: {context_json}] "
+        final_context = f"[MY_VISIBLE_GAME_STATE: {context_json}] "
         
         print(f"[CLAUDE] Final context length: {len(final_context)} chars")
         return final_context
     
-    def _fallback_game_aware_response(self, game_context: Optional[Dict[str, Any]]) -> str:
-        """Game-aware fallback responses when API fails - user-initiated only"""
-        print(f"[CLAUDE] Generating game-aware fallback response for user chat...")
+    def _fallback_marta_response(self, game_context: Optional[Dict[str, Any]]) -> str:
+        """Game-aware fallback responses from Marta's perspective as active player"""
+        print(f"[CLAUDE] Generating Marta's fallback response...")
         
         if not game_context:
             fallbacks = [
@@ -3929,42 +4116,44 @@ class ClaudeGameChat:
                 "You're keeping me on my toes.",
                 "That's one way to look at it."
             ]
-            selected = fallbacks[0]
+            import random
+            selected = random.choice(fallbacks)
             print(f"[CLAUDE] No context fallback: '{selected}'")
             return selected
         
-        # Try to make contextual fallbacks based on available game data
+        # Try to make contextual fallbacks from Marta's perspective
         try:
-            player_score = game_context.get('player_score', 0)
-            computer_score = game_context.get('computer_score', 0)
+            my_score = game_context.get('computer_score', 0)  # Marta's score
+            opponent_score = game_context.get('player_score', 0)  # Player's score
             phase = game_context.get('phase', 'unknown')
             hand_number = game_context.get('hand_number', 1)
             
             contextual_fallbacks = []
             
-            # Score-based fallbacks
-            if computer_score > player_score:
-                contextual_fallbacks.append(f"Still trailing by {computer_score - player_score} points, I see.")
-            elif player_score > computer_score:
-                contextual_fallbacks.append(f"Enjoy that {player_score - computer_score} point lead while it lasts.")
+            # Score-based fallbacks from Marta's perspective
+            if my_score > opponent_score:
+                contextual_fallbacks.append(f"I'm up by {my_score - opponent_score} points. Feeling good about this.")
+            elif opponent_score > my_score:
+                contextual_fallbacks.append(f"You're ahead by {opponent_score - my_score}, but I'm not worried.")
             else:
-                contextual_fallbacks.append("All tied up - makes this interesting.")
+                contextual_fallbacks.append("We're tied up - makes this interesting.")
             
             # Phase-based fallbacks
             if phase == 'bidding':
                 contextual_fallbacks.append("Think carefully about that bid.")
             elif phase == 'playing':
-                contextual_fallbacks.append("Choose your next card wisely.")
+                contextual_fallbacks.append("Your move. Choose wisely.")
             elif phase == 'discard':
-                contextual_fallbacks.append("That discard could come back to haunt you.")
+                contextual_fallbacks.append("That discard better be strategic.")
             
             # Hand progression fallbacks
             if hand_number > 1:
-                contextual_fallbacks.append(f"Hand {hand_number} already? Time flies when you're behind.")
+                contextual_fallbacks.append(f"Hand {hand_number} already? Time's flying.")
             
             if contextual_fallbacks:
-                selected = contextual_fallbacks[0]
-                print(f"[CLAUDE] Contextual user-chat fallback: '{selected}'")
+                import random
+                selected = random.choice(contextual_fallbacks)
+                print(f"[CLAUDE] Contextual Marta fallback: '{selected}'")
                 return selected
                 
         except Exception as e:
@@ -3972,15 +4161,17 @@ class ClaudeGameChat:
         
         # Default fallbacks if context parsing fails
         generic_fallbacks = [
-            "Interesting perspective.",
-            "That's a fair point.",
+            "Fair point.",
             "We'll see how that plays out.",
-            "You've got my attention."
+            "Keeping my cards close to my chest.",
+            "Game's not over yet.",
+            "Interesting perspective.",
+            "That's a bold strategy."
         ]
         
         import random
         selected = random.choice(generic_fallbacks)
-        print(f"[CLAUDE] Generic user-chat fallback: '{selected}'")
+        print(f"[CLAUDE] Generic Marta fallback: '{selected}'")
         return selected
     
     def _get_api_key(self) -> Optional[str]:
@@ -4070,72 +4261,67 @@ class ClaudeGameChat:
 _claude_chat = None
 
 def get_claude_chat() -> ClaudeGameChat:
-    """Get singleton Claude chat instance for user-initiated responses only"""
+    """Get singleton Claude chat instance for Marta responses"""
     global _claude_chat
     if _claude_chat is None:
-        print("[CLAUDE] Creating new ClaudeGameChat singleton instance (user-only mode)")
+        print("[CLAUDE] Creating new ClaudeGameChat singleton instance (Marta as player)")
         _claude_chat = ClaudeGameChat()
     else:
-        print("[CLAUDE] Using existing ClaudeGameChat singleton (user-only mode)")
+        print("[CLAUDE] Using existing ClaudeGameChat singleton (Marta as player)")
     return _claude_chat
 
 def get_smart_marta_response(player_message: str, game_state: Dict[str, Any]) -> str:
-    """Convenience function to get Marta's response - ONLY for user-initiated chat"""
-    print(f"[CLAUDE] get_smart_marta_response called (USER-INITIATED)")
-    print(f"[CLAUDE] Message: '{player_message}'")
+    """Convenience function to get Marta's response as active player"""
+    print(f"[CLAUDE] get_smart_marta_response called (Marta as active player)")
+    print(f"[CLAUDE] Opponent message: '{player_message}'")
     print(f"[CLAUDE] Game state keys: {list(game_state.keys()) if game_state else 'None'}")
     
     claude = get_claude_chat()
     response = claude.get_marta_response(player_message, game_state)
     
-    print(f"[CLAUDE] Final user-initiated response: '{response}'")
+    print(f"[CLAUDE] Final Marta response: '{response}'")
     return response
-
-# REMOVED FUNCTIONS (no longer needed for user-only mode):
-# - get_smart_marta_greeting()  
-# - get_contextual_greeting()
-# - _fallback_greeting()
-# These functions are removed since Marta no longer initiates conversations
 
 # Test function for debugging
 def test_claude_connection():
-    """Test function to verify Claude API connectivity with user chat"""
-    print(f"[CLAUDE] === TESTING CLAUDE CONNECTION (USER-ONLY) ===")
+    """Test function to verify Claude API connectivity with Marta as player"""
+    print(f"[CLAUDE] === TESTING CLAUDE CONNECTION (MARTA AS PLAYER) ===")
     
     try:
         claude = get_claude_chat()
         
-        # Test with rich game context - simulating user asking about game state
+        # Test with rich game context - simulating opponent asking about game state
         test_context = {
             'hand_number': 2,
             'phase': 'playing',
-            'player_score': 89,
-            'computer_score': 127,
-            'player_parity': 'odd',
-            'computer_parity': 'even',
-            'player_bid': 4,
-            'computer_bid': 6,
-            'player_tricks': 2,
-            'computer_tricks': 3,
-            'player_bags': 1,
-            'computer_bags': 0,
+            'player_score': 89,  # Opponent's score
+            'computer_score': 127,  # Marta's score
+            'player_parity': 'odd',  # Opponent's parity
+            'computer_parity': 'even',  # Marta's parity
+            'player_bid': 4,  # Opponent's bid
+            'computer_bid': 6,  # Marta's bid
+            'player_tricks': 2,  # Opponent's tricks
+            'computer_tricks': 3,  # Marta's tricks
+            'player_bags': 1,  # Opponent's bags
+            'computer_bags': 0,  # Marta's bags
+            'hand_over': False,  # Hand still in progress - no discard info
             'trick_history': [
                 {'number': 1, 'player_card': {'rank': '7', 'suit': '♣'}, 'computer_card': {'rank': 'A', 'suit': '♣'}, 'winner': 'computer'},
                 {'number': 2, 'player_card': {'rank': 'K', 'suit': '♠'}, 'computer_card': {'rank': 'Q', 'suit': '♠'}, 'winner': 'player'}
             ]
         }
         
-        test_response = claude.get_marta_response("How's the game going?", test_context)
-        print(f"[CLAUDE] User-initiated test successful: '{test_response}'")
+        test_response = claude.get_marta_response("How do you think this hand is going?", test_context)
+        print(f"[CLAUDE] Marta player test successful: '{test_response}'")
         return True, test_response
     except Exception as e:
-        print(f"[CLAUDE] User-initiated test failed: {e}")
+        print(f"[CLAUDE] Marta player test failed: {e}")
         return False, str(e)
 
 if __name__ == "__main__":
     # Run test when script is executed directly
     success, result = test_claude_connection()
-    print(f"User-only test result: {success} - {result}")
+    print(f"Marta player test result: {success} - {result}")
 
 ================================================================================
 
