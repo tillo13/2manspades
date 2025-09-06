@@ -460,6 +460,31 @@ def debug_claude_detailed():
             'error_type': type(e).__name__
         })
 
+@app.route('/debug_chat_path', methods=['GET'])
+def debug_chat_path():
+    """Test the exact same code path as the chat system"""
+    try:
+        from utilities.claude_utils import get_claude_chat
+        
+        # This uses the exact same singleton pattern as your chat
+        claude = get_claude_chat()
+        
+        # Test with the same method your chat uses
+        response = claude.get_marta_response("test", {"hand_number": 1, "phase": "testing"})
+        
+        return jsonify({
+            'success': True,
+            'response': response,
+            'claude_api_key_preview': f"{claude.api_key[:15]}...{claude.api_key[-10:]}" if hasattr(claude, 'api_key') and claude.api_key else "No API key found"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        })
+    
 @app.route('/debug_key_comparison', methods=['GET'])
 def debug_key_comparison():
     """Compare key format without exposing the actual key"""
