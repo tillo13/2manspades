@@ -32,7 +32,12 @@ const martaResponses = {
         "Bidding is always the hardest part...",
         "I think I know what I'm doing here...",
         "This hand looks promising!",
-        "Gotta be smart about this bid..."
+        "Gotta be smart about this bid...",
+        "Eeny, meeny, miny, moe... just kidding!",
+        "Let me consult my crystal ball...",
+        "Time to put on my poker face!",
+        "Crossing my fingers and hoping for the best!",
+        "These cards are whispering secrets to me..."
     ],
     playing: [
         "Your move!",
@@ -129,9 +134,53 @@ function addMessage(text, sender) {
     const messagesDiv = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
     messageDiv.className = sender === 'marta' ? 'marta-message' : 'player-message';
-    messageDiv.textContent = text;
+
+    // Create timestamp
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Create message structure with timestamp
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = text;
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'message-timestamp';
+    timestamp.textContent = timeString;
+
+    messageDiv.appendChild(messageContent);
+    messageDiv.appendChild(timestamp);
+
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // If it's a Marta message and chat is closed, increment unread count
+    if (sender === 'marta' && !chatOpen) {
+        unreadMessages++;
+        updateChatBadge();
+    }
+}
+
+function updateChatBadge() {
+    const chatIcon = document.getElementById('chatBubbleIcon');
+    let badge = document.getElementById('chatBadge');
+
+    if (unreadMessages > 0 && !chatOpen) {
+        // Create badge if it doesn't exist
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'chatBadge';
+            badge.className = 'chat-badge';
+            chatIcon.appendChild(badge);
+        }
+        badge.textContent = unreadMessages > 9 ? '9+' : unreadMessages;
+        badge.style.display = 'block';
+    } else {
+        // Hide badge when no unread messages or chat is open
+        if (badge) {
+            badge.style.display = 'none';
+        }
+    }
 }
 
 function getRandomResponse(category) {

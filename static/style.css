@@ -899,11 +899,44 @@ button:disabled {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     transition: all 0.3s ease;
+    position: relative;
 }
 
 .chat-bubble-icon:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Chat notification badge */
+.chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
 }
 
 /* Chat window */
@@ -968,6 +1001,8 @@ button:disabled {
     margin-bottom: 8px;
     max-width: 80%;
     color: #333;
+    display: flex;
+    flex-direction: column;
 }
 
 .player-message {
@@ -979,6 +1014,31 @@ button:disabled {
     margin-left: auto;
     max-width: 80%;
     text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.message-content {
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.message-timestamp {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 2px;
+    font-weight: normal;
+}
+
+.marta-message .message-timestamp {
+    text-align: left;
+    color: #666;
+}
+
+.player-message .message-timestamp {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .chat-input-area {
