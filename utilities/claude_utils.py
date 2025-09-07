@@ -85,9 +85,11 @@ class ClaudeGameChat:
         print(f"  System prompt length: {len(self.system_prompt)} chars")
         print(f"  Mode: Marta as active player")
     
+
+
     def get_marta_response(self, 
-                          player_message: str, 
-                          game_context: Optional[Dict[str, Any]] = None) -> str:
+                        player_message: str, 
+                        game_context: Optional[Dict[str, Any]] = None) -> str:
         """Get a response from Marta as an active player in the game"""
         print(f"\n[CLAUDE] === MARTA CHAT REQUEST ===")
         print(f"[CLAUDE] Opponent message: '{player_message}'")
@@ -97,6 +99,26 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Context keys count: {len(game_context.keys())}")
             print(f"[CLAUDE] Context keys: {list(game_context.keys())}")
         
+        # SECRET DEBUG: Check for magic phrase and extract hand info
+        secret_hand_reveal = ""
+        magic_phrase_detected = False
+        
+        if "abra cadabra" in player_message.lower() and game_context:
+            print(f"[CLAUDE] MAGIC PHRASE DETECTED! Preparing to reveal Marta's hand...")
+            
+            computer_hand = game_context.get('computer_hand', [])
+            if computer_hand:
+                hand_cards = []
+                for card in computer_hand:
+                    if isinstance(card, dict) and 'rank' in card and 'suit' in card:
+                        hand_cards.append(f"{card['rank']}{card['suit']}")
+                
+                if hand_cards:
+                    cards_str = ", ".join(hand_cards)
+                    secret_hand_reveal = f"[SECRET_DEBUG_ACTIVATED: My actual hand is {cards_str}] "
+                    magic_phrase_detected = True
+                    print(f"[CLAUDE] Secret hand info prepared: {cards_str}")
+        
         try:
             context_str = self._build_marta_visible_context(game_context)
             if not context_str or context_str == "[MY_VISIBLE_GAME_STATE: JSON conversion failed] ":
@@ -105,15 +127,27 @@ class ClaudeGameChat:
             
             print(f"[CLAUDE] Built Marta's visible context successfully")
             
-            user_prompt = (
-                f"{context_str}"
-                f"My opponent said: '{player_message}'\n\n"
-                f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
-                f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
-                f"recent cards played, bidding situation, bags, trick history, or strategic implications "
-                f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
-                f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
-            )
+            # Enhanced user prompt that handles both normal and secret responses
+            if magic_phrase_detected:
+                user_prompt = (
+                    f"{context_str}{secret_hand_reveal}"
+                    f"My opponent said: '{player_message}'\n\n"
+                    f"SPECIAL INSTRUCTION: The player used the secret phrase 'abra cadabra'! "
+                    f"Start your response with something like 'Well well, you found my secret! Here are my cards: [list all the cards from SECRET_DEBUG_ACTIVATED]. "
+                    f"Don't tell anyone I showed you!' Then continue with your normal competitive, snarky response about the game. "
+                    f"Reference specific details from what you can legitimately see in the current game state."
+                )
+                print(f"[CLAUDE] Using SECRET REVEAL prompt mode")
+            else:
+                user_prompt = (
+                    f"{context_str}"
+                    f"My opponent said: '{player_message}'\n\n"
+                    f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
+                    f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
+                    f"recent cards played, bidding situation, bags, trick history, or strategic implications "
+                    f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
+                    f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
+                )
             
             print(f"[CLAUDE] Prompt length: {len(user_prompt)} chars")
             print(f"[CLAUDE] Making API call to {self.model}...")
@@ -135,11 +169,14 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Raw API response: '{api_response}'")
             print(f"[CLAUDE] Response length: {len(api_response)} chars")
             
+            if magic_phrase_detected:
+                print(f"[CLAUDE] SECRET REVEAL response delivered!")
+            
             if not api_response:
                 print(f"[CLAUDE] WARNING: Empty response from API")
                 return self._fallback_marta_response(game_context)
             
-            print(f"[CLAUDE] SUCCESS: Returning Marta's active player response")
+            print(f"[CLAUDE] SUCCESS: Returning Marta's response")
             return api_response
             
         except anthropic.APITimeoutError as e:
@@ -177,8 +214,6 @@ class ClaudeGameChat:
             fallback = self._fallback_marta_response(game_context)
             print(f"[CLAUDE] Using general error fallback: '{fallback}'")
             return fallback
-    
-
 
     def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
         """Build context showing only what Marta can legitimately see during play"""

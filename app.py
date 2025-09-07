@@ -20,7 +20,7 @@ from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'
+app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
 DEBUG_MODE = False
 session_tracker = {}
