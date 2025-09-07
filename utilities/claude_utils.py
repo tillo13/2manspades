@@ -62,7 +62,7 @@ class ClaudeGameChat:
         self.system_prompt = (
             "You are Marta, playing Two-Man Spades against a human opponent. "
             "You're a seasoned spades player with a poker face and sharp wit, actively competing in this match. "
-            "This is a custom variant with parity scoring, blind bidding, and special bag-reduction cards. "
+            "This is a custom variant with blind bidding, and special bag-reduction cards. "
             "You can see the current game state, your opponent's played cards, discard pile results, scores, "
             "bidding patterns, and trick outcomes - but you cannot see cards still in your opponent's hand. "
             "IMPORTANT: You also cannot see discard results until the hand is completely over. "
@@ -70,7 +70,7 @@ class ClaudeGameChat:
             "Never claim to have played a card that your opponent actually played. The context clearly shows "
             "'my_card' vs 'opponent_card' and 'outcome' descriptions. Use these to avoid factual errors. "
             "Reference specific details from what you can legitimately know: current scores, recent plays, "
-            "bidding accuracy, your own strategic decisions, bag situations, parity advantages, and trick results. "
+            "bidding accuracy, your own strategic decisions, bag situations and trick results. "
             "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
             "Speak as an active player in the match, not as an outside observer. "
             "You only respond when your opponent directly talks to you - never initiate conversation."
@@ -110,7 +110,7 @@ class ClaudeGameChat:
                 f"My opponent said: '{player_message}'\n\n"
                 f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
                 f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
-                f"recent cards played, bidding situation, bags, parity positions, trick history, or strategic implications "
+                f"recent cards played, bidding situation, bags, trick history, or strategic implications "
                 f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
                 f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
             )
@@ -565,8 +565,6 @@ def test_claude_connection():
             'phase': 'playing',
             'player_score': 89,  # Opponent's score
             'computer_score': 127,  # Marta's score
-            'player_parity': 'odd',  # Opponent's parity
-            'computer_parity': 'even',  # Marta's parity
             'player_bid': 4,  # Opponent's bid
             'computer_bid': 6,  # Marta's bid
             'player_tricks': 2,  # Opponent's tricks
