@@ -370,13 +370,82 @@
                 loses</li>
         </ul>
 
-        <h3>Tie-Breaking</h3>
-        <p>If display scores are exactly tied at 300+:</p>
+        <div class="highlight">
+            <h3>Denial Rule - Keep the Game Alive!</h3>
+            <p><strong>Critical mechanic:</strong> When someone would reach 300+ points from winning the discard pile,
+                but they're currently losing the game, the DENIAL RULE automatically activates! Instead of gaining those
+                discard points, their opponent LOSES those points instead. This keeps close games alive for another hand
+                instead of ending on a lucky discard!</p>
+
+            <div class="example">
+                <strong>Example:</strong> You're at 295, Marta's at 305. You win the discard pile for 10 points, which
+                would give you 305 and end the game. But since you're behind, DENIAL activates - Marta loses 10 points
+                instead (drops to 295), and the game continues 295 to 295 for another hand!
+            </div>
+        </div>
+
+        <h3>Game End Logic (When Either Player Hits 300+)</h3>
+        <p><strong>Simple Rule: Higher display score ALWAYS wins, regardless of how you got there, and negative bags are
+                BAD in this situation.</strong></p>
+
+        <div class="example">
+            <strong>Scenarios when both players are over 300:</strong>
+            <ul>
+                <li><strong>Player A:</strong> 302 display, <strong>Player B:</strong> 301 display → <strong>Player A
+                        wins</strong></li>
+                <li><strong>Player A:</strong> 315 display, <strong>Player B:</strong> 320 display → <strong>Player B
+                        wins</strong></li>
+                <li><strong>Player A:</strong> 300 display, <strong>Player B:</strong> 306 display → <strong>Player B
+                        wins</strong></li>
+            </ul>
+        </div>
+
+        <h3>Tie-Breaking (Only When Display Scores Are Exactly Equal)</h3>
+        <p>Display score ties are extremely rare and only occur when negative bags are involved:</p>
         <ol>
             <li>Player with higher base score wins</li>
-            <li>If base scores tied, player with fewer bags wins (positive bags are better than negative bags)</li>
-            <li>If both have positive bags, fewer is better; if both have negative bags, less negative is better</li>
+            <li>If base scores are tied, player with more bags wins (more bags is better)</li>
+            <li>If everything is exactly equal, the game ends in a tie</li>
         </ol>
+
+        <div class="example">
+            <strong>Realistic Tie-Breaking Examples:</strong>
+            <ul>
+                <li><strong>300 with -1 bags</strong> vs <strong>300 with 0 bags</strong> → <strong>Player with 0 bags
+                        wins</strong> (0 > -1)</li>
+                <li><strong>300 with -4 bags</strong> vs <strong>300 with -2 bags</strong> → <strong>Player with -2 bags
+                        wins</strong> (-2 > -4)</li>
+                <li><strong>310 with -3 bags</strong> vs <strong>320 with -4 bags </strong> → <strong>Player with 320
+                        and -4 bags wins</strong> (-1 < -4)</li>
+            </ul>
+            <p><strong>Why ties are rare:</strong> Positive bags always change the display score, so ties only happen
+                when at least one player has negative bags.</p>
+        </div>
+
+        <h3>Bag System Limits</h3>
+        <div class="tip">
+            <strong>Automatic Bag Management:</strong>
+            <ul>
+                <li><strong>Maximum bags:</strong> 6 (7+ bags triggers -100 point penalty and resets to remainder)</li>
+                <li><strong>Minimum bags:</strong> -4 (-5+ negative bags triggers +100 point bonus and resets to
+                    remainder)</li>
+                <li><strong>Tie-breaking hierarchy:</strong> 6 > 5 > 4 > 3 > 2 > 1 > 0 > -1 > -2 > -3 > -4</li>
+                <li><strong>Key insight:</strong> Negative bags hurt in tie-breaking but never reduce your display score
+                </li>
+            </ul>
+        </div>
+
+        <h3>Why This System Works</h3>
+        <div class="section">
+            <p><strong>Strategic Depth:</strong> The display score system creates interesting decisions - negative bags
+                don't hurt your visible score, but they're devastating in close games. Meanwhile, positive bags boost
+                your display but can trigger painful penalties at 7+ bags. The denial rule prevents lucky discard wins
+                when you're behind, ensuring skill matters more than chance in final moments.</p>
+
+            <p><strong>Bottom Line:</strong> Highest display score wins when anyone hits 300+. Ties are nearly
+                impossible due to the bag system, but when they occur, more bags (including negative bags closer to
+                zero) provide the advantage.</p>
+        </div>
 
         <div class="section">
             <h2>Advanced Features</h2>
