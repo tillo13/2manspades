@@ -484,6 +484,13 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
+        # Get client IP from multiple sources
+        client_ip = None
+        if client_info:
+            client_ip = client_info.get('ip_address')
+        elif game.get('client_info'):
+            client_ip = game['client_info'].get('ip_address')
+        
         queue_db_operation(
             _log_game_event_to_db_async,
             game.get('game_id'),
@@ -496,7 +503,8 @@ def log_action(action_type, player, action_data, session=None, additional_contex
             hand_number=game.get('hand_number'),
             session_sequence=game.get('action_sequence'),
             player=player,
-            action_type=action_type
+            action_type=action_type,
+            client_ip=client_ip
         )
     
     # Console logging - synchronous, fast
@@ -518,6 +526,7 @@ def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None,
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
         _print_ai_decision_log(decision_record)
 
+
 def log_game_event(event_type, event_data, session=None):
     """Central logging function for major game events with ASYNC database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_EVENTS:
@@ -534,6 +543,11 @@ def log_game_event(event_type, event_data, session=None):
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
+        # Get client IP from game state if available
+        client_ip = None
+        if game.get('client_info'):
+            client_ip = game['client_info'].get('ip_address')
+        
         queue_db_operation(
             _log_game_event_to_db_async,
             game.get('game_id'),
@@ -541,8 +555,9 @@ def log_game_event(event_type, event_data, session=None):
             event_data,
             hand_number=game.get('hand_number'),
             session_sequence=game.get('action_sequence'),
-            player=event_data.get('player'),
-            action_type=event_type
+            player=event_data.get('player') if isinstance(event_data, dict) else None,
+            action_type=event_type,
+            client_ip=client_ip
         )
     
     # Console logging - synchronous, fast
