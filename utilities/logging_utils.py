@@ -1,7 +1,8 @@
 """
-Streamlined logging utilities for Two-Man Spades - WRITE-ONLY approach
+Streamlined logging utilities for Two-Man Spades - WRITE-ONLY approach with ASYNC database operations
 Logs everything for historical analysis but NEVER reads/loads existing files during normal operation
 All logging is append-only for performance - reading is only available via explicit debug endpoints
+Database operations are now fully asynchronous and non-blocking for instant game responses
 """
 import time
 import uuid
@@ -9,6 +10,8 @@ import json
 import os
 import platform
 from datetime import datetime
+import threading
+import queue
 
 # =============================================================================
 # GLOBAL LOGGING CONFIGURATION
@@ -31,6 +34,96 @@ CURRENT_LOG_FILE = None
 
 # Production logging placeholder
 PRODUCTION_LOG_PLACEHOLDER = "[PRODUCTION] Log entry saved to pending database implementation"
+
+# =============================================================================
+# ASYNC DATABASE LOGGING SYSTEM
+# =============================================================================
+
+# Global async logging system
+_db_queue = queue.Queue(maxsize=1000)  # Limit queue size to prevent memory issues
+_db_worker_thread = None
+_db_worker_running = False
+_db_operations_completed = 0
+_db_operations_failed = 0
+
+def start_async_db_logging():
+    """Start background database logging thread"""
+    global _db_worker_thread, _db_worker_running
+    
+    if not IS_PRODUCTION or _db_worker_running:
+        return
+    
+    _db_worker_running = True
+    _db_worker_thread = threading.Thread(target=_db_worker, daemon=True)
+    _db_worker_thread.start()
+    print("[DB] Async logging started")
+
+def _db_worker():
+    """Background worker that processes database operations"""
+    global _db_operations_completed, _db_operations_failed
+    
+    while _db_worker_running:
+        try:
+            # Wait up to 1 second for an operation
+            operation = _db_queue.get(timeout=1.0)
+            
+            if operation is None:  # Shutdown signal
+                break
+            
+            # Execute the database operation
+            try:
+                result = operation['func'](*operation['args'], **operation['kwargs'])
+                if result:
+                    _db_operations_completed += 1
+                else:
+                    _db_operations_failed += 1
+            except Exception as e:
+                _db_operations_failed += 1
+                print(f"[DB] Async operation failed: {e}")
+            finally:
+                _db_queue.task_done()
+                
+        except queue.Empty:
+            continue  # No operations pending, keep waiting
+        except Exception as e:
+            print(f"[DB] Worker error: {e}")
+
+def queue_db_operation(func, *args, **kwargs):
+    """Queue a database operation for background processing"""
+    if not IS_PRODUCTION:
+        return
+    
+    try:
+        _db_queue.put_nowait({
+            'func': func,
+            'args': args,
+            'kwargs': kwargs
+        })
+    except queue.Full:
+        # Queue is full, drop this operation to keep game fast
+        print("[DB] Queue full, dropping operation")
+        global _db_operations_failed
+        _db_operations_failed += 1
+
+def stop_async_db_logging():
+    """Stop the background logging thread"""
+    global _db_worker_running
+    _db_worker_running = False
+    _db_queue.put(None)  # Shutdown signal
+    
+    if _db_worker_thread:
+        _db_worker_thread.join(timeout=5.0)
+    
+    print(f"[DB] Async logging stopped. Completed: {_db_operations_completed}, Failed: {_db_operations_failed}")
+
+def get_async_db_stats():
+    """Get statistics about async database operations"""
+    return {
+        'queue_size': _db_queue.qsize(),
+        'operations_completed': _db_operations_completed,
+        'operations_failed': _db_operations_failed,
+        'worker_running': _db_worker_running
+    }
 
 # =============================================================================
 # CLIENT IP TRACKING FUNCTIONS
@@ -274,7 +367,7 @@ def initialize_game_logging(game):
     return game
 
 def initialize_game_logging_with_client(game, request=None):
-    """Enhanced game initialization with client tracking and database logging"""
+    """Enhanced game initialization with client tracking and async database logging"""
     game = initialize_game_logging(game)
     
     # Add batching system
@@ -289,33 +382,56 @@ def initialize_game_logging_with_client(game, request=None):
             print(f"NEW GAME STARTED by {client_info['ip_address']}")
             print(f"   Game ID: {game.get('game_id', 'unknown')}")
     
-    # NEW: Database logging for production
+    # NEW: Async database logging for production
     if IS_PRODUCTION:
-        try:
-            from .postgres_utils import create_game_with_player  # Changed function name
-            success = create_game_with_player(game, game.get('client_info'))
-            if success:
-                print(f"Game {game.get('game_id')} inserted to database")
-            else:
-                print(f"Game {game.get('game_id')} failed to insert to database")
-        except Exception as e:
-            print(f"Database game insertion failed: {e}")
+        queue_db_operation(
+            _create_game_with_player_async,
+            game,
+            game.get('client_info')
+        )
     
     return game
+
+def _create_game_with_player_async(game, client_info):
+    """Async wrapper for database game creation"""
+    try:
+        from .postgres_utils import create_game_with_player
+        success = create_game_with_player(game, client_info)
+        if success:
+            print(f"[DB] Game {game.get('game_id')} inserted to database")
+        else:
+            print(f"[DB] Game {game.get('game_id')} failed to insert to database")
+        return success
+    except Exception as e:
+        print(f"[DB] Database game insertion failed: {e}")
+        return False
 
 def finalize_game_logging(game):
     """Called when a game ends to finalize the log file and database"""
     # File logging finalization
     _finalize_current_log_file(game)
     
-    # NEW: Database game finalization (production)
+    # NEW: Async database game finalization (production)
     if IS_PRODUCTION:
-        try:
-            from .postgres_utils import finalize_game
-            finalize_game(game.get('game_id'), game)
-            print(f"Game {game.get('game_id')} finalized in database")
-        except Exception as e:
-            print(f"Database game finalization failed: {e}")
+        queue_db_operation(
+            _finalize_game_async,
+            game.get('game_id'),
+            game
+        )
+
+def _finalize_game_async(game_id, game):
+    """Async wrapper for database game finalization"""
+    try:
+        from .postgres_utils import finalize_game
+        success = finalize_game(game_id, game)
+        if success:
+            print(f"[DB] Game {game_id} finalized in database")
+        else:
+            print(f"[DB] Game {game_id} failed to finalize in database")
+        return success
+    except Exception as e:
+        print(f"[DB] Database game finalization failed: {e}")
+        return False
 
 def start_new_hand_logging(game):
     """Generate new hand ID and log hand start"""
@@ -323,11 +439,11 @@ def start_new_hand_logging(game):
     game['current_hand_id'] = hand_id
 
 # =============================================================================
-# CORE LOGGING FUNCTIONS - WRITE ONLY
+# CORE LOGGING FUNCTIONS - NOW WITH ASYNC DATABASE OPERATIONS
 # =============================================================================
 
 def log_action(action_type, player, action_data, session=None, additional_context=None, request=None):
-    """Central logging function for all player/system game actions with database integration"""
+    """Central logging function for all player/system game actions with ASYNC database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_ACTIONS:
         return
     
@@ -337,34 +453,31 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     if client_info:
         action_record['client_info'] = client_info
     
-    # File logging (development)
+    # File logging (development) - synchronous, fast
     _write_to_current_log_file({
         'log_type': 'action',
         'data': action_record
     })
     
-    # NEW: Database logging (production)
+    # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
-        try:
-            from .postgres_utils import log_game_event_to_db
-            game = session['game']
-            log_game_event_to_db(
-                game.get('game_id'),
-                f"action_{action_type}",
-                {
-                    'player': player,
-                    'action_data': action_data,
-                    'additional_context': additional_context
-                },
-                hand_number=game.get('hand_number'),
-                session_sequence=game.get('action_sequence'),
-                player=player,
-                action_type=action_type
-            )
-        except Exception as e:
-            print(f"Database action logging failed: {e}")
+        game = session['game']
+        queue_db_operation(
+            _log_game_event_to_db_async,
+            game.get('game_id'),
+            f"action_{action_type}",
+            {
+                'player': player,
+                'action_data': action_data,
+                'additional_context': additional_context
+            },
+            hand_number=game.get('hand_number'),
+            session_sequence=game.get('action_sequence'),
+            player=player,
+            action_type=action_type
+        )
     
-    # Console logging
+    # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
 
@@ -384,38 +497,50 @@ def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None,
         _print_ai_decision_log(decision_record)
 
 def log_game_event(event_type, event_data, session=None):
-    """Central logging function for major game events with database integration"""
+    """Central logging function for major game events with ASYNC database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_EVENTS:
         return
     
     event_record = _build_event_record(event_type, event_data, session)
     
-    # File logging (development)
+    # File logging (development) - synchronous, fast
     _write_to_current_log_file({
         'log_type': 'game_event',
         'data': event_record
     })
     
-    # NEW: Database logging (production)
+    # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
-        try:
-            from .postgres_utils import log_game_event_to_db
-            game = session['game']
-            log_game_event_to_db(
-                game.get('game_id'),
-                event_type,
-                event_data,
-                hand_number=game.get('hand_number'),
-                session_sequence=game.get('action_sequence'),
-                player=event_data.get('player'),
-                action_type=event_type
-            )
-        except Exception as e:
-            print(f"Database event logging failed: {e}")
+        game = session['game']
+        queue_db_operation(
+            _log_game_event_to_db_async,
+            game.get('game_id'),
+            event_type,
+            event_data,
+            hand_number=game.get('hand_number'),
+            session_sequence=game.get('action_sequence'),
+            player=event_data.get('player'),
+            action_type=event_type
+        )
     
-    # Console logging
+    # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
+
+def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
+    """Async wrapper for database event logging"""
+    try:
+        from .postgres_utils import log_game_event_to_db
+        success = log_game_event_to_db(
+            game_id,
+            event_type,
+            event_data,
+            **kwargs
+        )
+        return success
+    except Exception as e:
+        print(f"[DB] Event logging failed: {e}")
+        return False
 
 def log_ai_analysis(analysis_type, analysis_data, session=None):
     """Log detailed AI analysis with structured data"""
@@ -671,10 +796,12 @@ def get_environment_info():
         'is_production': IS_PRODUCTION,
         'file_logging_enabled': LOG_TO_FILE,
         'console_logging_enabled': LOG_TO_CONSOLE,
+        'async_db_logging_enabled': IS_PRODUCTION,
         'gae_env': os.environ.get('GAE_ENV', 'Not set'),
         'platform': platform.system(),
         'logs_directory': LOGS_DIRECTORY,
-        'current_log_file': os.path.basename(CURRENT_LOG_FILE) if CURRENT_LOG_FILE else None
+        'current_log_file': os.path.basename(CURRENT_LOG_FILE) if CURRENT_LOG_FILE else None,
+        'async_db_stats': get_async_db_stats()
     }
 
 def get_logging_summary():
@@ -684,6 +811,8 @@ def get_logging_summary():
         'logging_enabled': LOGGING_ENABLED,
         'environment': 'local_development' if IS_LOCAL_DEVELOPMENT else 'production',
         'file_logging_available': IS_LOCAL_DEVELOPMENT,
+        'async_db_logging_available': IS_PRODUCTION,
+        'async_db_stats': get_async_db_stats(),
         'message': 'Historical log analysis available via explicit debug endpoints only'
     }
 
@@ -780,8 +909,9 @@ def toggle_console_logging():
     print(f"Console logging: {'ON' if LOG_TO_CONSOLE else 'OFF'}")
 
 # =============================================================================
-# BATCH EVENT SYSTEM (ADD TO END OF FILE)
+# ENHANCED BATCH EVENT SYSTEM WITH ASYNC PROCESSING
 # =============================================================================
+
 class GameEventBatch:
     def __init__(self, game_id):
         self.game_id = game_id
@@ -796,17 +926,27 @@ class GameEventBatch:
             **kwargs
         })
     
-    def flush_to_db(self):
-        """Write all batched events to database"""
+    def flush_to_db_async(self):
+        """Queue batch for async database write"""
         if IS_PRODUCTION and self.events:
-            try:
-                from .postgres_utils import batch_log_events
-                success = batch_log_events(self.game_id, self.events)
-                if success:
-                    print(f"Flushed {len(self.events)} events to database")
-                self.events.clear()
-            except Exception as e:
-                print(f"Error flushing events: {e}")
+            queue_db_operation(
+                _process_event_batch_async,
+                self.game_id,
+                self.events.copy()  # Copy to avoid race conditions
+            )
+            self.events.clear()
+
+def _process_event_batch_async(game_id, events):
+    """Process event batch in background thread"""
+    try:
+        from .postgres_utils import batch_log_events
+        success = batch_log_events(game_id, events)
+        if success:
+            print(f"[DB] Async batch: {len(events)} events logged")
+        return success
+    except Exception as e:
+        print(f"[DB] Async batch failed: {e}")
+        return False
 
 def initialize_event_batching(game):
     """Add event batching to existing game initialization"""
@@ -816,15 +956,17 @@ def initialize_event_batching(game):
     return game
 
 def flush_hand_events(session):
-    """Flush batched events at hand completion"""
+    """Flush batched events at hand completion - NOW ASYNC"""
     if IS_PRODUCTION and 'game' in session:
         game = session['game']
         events = game.get('event_batch_events', [])
         if events:
-            batch = GameEventBatch(game.get('game_id'))
-            batch.events = events
-            batch.flush_to_db()
-            # Clear the events after flushing
+            queue_db_operation(
+                _process_event_batch_async,
+                game.get('game_id'),
+                events.copy()  # Copy to avoid race conditions
+            )
+            # Clear immediately - don't wait for database
             game['event_batch_events'] = []
 
 def add_to_batch(session, event_type, event_data, **kwargs):

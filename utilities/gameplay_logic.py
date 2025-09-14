@@ -33,7 +33,7 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
     deck = create_deck()
     random.shuffle(deck)
     
-    return {
+    game = {
         'player_hand': sort_hand(deck[:11]),
         'computer_hand': sort_hand(deck[11:22]),
         'current_trick': [],
@@ -74,6 +74,37 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
         'blind_multiplier': 2,
         'trick_history': []  # Track all tricks played this hand
     }
+    
+    # Log initial hands dealt for first hand
+    from .logging_utils import log_game_event
+    
+    # Log player's starting hand
+    player_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['player_hand']]
+    log_game_event(
+        event_type='hand_dealt',
+        event_data={
+            'hand_number': game['hand_number'],
+            'player': 'player',
+            'cards': player_hand_cards,
+            'card_count': len(player_hand_cards)
+        },
+        session={'game': game}
+    )
+    
+    # Log computer's starting hand
+    computer_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['computer_hand']]
+    log_game_event(
+        event_type='hand_dealt',
+        event_data={
+            'hand_number': game['hand_number'],
+            'player': 'computer',
+            'cards': computer_hand_cards,
+            'card_count': len(computer_hand_cards)
+        },
+        session={'game': game}
+    )
+    
+    return game
 
 def init_new_hand(game):
     """Start a new hand while preserving scores, bags, and parity assignments"""
@@ -148,6 +179,35 @@ def init_new_hand(game):
         'first_leader': next_first_leader,
         'trick_history': []
     })
+    
+    # NEW: Log starting hands for this new hand
+    from .logging_utils import log_game_event
+    
+    # Log player's starting hand
+    player_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['player_hand']]
+    log_game_event(
+        event_type='hand_dealt',
+        event_data={
+            'hand_number': game['hand_number'],
+            'player': 'player',
+            'cards': player_hand_cards,
+            'card_count': len(player_hand_cards)
+        },
+        session={'game': game}
+    )
+    
+    # Log computer's starting hand
+    computer_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['computer_hand']]
+    log_game_event(
+        event_type='hand_dealt',
+        event_data={
+            'hand_number': game['hand_number'],
+            'player': 'computer',
+            'cards': computer_hand_cards,
+            'card_count': len(computer_hand_cards)
+        },
+        session={'game': game}
+    )
 
 def computer_bidding_brain(computer_hand, player_bid, game_state=None):
     """

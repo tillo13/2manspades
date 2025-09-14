@@ -17,7 +17,7 @@ from utilities.app_helpers import (
     start_development_server
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
-from utilities.logging_utils import log_action, log_game_event, get_client_ip
+from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
 
 app = Flask(__name__)
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
@@ -388,5 +388,10 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
+# Then in the main block at the very end of app.py, add this:
 if __name__ == '__main__':
+    # Start async database logging in production
+    if IS_PRODUCTION:  # You'll need to import this from logging_utils too
+        start_async_db_logging()
+    
     start_development_server(app)
