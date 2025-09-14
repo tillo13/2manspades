@@ -1,5 +1,5 @@
 """
-Two-Man Spades PostgreSQL Utilities
+Two-Man Spades PostgreSQL Utilities - Updated for Hands Table
 """
 import psycopg2
 import psycopg2.extras
@@ -65,36 +65,36 @@ def test_connection():
         print(f"❌ Database connection failed: {e}")
         return False
 
-def insert_game(game_data: Dict[str, Any]) -> bool:
-    """Insert new game record"""
+def insert_hand(hand_data: Dict[str, Any]) -> bool:
+    """Insert new hand record"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         # Debug: print what we're trying to insert
-        print(f"Attempting to insert game: {game_data.get('game_id')}")
+        print(f"Attempting to insert hand: {hand_data.get('hand_id')}")
         
         cur.execute("""
-            INSERT INTO twomanspades.games 
-            (game_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
+            INSERT INTO twomanspades.hands 
+            (hand_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-            game_data['game_id'],
-            datetime.fromtimestamp(game_data['game_started_at']),
-            game_data['player_parity'],
-            game_data['computer_parity'], 
-            game_data['first_leader'],
-            game_data.get('client_info', {}).get('ip_address'),
-            game_data.get('client_info', {}).get('user_agent')
+            hand_data['hand_id'],
+            datetime.fromtimestamp(hand_data['game_started_at']),  # Still using game_started_at from session
+            hand_data['player_parity'],
+            hand_data['computer_parity'], 
+            hand_data['first_leader'],
+            hand_data.get('client_info', {}).get('ip_address'),
+            hand_data.get('client_info', {}).get('user_agent')
         ))
         
         conn.commit()
         cur.close()
         conn.close()
-        print(f"✅ Game {game_data.get('game_id')} successfully inserted")
+        print(f"✅ Hand {hand_data.get('hand_id')} successfully inserted")
         return True
     except Exception as e:
-        print(f"❌ Failed to insert game {game_data.get('game_id')}: {e}")
+        print(f"❌ Failed to insert hand {hand_data.get('hand_id')}: {e}")
         # Try to close connection if it exists
         try:
             if 'conn' in locals():
@@ -103,8 +103,8 @@ def insert_game(game_data: Dict[str, Any]) -> bool:
             pass
         return False
 
-def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
-    """Log game event to database"""
+def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
+    """Log game event to database (still uses hand_id now)"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -114,7 +114,7 @@ def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwar
             (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-            game_id,
+            hand_id,  # Now using hand_id
             event_type,
             json.dumps(event_data),
             kwargs.get('hand_number'),
@@ -131,33 +131,27 @@ def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwar
         print(f"Failed to log event: {e}")
         return False
 
-def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
-    """Update game record when game ends"""
+def finalize_hand(hand_id: str, final_data: Dict[str, Any]) -> bool:
+    """Update hand record when hand completes"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
-            UPDATE twomanspades.games 
+            UPDATE twomanspades.hands 
             SET completed_at = %s,
-                final_player_score = %s,
-                final_computer_score = %s,
-                final_player_bags = %s,
-                final_computer_bags = %s,
-                winner = %s,
-                hands_played = %s,
-                game_end_reason = %s
-            WHERE game_id = %s
+                hand_player_score = %s,
+                hand_computer_score = %s,
+                player_bags = %s,
+                computer_bags = %s
+            WHERE hand_id = %s
         """, (
             datetime.now(),
             final_data.get('player_score', 0),
             final_data.get('computer_score', 0),
             final_data.get('player_bags', 0),
             final_data.get('computer_bags', 0),
-            final_data.get('winner'),
-            final_data.get('hand_number', 1),
-            final_data.get('game_end_reason', 'completed'),
-            game_id
+            hand_id
         ))
         
         conn.commit()
@@ -165,10 +159,8 @@ def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
         conn.close()
         return True
     except Exception as e:
-        print(f"Failed to finalize game: {e}")
+        print(f"Failed to finalize hand: {e}")
         return False
-    
-# Add these functions to the END of your existing postgres_utils.py:
 
 def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
     """Create or update player record, return player_id"""
@@ -194,7 +186,7 @@ def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
         print(f"Failed to upsert player: {e}")
         return None
 
-def batch_log_events(game_id: str, events: List[Dict]) -> bool:
+def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
     """Log multiple events in a single database transaction"""
     if not events:
         return True
@@ -206,7 +198,7 @@ def batch_log_events(game_id: str, events: List[Dict]) -> bool:
         events_data = []
         for event in events:
             events_data.append((
-                game_id,
+                hand_id,  # Now using hand_id
                 event.get('event_type'),
                 json.dumps(event.get('event_data', {})),
                 event.get('hand_number'),
@@ -235,8 +227,8 @@ def batch_log_events(game_id: str, events: List[Dict]) -> bool:
             pass
         return False
 
-def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
-    """Create game and player in single transaction"""
+def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
+    """Create hand and update player in single transaction"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -246,30 +238,31 @@ def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, An
             ip_address = client_info.get('ip_address')
             user_agent = client_info.get('user_agent')
             
+            # Update player stats - increment total_hands instead of total_games
             cur.execute("""
-                INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_games)
+                INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_hands)
                 VALUES (%s, %s, 1)
                 ON CONFLICT (ip_address) DO UPDATE SET
                     last_seen = NOW(),
                     user_agent_latest = EXCLUDED.user_agent_latest,
-                    total_games = players.total_games + 1
+                    total_hands = players.total_hands + 1
                 RETURNING player_id
             """, (ip_address, user_agent))
             
             player_id = cur.fetchone()[0]
         
-        # Add player_id to existing insert_game logic
+        # Insert hand record
         cur.execute("""
-            INSERT INTO twomanspades.games 
-            (game_id, started_at, player_parity, computer_parity, first_leader, 
+            INSERT INTO twomanspades.hands 
+            (hand_id, started_at, player_parity, computer_parity, first_leader, 
              client_ip, user_agent, player_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            game_data['game_id'],
-            datetime.fromtimestamp(game_data['game_started_at']),
-            game_data['player_parity'],
-            game_data['computer_parity'], 
-            game_data['first_leader'],
+            hand_data['game_id'],  # Using game_id as hand_id for now
+            datetime.fromtimestamp(hand_data['game_started_at']),
+            hand_data['player_parity'],
+            hand_data['computer_parity'], 
+            hand_data['first_leader'],
             client_info.get('ip_address') if client_info else None,
             client_info.get('user_agent') if client_info else None,
             player_id
@@ -280,7 +273,7 @@ def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, An
         conn.close()
         return True
     except Exception as e:
-        print(f"Failed to create game with player: {e}")
+        print(f"Failed to create hand with player: {e}")
         try:
             if 'conn' in locals():
                 conn.rollback()
@@ -288,3 +281,16 @@ def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, An
         except:
             pass
         return False
+
+# Legacy function names for backward compatibility
+def insert_game(game_data: Dict[str, Any]) -> bool:
+    """Legacy wrapper - use insert_hand instead"""
+    return insert_hand(game_data)
+
+def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
+    """Legacy wrapper - use finalize_hand instead"""
+    return finalize_hand(game_id, final_data)
+
+def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
+    """Legacy wrapper - use create_hand_with_player instead"""
+    return create_hand_with_player(game_data, client_info)

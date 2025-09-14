@@ -20,6 +20,7 @@ EXCLUDED_FILENAME_PATTERNS = [
     'backup', # Any file with 'backup' in the name
     'temp',   # Any file with 'temp' in the name
         'archives',   # Any file with 'temp' in the name
+                '_full',   # Any file with '_full' in the name
 ]
 
 # Directories to completely exclude from both scanning and output
