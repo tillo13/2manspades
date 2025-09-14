@@ -22,8 +22,32 @@ from utilities.logging_utils import log_action, log_game_event, get_client_ip, s
 app = Flask(__name__)
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
+
+# Initialize async logging for production immediately when module loads
+if IS_PRODUCTION:
+    start_async_db_logging()
+    print("[STARTUP] Async database logging initialized")
+
 DEBUG_MODE = False
 session_tracker = {}
+
+
+@app.route('/debug_async_logging')
+def debug_async_logging():
+    """Debug endpoint to check async logging status"""
+    from utilities.logging_utils import get_async_db_stats, IS_PRODUCTION
+    
+    stats = get_async_db_stats()
+    
+    return jsonify({
+        'is_production': IS_PRODUCTION,
+        'async_logging_enabled': IS_PRODUCTION,
+        'worker_running': stats['worker_running'],
+        'queue_size': stats['queue_size'],
+        'operations_completed': stats['operations_completed'],
+        'operations_failed': stats['operations_failed'],
+        'queue_max_size': 1000
+    })
 
 @app.route('/')
 def index():

@@ -869,7 +869,7 @@ button:disabled {
     background: #5a6268;
 }
 
-/* ENHANCED CHAT SYSTEM */
+/* ENHANCED CHAT SYSTEM - FIXED POSITIONING */
 .chat-bubble-icon {
     position: fixed;
     bottom: 45px;
@@ -924,6 +924,7 @@ button:disabled {
     }
 }
 
+/* Mobile chat: slides up from bottom */
 .chat-window {
     position: fixed;
     bottom: 0;
@@ -1277,7 +1278,7 @@ button:disabled {
     border-radius: 4px;
 }
 
-/* MOBILE OPTIMIZATIONS */
+/* MOBILE CHAT ADJUSTMENTS */
 @media (max-width: 767px) {
     .chat-bubble-icon {
         bottom: 40px;
@@ -1426,23 +1427,35 @@ button:disabled {
         max-height: 200px;
     }
 
+    /* DESKTOP CHAT: positioned next to icon, not overlapping buttons */
     .chat-bubble-icon {
         bottom: 55px;
+        /* Above the bottom navigation */
         right: 15px;
     }
 
     .chat-window {
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%) translateY(100%);
-        max-width: 400px;
+        /* Position to the left of the chat icon */
+        bottom: 55px;
+        /* Same level as icon */
+        right: 75px;
+        /* To the left of icon */
+        left: auto;
+        /* Override mobile left: 0 */
+        width: 380px;
+        max-width: 380px;
+        height: 350px;
         border-radius: 15px;
         border: 2px solid #667eea;
-        bottom: 50px;
-        height: 350px;
+        transform: scale(0) translateX(30px);
+        transform-origin: bottom right;
     }
 
     .chat-window.open {
-        transform: translateX(-50%) translateY(0);
+        transform: scale(1) translateX(0);
+    }
+
+    .chat-header {
+        border-radius: 15px 15px 0 0;
     }
 }

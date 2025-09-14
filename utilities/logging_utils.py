@@ -91,16 +91,23 @@ def _db_worker():
 def queue_db_operation(func, *args, **kwargs):
     """Queue a database operation for background processing"""
     if not IS_PRODUCTION:
+        print(f"[DB] Skipping queue operation - not in production")
+        return
+    
+    if not _db_worker_running:
+        print(f"[DB] ERROR: Worker not running, cannot queue operation")
         return
     
     try:
-        _db_queue.put_nowait({
+        operation = {
             'func': func,
             'args': args,
-            'kwargs': kwargs
-        })
+            'kwargs': kwargs,
+            'queued_at': time.time()
+        }
+        _db_queue.put_nowait(operation)
+        print(f"[DB] Queued operation: {func.__name__} (queue size: {_db_queue.qsize()})")
     except queue.Full:
-        # Queue is full, drop this operation to keep game fast
         print("[DB] Queue full, dropping operation")
         global _db_operations_failed
         _db_operations_failed += 1
@@ -530,6 +537,7 @@ def log_game_event(event_type, event_data, session=None):
 def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
     """Async wrapper for database event logging"""
     try:
+        print(f"[DB] Attempting to log event: {event_type} for game {game_id}")
         from .postgres_utils import log_game_event_to_db
         success = log_game_event_to_db(
             game_id,
@@ -537,9 +545,15 @@ def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
             event_data,
             **kwargs
         )
+        if success:
+            print(f"[DB] Successfully logged event: {event_type}")
+        else:
+            print(f"[DB] Failed to log event: {event_type}")
         return success
     except Exception as e:
-        print(f"[DB] Event logging failed: {e}")
+        print(f"[DB] Exception logging event {event_type}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def log_ai_analysis(analysis_type, analysis_data, session=None):
