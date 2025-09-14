@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from google.cloud import secretmanager
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
     """Get secret from Google Secret Manager"""
@@ -166,4 +166,125 @@ def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
         return True
     except Exception as e:
         print(f"Failed to finalize game: {e}")
+        return False
+    
+# Add these functions to the END of your existing postgres_utils.py:
+
+def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
+    """Create or update player record, return player_id"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_games)
+            VALUES (%s, %s, 0)
+            ON CONFLICT (ip_address) DO UPDATE SET
+                last_seen = NOW(),
+                user_agent_latest = COALESCE(EXCLUDED.user_agent_latest, players.user_agent_latest)
+            RETURNING player_id
+        """, (ip_address, user_agent))
+        
+        player_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        return player_id
+    except Exception as e:
+        print(f"Failed to upsert player: {e}")
+        return None
+
+def batch_log_events(game_id: str, events: List[Dict]) -> bool:
+    """Log multiple events in a single database transaction"""
+    if not events:
+        return True
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        events_data = []
+        for event in events:
+            events_data.append((
+                game_id,
+                event.get('event_type'),
+                json.dumps(event.get('event_data', {})),
+                event.get('hand_number'),
+                event.get('session_sequence'),
+                event.get('player'),
+                event.get('action_type')
+            ))
+        
+        cur.executemany("""
+            INSERT INTO twomanspades.game_events 
+            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, events_data)
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Batch event logging failed: {e}")
+        try:
+            if 'conn' in locals():
+                conn.rollback()
+                conn.close()
+        except:
+            pass
+        return False
+
+def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
+    """Create game and player in single transaction"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        player_id = None
+        if client_info:
+            ip_address = client_info.get('ip_address')
+            user_agent = client_info.get('user_agent')
+            
+            cur.execute("""
+                INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_games)
+                VALUES (%s, %s, 1)
+                ON CONFLICT (ip_address) DO UPDATE SET
+                    last_seen = NOW(),
+                    user_agent_latest = EXCLUDED.user_agent_latest,
+                    total_games = players.total_games + 1
+                RETURNING player_id
+            """, (ip_address, user_agent))
+            
+            player_id = cur.fetchone()[0]
+        
+        # Add player_id to existing insert_game logic
+        cur.execute("""
+            INSERT INTO twomanspades.games 
+            (game_id, started_at, player_parity, computer_parity, first_leader, 
+             client_ip, user_agent, player_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            game_data['game_id'],
+            datetime.fromtimestamp(game_data['game_started_at']),
+            game_data['player_parity'],
+            game_data['computer_parity'], 
+            game_data['first_leader'],
+            client_info.get('ip_address') if client_info else None,
+            client_info.get('user_agent') if client_info else None,
+            player_id
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to create game with player: {e}")
+        try:
+            if 'conn' in locals():
+                conn.rollback()
+                conn.close()
+        except:
+            pass
         return False
