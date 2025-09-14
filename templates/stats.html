@@ -411,19 +411,40 @@
         {% endif %}
 
         <div class="warning">
-            <strong>Privacy Note:</strong> Statistics are tracked by IP address for game analysis and leaderboard
-            purposes.
-            No personal information is collected. IP addresses are used only to distinguish between different players.
+            <strong>Note:</strong> We don't have a login, so we're guessing a bit based on your IP address as to your
+            stats. Maybe I make something that combines them for known stats at some point. Meh.
         </div>
 
         <div class="section">
             <h2>Understanding Your Stats</h2>
-            <ul style="margin-left: 20px; line-height: 1.8;">
-                <li><strong>Win Rate:</strong> Percentage of completed games you've won</li>
-                <li><strong>Avg Winning Score:</strong> Your average final score in games you win</li>
-                <li><strong>Avg Win Margin:</strong> Average point difference when you win</li>
-                <li><strong>Games Abandoned:</strong> Games started but not completed (if any)</li>
-            </ul>
+            <div style="line-height: 1.8;">
+                <p><strong>Game Summary:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li><strong>Games Started:</strong> Total number of games you've initiated</li>
+                    <li><strong>Games Completed:</strong> Games that reached a conclusion (win or loss)</li>
+                    <li><strong>Games Abandoned:</strong> Games started but not completed</li>
+                </ul>
+
+                <p><strong>Performance Metrics:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li><strong>Win Rate:</strong> Percentage of completed games you've won</li>
+                    <li><strong>Wins/Losses:</strong> Total count of games won and lost</li>
+                </ul>
+
+                <p><strong>Scoring Analysis:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li><strong>Avg Winning Score:</strong> Your average final score in games you win</li>
+                    <li><strong>Avg Losing Score:</strong> Your average final score in games you lose</li>
+                    <li><strong>Avg Win Margin:</strong> Average point difference when you win</li>
+                    <li><strong>Avg Loss Margin:</strong> Average point difference when you lose</li>
+                </ul>
+
+                <p><strong>Opponent Analysis:</strong></p>
+                <ul style="margin-left: 20px;">
+                    <li><strong>Opponent Score When You Win:</strong> Computer's average score in your victories</li>
+                    <li><strong>Opponent Score When You Lose:</strong> Computer's average score in your defeats</li>
+                </ul>
+            </div>
         </div>
     </div>
 
