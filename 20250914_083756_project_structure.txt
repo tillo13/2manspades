@@ -1,9 +1,8 @@
-Number of files: 16
-Number of directories: 6
+Number of files: 15
+Number of directories: 5
 
 Directory structure:
 .
-logging
 static
 templates
 utilities
@@ -21,8 +20,7 @@ HTML Files (2):
 JS Files (1):
   ./static/game.js
 
-JSON Files (2):
-  ./logging/game_log_20250906_085848_17571743.json
+JSON Files (1):
   ./static/manifest.json
 
 PY Files (10):
@@ -5297,9 +5295,9 @@ class ClaudeGameChat:
             "You are Marta, playing Two-Man Spades against a human opponent. "
             "You're a seasoned spades player with a poker face and sharp wit, actively competing in this match. "
             "This is a custom variant with blind bidding, and special bag-reduction cards. "
-            "You can see the current game state, your opponent's played cards, discard pile results, scores, "
+            "You can see the current game state, your opponent's played cards, scores, "
             "bidding patterns, and trick outcomes - but you cannot see cards still in your opponent's hand. "
-            "IMPORTANT: You also cannot see discard results until the hand is completely over. "
+            "IMPORTANT: You also cannot reveal anything about discard results until the hand is completely over. "
             "CRITICAL: When referencing specific cards played in tricks, be absolutely accurate about who played what. "
             "Never claim to have played a card that your opponent actually played. The context clearly shows "
             "'my_card' vs 'opponent_card' and 'outcome' descriptions. Use these to avoid factual errors. "
@@ -5319,9 +5317,11 @@ class ClaudeGameChat:
         print(f"  System prompt length: {len(self.system_prompt)} chars")
         print(f"  Mode: Marta as active player")
     
+
+
     def get_marta_response(self, 
-                          player_message: str, 
-                          game_context: Optional[Dict[str, Any]] = None) -> str:
+                        player_message: str, 
+                        game_context: Optional[Dict[str, Any]] = None) -> str:
         """Get a response from Marta as an active player in the game"""
         print(f"\n[CLAUDE] === MARTA CHAT REQUEST ===")
         print(f"[CLAUDE] Opponent message: '{player_message}'")
@@ -5331,6 +5331,26 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Context keys count: {len(game_context.keys())}")
             print(f"[CLAUDE] Context keys: {list(game_context.keys())}")
         
+        # SECRET DEBUG: Check for magic phrase and extract hand info
+        secret_hand_reveal = ""
+        magic_phrase_detected = False
+        
+        if "abra cadabra" in player_message.lower() and game_context:
+            print(f"[CLAUDE] MAGIC PHRASE DETECTED! Preparing to reveal Marta's hand...")
+            
+            computer_hand = game_context.get('computer_hand', [])
+            if computer_hand:
+                hand_cards = []
+                for card in computer_hand:
+                    if isinstance(card, dict) and 'rank' in card and 'suit' in card:
+                        hand_cards.append(f"{card['rank']}{card['suit']}")
+                
+                if hand_cards:
+                    cards_str = ", ".join(hand_cards)
+                    secret_hand_reveal = f"[SECRET_DEBUG_ACTIVATED: My actual hand is {cards_str}] "
+                    magic_phrase_detected = True
+                    print(f"[CLAUDE] Secret hand info prepared: {cards_str}")
+        
         try:
             context_str = self._build_marta_visible_context(game_context)
             if not context_str or context_str == "[MY_VISIBLE_GAME_STATE: JSON conversion failed] ":
@@ -5339,15 +5359,27 @@ class ClaudeGameChat:
             
             print(f"[CLAUDE] Built Marta's visible context successfully")
             
-            user_prompt = (
-                f"{context_str}"
-                f"My opponent said: '{player_message}'\n\n"
-                f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
-                f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
-                f"recent cards played, bidding situation, bags, trick history, or strategic implications "
-                f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
-                f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
-            )
+            # Enhanced user prompt that handles both normal and secret responses
+            if magic_phrase_detected:
+                user_prompt = (
+                    f"{context_str}{secret_hand_reveal}"
+                    f"My opponent said: '{player_message}'\n\n"
+                    f"SPECIAL INSTRUCTION: The player used the secret phrase 'abra cadabra'! "
+                    f"Start your response with something like 'Well well, you found my secret! Here are my cards: [list all the cards from SECRET_DEBUG_ACTIVATED]. "
+                    f"Don't tell anyone I showed you!' Then continue with your normal competitive, snarky response about the game. "
+                    f"Reference specific details from what you can legitimately see in the current game state."
+                )
+                print(f"[CLAUDE] Using SECRET REVEAL prompt mode")
+            else:
+                user_prompt = (
+                    f"{context_str}"
+                    f"My opponent said: '{player_message}'\n\n"
+                    f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
+                    f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
+                    f"recent cards played, bidding situation, bags, trick history, or strategic implications "
+                    f"that are visible to me as a player. Show my tactical awareness and competitive intelligence while "
+                    f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
+                )
             
             print(f"[CLAUDE] Prompt length: {len(user_prompt)} chars")
             print(f"[CLAUDE] Making API call to {self.model}...")
@@ -5369,11 +5401,14 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Raw API response: '{api_response}'")
             print(f"[CLAUDE] Response length: {len(api_response)} chars")
             
+            if magic_phrase_detected:
+                print(f"[CLAUDE] SECRET REVEAL response delivered!")
+            
             if not api_response:
                 print(f"[CLAUDE] WARNING: Empty response from API")
                 return self._fallback_marta_response(game_context)
             
-            print(f"[CLAUDE] SUCCESS: Returning Marta's active player response")
+            print(f"[CLAUDE] SUCCESS: Returning Marta's response")
             return api_response
             
         except anthropic.APITimeoutError as e:
@@ -5411,8 +5446,6 @@ class ClaudeGameChat:
             fallback = self._fallback_marta_response(game_context)
             print(f"[CLAUDE] Using general error fallback: '{fallback}'")
             return fallback
-    
-
 
     def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
         """Build context showing only what Marta can legitimately see during play"""
@@ -9789,13 +9822,82 @@ FILE: ./templates/instructions.html
                 loses</li>
         </ul>
 
-        <h3>Tie-Breaking</h3>
-        <p>If display scores are exactly tied at 300+:</p>
+        <div class="highlight">
+            <h3>Denial Rule - Keep the Game Alive!</h3>
+            <p><strong>Critical mechanic:</strong> When someone would reach 300+ points from winning the discard pile,
+                but they're currently losing the game, the DENIAL RULE automatically activates! Instead of gaining those
+                discard points, their opponent LOSES those points instead. This keeps close games alive for another hand
+                instead of ending on a lucky discard!</p>
+
+            <div class="example">
+                <strong>Example:</strong> You're at 295, Marta's at 305. You win the discard pile for 10 points, which
+                would give you 305 and end the game. But since you're behind, DENIAL activates - Marta loses 10 points
+                instead (drops to 295), and the game continues 295 to 295 for another hand!
+            </div>
+        </div>
+
+        <h3>Game End Logic (When Either Player Hits 300+)</h3>
+        <p><strong>Simple Rule: Higher display score ALWAYS wins, regardless of how you got there, and negative bags are
+                BAD in this situation.</strong></p>
+
+        <div class="example">
+            <strong>Scenarios when both players are over 300:</strong>
+            <ul>
+                <li><strong>Player A:</strong> 302 display, <strong>Player B:</strong> 301 display → <strong>Player A
+                        wins</strong></li>
+                <li><strong>Player A:</strong> 315 display, <strong>Player B:</strong> 320 display → <strong>Player B
+                        wins</strong></li>
+                <li><strong>Player A:</strong> 300 display, <strong>Player B:</strong> 306 display → <strong>Player B
+                        wins</strong></li>
+            </ul>
+        </div>
+
+        <h3>Tie-Breaking (Only When Display Scores Are Exactly Equal)</h3>
+        <p>Display score ties are extremely rare and only occur when negative bags are involved:</p>
         <ol>
             <li>Player with higher base score wins</li>
-            <li>If base scores tied, player with fewer bags wins (positive bags are better than negative bags)</li>
-            <li>If both have positive bags, fewer is better; if both have negative bags, less negative is better</li>
+            <li>If base scores are tied, player with more bags wins (more bags is better)</li>
+            <li>If everything is exactly equal, the game ends in a tie</li>
         </ol>
+
+        <div class="example">
+            <strong>Realistic Tie-Breaking Examples:</strong>
+            <ul>
+                <li><strong>300 with -1 bags</strong> vs <strong>300 with 0 bags</strong> → <strong>Player with 0 bags
+                        wins</strong> (0 > -1)</li>
+                <li><strong>300 with -4 bags</strong> vs <strong>300 with -2 bags</strong> → <strong>Player with -2 bags
+                        wins</strong> (-2 > -4)</li>
+                <li><strong>310 with -3 bags</strong> vs <strong>320 with -4 bags </strong> → <strong>Player with 320
+                        and -4 bags wins</strong> (-1 < -4)</li>
+            </ul>
+            <p><strong>Why ties are rare:</strong> Positive bags always change the display score, so ties only happen
+                when at least one player has negative bags.</p>
+        </div>
+
+        <h3>Bag System Limits</h3>
+        <div class="tip">
+            <strong>Automatic Bag Management:</strong>
+            <ul>
+                <li><strong>Maximum bags:</strong> 6 (7+ bags triggers -100 point penalty and resets to remainder)</li>
+                <li><strong>Minimum bags:</strong> -4 (-5+ negative bags triggers +100 point bonus and resets to
+                    remainder)</li>
+                <li><strong>Tie-breaking hierarchy:</strong> 6 > 5 > 4 > 3 > 2 > 1 > 0 > -1 > -2 > -3 > -4</li>
+                <li><strong>Key insight:</strong> Negative bags hurt in tie-breaking but never reduce your display score
+                </li>
+            </ul>
+        </div>
+
+        <h3>Why This System Works</h3>
+        <div class="section">
+            <p><strong>Strategic Depth:</strong> The display score system creates interesting decisions - negative bags
+                don't hurt your visible score, but they're devastating in close games. Meanwhile, positive bags boost
+                your display but can trigger painful penalties at 7+ bags. The denial rule prevents lucky discard wins
+                when you're behind, ensuring skill matters more than chance in final moments.</p>
+
+            <p><strong>Bottom Line:</strong> Highest display score wins when anyone hits 300+. Ties are nearly
+                impossible due to the bag system, but when they occur, more bags (including negative bags closer to
+                zero) provide the advantage.</p>
+        </div>
 
         <div class="section">
             <h2>Advanced Features</h2>
@@ -9881,33 +9983,6 @@ FILE: ./templates/instructions.html
 </body>
 
 </html>
-
-================================================================================
-
-FILE: ./logging/game_log_20250906_085848_17571743.json
---------------------------------------------------------------------------------
-[
-  {
-    "log_type": "game_metadata",
-    "data": {
-      "game_id": "1757174328916224",
-      "log_file_created": "2025-09-06T08:58:48.916880",
-      "log_version": "2.0",
-      "game_type": "two_man_spades",
-      "environment": "local_development"
-    }
-  },
-  {
-    "log_type": "game_init",
-    "data": {
-      "game_id": "1757174328916224",
-      "started_at": 1757174328.9172559,
-      "player_parity": "odd",
-      "computer_parity": "even",
-      "first_leader": "player"
-    }
-  }
-]
 
 ================================================================================
 

@@ -11,6 +11,9 @@ env_variables:
   FLASK_ENV: "production"
   GOOGLE_CLOUD_PROJECT: "twomanspades"
 
+beta_settings:
+  cloud_sql_instances: "kumori-404602:us-central1:kumori"
+
 handlers:
   - url: /static
     static_dir: static

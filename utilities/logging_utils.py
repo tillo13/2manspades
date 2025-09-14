@@ -274,7 +274,7 @@ def initialize_game_logging(game):
     return game
 
 def initialize_game_logging_with_client(game, request=None):
-    """Enhanced game initialization with client tracking - NO FILE SCANNING"""
+    """Enhanced game initialization with client tracking and database logging"""
     game = initialize_game_logging(game)
     
     if request:
@@ -286,11 +286,29 @@ def initialize_game_logging_with_client(game, request=None):
             print(f"NEW GAME STARTED by {client_info['ip_address']}")
             print(f"   Game ID: {game.get('game_id', 'unknown')}")
     
+    # NEW: Database logging for production
+    if IS_PRODUCTION:
+        try:
+            from .postgres_utils import insert_game
+            insert_game(game)
+            print(f"Game {game.get('game_id')} inserted to database")
+        except Exception as e:
+            print(f"Database game insertion failed: {e}")
+    
     return game
-
 def finalize_game_logging(game):
-    """Called when a game ends to finalize the log file"""
+    """Called when a game ends to finalize the log file and database"""
+    # File logging finalization
     _finalize_current_log_file(game)
+    
+    # NEW: Database game finalization (production)
+    if IS_PRODUCTION:
+        try:
+            from .postgres_utils import finalize_game
+            finalize_game(game.get('game_id'), game)
+            print(f"Game {game.get('game_id')} finalized in database")
+        except Exception as e:
+            print(f"Database game finalization failed: {e}")
 
 def start_new_hand_logging(game):
     """Generate new hand ID and log hand start"""
@@ -302,7 +320,7 @@ def start_new_hand_logging(game):
 # =============================================================================
 
 def log_action(action_type, player, action_data, session=None, additional_context=None, request=None):
-    """Central logging function for all player/system game actions with optional client tracking"""
+    """Central logging function for all player/system game actions with database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_ACTIONS:
         return
     
@@ -312,11 +330,34 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     if client_info:
         action_record['client_info'] = client_info
     
+    # File logging (development)
     _write_to_current_log_file({
         'log_type': 'action',
         'data': action_record
     })
     
+    # NEW: Database logging (production)
+    if IS_PRODUCTION and session and 'game' in session:
+        try:
+            from .postgres_utils import log_game_event_to_db
+            game = session['game']
+            log_game_event_to_db(
+                game.get('game_id'),
+                f"action_{action_type}",
+                {
+                    'player': player,
+                    'action_data': action_data,
+                    'additional_context': additional_context
+                },
+                hand_number=game.get('hand_number'),
+                session_sequence=game.get('action_sequence'),
+                player=player,
+                action_type=action_type
+            )
+        except Exception as e:
+            print(f"Database action logging failed: {e}")
+    
+    # Console logging
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
 
@@ -336,17 +377,36 @@ def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None,
         _print_ai_decision_log(decision_record)
 
 def log_game_event(event_type, event_data, session=None):
-    """Central logging function for major game events"""
+    """Central logging function for major game events with database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_EVENTS:
         return
     
     event_record = _build_event_record(event_type, event_data, session)
     
+    # File logging (development)
     _write_to_current_log_file({
         'log_type': 'game_event',
         'data': event_record
     })
     
+    # NEW: Database logging (production)
+    if IS_PRODUCTION and session and 'game' in session:
+        try:
+            from .postgres_utils import log_game_event_to_db
+            game = session['game']
+            log_game_event_to_db(
+                game.get('game_id'),
+                event_type,
+                event_data,
+                hand_number=game.get('hand_number'),
+                session_sequence=game.get('action_sequence'),
+                player=event_data.get('player'),
+                action_type=event_type
+            )
+        except Exception as e:
+            print(f"Database event logging failed: {e}")
+    
+    # Console logging
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
 
