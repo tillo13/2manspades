@@ -71,6 +71,9 @@ def insert_game(game_data: Dict[str, Any]) -> bool:
         conn = get_db_connection()
         cur = conn.cursor()
         
+        # Debug: print what we're trying to insert
+        print(f"Attempting to insert game: {game_data.get('game_id')}")
+        
         cur.execute("""
             INSERT INTO twomanspades.games 
             (game_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
@@ -88,9 +91,16 @@ def insert_game(game_data: Dict[str, Any]) -> bool:
         conn.commit()
         cur.close()
         conn.close()
+        print(f"✅ Game {game_data.get('game_id')} successfully inserted")
         return True
     except Exception as e:
-        print(f"Failed to insert game: {e}")
+        print(f"❌ Failed to insert game {game_data.get('game_id')}: {e}")
+        # Try to close connection if it exists
+        try:
+            if 'conn' in locals():
+                conn.close()
+        except:
+            pass
         return False
 
 def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:

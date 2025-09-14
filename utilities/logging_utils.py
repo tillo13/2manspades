@@ -290,12 +290,16 @@ def initialize_game_logging_with_client(game, request=None):
     if IS_PRODUCTION:
         try:
             from .postgres_utils import insert_game
-            insert_game(game)
-            print(f"Game {game.get('game_id')} inserted to database")
+            success = insert_game(game)
+            if success:
+                print(f"Game {game.get('game_id')} inserted to database")
+            else:
+                print(f"Game {game.get('game_id')} failed to insert to database")
         except Exception as e:
             print(f"Database game insertion failed: {e}")
     
     return game
+
 def finalize_game_logging(game):
     """Called when a game ends to finalize the log file and database"""
     # File logging finalization
