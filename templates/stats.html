@@ -67,10 +67,31 @@
             text-decoration: none;
             font-weight: bold;
             box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+            transition: all 0.2s;
         }
 
         .back-button:hover {
             background: #3182ce;
+            transform: translateY(-2px);
+        }
+
+        .share-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #38a169;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+            transition: all 0.2s;
+        }
+
+        .share-button:hover {
+            background: #2f855a;
             transform: translateY(-2px);
         }
 
@@ -235,12 +256,38 @@
             .leaderboard-table td {
                 padding: 8px 6px;
             }
+
+            .back-button,
+            .share-button {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                margin: 10px 5px;
+                display: inline-block;
+            }
+
+            .mobile-buttons {
+                text-align: center;
+                margin-bottom: 20px;
+            }
         }
     </style>
 </head>
 
 <body>
     <a href="/" class="back-button">← Back to Game</a>
+    <button id="shareStatsBtn" onclick="shareStats()" class="share-button">📤 Share Stats</button>
+
+    <!-- Mobile-friendly button layout -->
+    <div class="mobile-buttons" style="display: none;">
+        <a href="/"
+            style="background: #4299e1; color: white; border: none; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">←
+            Back to Game</a>
+        <button onclick="shareStats()"
+            style="background: #38a169; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 5px;">📤
+            Share Stats</button>
+    </div>
 
     <div class="container">
         <h1>Player Statistics</h1>
@@ -314,7 +361,8 @@
         {% if leaderboard %}
         <div class="section">
             <h2>Leaderboard - Top Players</h2>
-            <p style="margin-bottom: 20px; color: #666;">Players ranked by total games completed, then by win rate</p>
+            <p style="margin-bottom: 15px; color: #666; font-size: 0.9em;">Players ranked by total games completed, then
+                by win rate. Swipe table to see more stats →</p>
 
             <table class="leaderboard-table">
                 <thead>
@@ -380,8 +428,15 @@
     </div>
 
     <script>
+        // Show mobile buttons on small screens
+        if (window.innerWidth <= 768) {
+            document.querySelector('.mobile-buttons').style.display = 'block';
+            document.querySelector('.back-button').style.display = 'none';
+            document.querySelector('.share-button').style.display = 'none';
+        }
+
         async function shareStats() {
-            const btn = document.getElementById('shareStatsBtn');
+            const btn = document.getElementById('shareStatsBtn') || event.target;
             const originalText = btn.textContent;
 
             // Create shareable text
@@ -398,7 +453,7 @@ Play at: ${window.location.origin}`;
                 // Try to use the modern Clipboard API
                 if (navigator.clipboard && window.isSecureContext) {
                     await navigator.clipboard.writeText(statsText);
-                    btn.textContent = 'Copied!';
+                    btn.textContent = '✅ Copied!';
                     btn.style.background = '#48bb78';
                 } else {
                     // Fallback for older browsers or non-HTTPS
@@ -410,7 +465,7 @@ Play at: ${window.location.origin}`;
                     textArea.select();
                     document.execCommand('copy');
                     document.body.removeChild(textArea);
-                    btn.textContent = 'Copied!';
+                    btn.textContent = '✅ Copied!';
                     btn.style.background = '#48bb78';
                 }
 
@@ -422,7 +477,7 @@ Play at: ${window.location.origin}`;
 
             } catch (err) {
                 console.error('Failed to copy stats:', err);
-                btn.textContent = 'Copy Failed';
+                btn.textContent = '❌ Copy Failed';
                 btn.style.background = '#e53e3e';
 
                 // Reset button after 2 seconds
