@@ -57,12 +57,12 @@ def test_connection():
         cur = conn.cursor()
         cur.execute("SELECT version();")
         version = cur.fetchone()
-        print(f"✅ PostgreSQL connection successful: {version[0]}")
+        print(f"PostgreSQL connection successful: {version[0]}")
         cur.close()
         conn.close()
         return True
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        print(f"Database connection failed: {e}")
         return False
 
 def insert_hand(hand_data: Dict[str, Any]) -> bool:
@@ -91,10 +91,10 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         conn.commit()
         cur.close()
         conn.close()
-        print(f"✅ Hand {hand_data.get('hand_id')} successfully inserted")
+        print(f"Hand {hand_data.get('hand_id')} successfully inserted")
         return True
     except Exception as e:
-        print(f"❌ Failed to insert hand {hand_data.get('hand_id')}: {e}")
+        print(f"Failed to insert hand {hand_data.get('hand_id')}: {e}")
         # Try to close connection if it exists
         try:
             if 'conn' in locals():
@@ -104,17 +104,17 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         return False
 
 def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
-    """Log game event to database (still uses hand_id now)"""
+    """Log game event to database using hand_id"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
             INSERT INTO twomanspades.game_events 
-            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
+            (hand_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            hand_id,  # Now using hand_id
+            hand_id,
             event_type,
             json.dumps(event_data),
             kwargs.get('hand_number'),
@@ -199,7 +199,7 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
         events_data = []
         for event in events:
             events_data.append((
-                hand_id,  # Now correctly using hand_id parameter
+                hand_id,
                 event.get('event_type'),
                 json.dumps(event.get('event_data', {})),
                 event.get('hand_number'),
@@ -253,14 +253,14 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             
             player_id = cur.fetchone()[0]
         
-        # Insert hand record
+        # Insert hand record using current_hand_id from game data
         cur.execute("""
             INSERT INTO twomanspades.hands 
             (hand_id, started_at, player_parity, computer_parity, first_leader, 
              client_ip, user_agent, player_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            hand_data['game_id'],  # Using game_id as hand_id for now
+            hand_data['current_hand_id'],  # Use current_hand_id instead of game_id
             datetime.fromtimestamp(hand_data['game_started_at']),
             hand_data['player_parity'],
             hand_data['computer_parity'], 

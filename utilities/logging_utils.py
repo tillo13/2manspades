@@ -437,19 +437,19 @@ def finalize_game_logging(game):
     if IS_PRODUCTION:
         queue_db_operation(
             _finalize_game_async,
-            game.get('game_id'),
+            game.get('current_hand_id'),  # Changed to current_hand_id
             game
         )
 
-def _finalize_game_async(game_id, game):
+def _finalize_game_async(hand_id, game):
     """Async wrapper for database game finalization"""
     try:
         from .postgres_utils import finalize_game
-        success = finalize_game(game_id, game)
+        success = finalize_game(hand_id, game)
         if success:
-            print(f"[DB] Game {game_id} finalized in database")
+            print(f"[DB] Hand {hand_id} finalized in database")
         else:
-            print(f"[DB] Game {game_id} failed to finalize in database")
+            print(f"[DB] Hand {hand_id} failed to finalize in database")
         return success
     except Exception as e:
         print(f"[DB] Database game finalization failed: {e}")
@@ -493,7 +493,7 @@ def log_action(action_type, player, action_data, session=None, additional_contex
         
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('current_hand_id'),  # CHANGED: was game_id, now current_hand_id
+            game.get('current_hand_id'),  # CHANGED: now current_hand_id
             f"action_{action_type}",
             {
                 'player': player,
@@ -534,7 +534,7 @@ def log_game_event(event_type, event_data, session=None):
         
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('current_hand_id'),  # CHANGED: was game_id, now current_hand_id
+            game.get('current_hand_id'),  # CHANGED: now current_hand_id
             event_type,
             event_data,
             hand_number=game.get('hand_number'),
@@ -548,29 +548,13 @@ def log_game_event(event_type, event_data, session=None):
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
 
-def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
-    """Central logging function for AI decision-making process"""
-    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
-        return
-    
-    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_decision',
-        'data': decision_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_decision_log(decision_record)
-
-
-def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
+def _log_game_event_to_db_async(hand_id, event_type, event_data, **kwargs):
     """Async wrapper for database event logging"""
     try:
-        print(f"[DB] Attempting to log event: {event_type} for game {game_id}")
+        print(f"[DB] Attempting to log event: {event_type} for hand {hand_id}")
         from .postgres_utils import log_game_event_to_db
         success = log_game_event_to_db(
-            game_id,
+            hand_id,
             event_type,
             event_data,
             hand_number=kwargs.get('hand_number'),
@@ -589,6 +573,21 @@ def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
         import traceback
         traceback.print_exc()
         return False
+
+def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
+    """Central logging function for AI decision-making process"""
+    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
+        return
+    
+    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
+    
+    _write_to_current_log_file({
+        'log_type': 'ai_decision',
+        'data': decision_record
+    })
+    
+    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
+        _print_ai_decision_log(decision_record)
 
 def log_ai_analysis(analysis_type, analysis_data, session=None):
     """Log detailed AI analysis with structured data"""
@@ -961,8 +960,8 @@ def toggle_console_logging():
 # =============================================================================
 
 class GameEventBatch:
-    def __init__(self, game_id):
-        self.game_id = game_id
+    def __init__(self, hand_id):
+        self.hand_id = hand_id
         self.events = []
     
     def add_event(self, event_type, event_data, **kwargs):
@@ -979,12 +978,12 @@ class GameEventBatch:
         if IS_PRODUCTION and self.events:
             queue_db_operation(
                 _process_event_batch_async,
-                self.game_id,
+                self.hand_id,
                 self.events.copy()  # Copy to avoid race conditions
             )
             self.events.clear()
 
-def _process_event_batch_async(hand_id, events):  # Parameter name already correct
+def _process_event_batch_async(hand_id, events):
     """Process event batch in background thread"""
     try:
         from .postgres_utils import batch_log_events
@@ -1011,7 +1010,7 @@ def flush_hand_events(session):
         if events:
             queue_db_operation(
                 _process_event_batch_async,
-                game.get('game_id'),
+                game.get('current_hand_id'),  # CHANGED: now current_hand_id
                 events.copy()  # Copy to avoid race conditions
             )
             # Clear immediately - don't wait for database
