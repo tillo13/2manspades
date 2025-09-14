@@ -409,21 +409,26 @@ def initialize_game_logging_with_client(game, request=None):
 def _create_game_with_player_async(game, client_info):
     """Async wrapper for database game creation"""
     try:
-        print(f"[DB] Attempting to create game: {game.get('game_id')}")
+        print(f"[DB] === DETAILED ASYNC DEBUG ===")
+        print(f"[DB] Game keys: {list(game.keys())}")
+        print(f"[DB] current_hand_id: {repr(game.get('current_hand_id'))}")
+        print(f"[DB] game_id: {repr(game.get('game_id'))}")
+        print(f"[DB] game_started_at: {repr(game.get('game_started_at'))}")
+        print(f"[DB] client_info type: {type(client_info)}")
+        print(f"[DB] client_info content: {repr(client_info)}")
+        
+        if client_info and isinstance(client_info, dict):
+            print(f"[DB] client_info keys: {list(client_info.keys())}")
+            print(f"[DB] ip_address: {repr(client_info.get('ip_address'))}")
+        
         from .postgres_utils import create_game_with_player
         
-        # Add more detailed logging
-        print(f"[DB] Game data: game_id={game.get('game_id')}, started_at={game.get('game_started_at')}")
-        print(f"[DB] Client info: {client_info}")
-        
         success = create_game_with_player(game, client_info)
-        if success:
-            print(f"[DB] Game {game.get('game_id')} inserted to database")
-        else:
-            print(f"[DB] Game {game.get('game_id')} failed to insert to database")
+        print(f"[DB] Database operation returned: {success}")
+        print(f"[DB] === END ASYNC DEBUG ===")
         return success
     except Exception as e:
-        print(f"[DB] Database game insertion failed: {e}")
+        print(f"[DB] EXCEPTION in async game creation: {e}")
         import traceback
         traceback.print_exc()
         return False

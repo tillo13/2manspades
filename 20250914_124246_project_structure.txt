@@ -1122,12 +1122,12 @@ def test_connection():
         cur = conn.cursor()
         cur.execute("SELECT version();")
         version = cur.fetchone()
-        print(f"✅ PostgreSQL connection successful: {version[0]}")
+        print(f"PostgreSQL connection successful: {version[0]}")
         cur.close()
         conn.close()
         return True
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        print(f"Database connection failed: {e}")
         return False
 
 def insert_hand(hand_data: Dict[str, Any]) -> bool:
@@ -1156,10 +1156,10 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         conn.commit()
         cur.close()
         conn.close()
-        print(f"✅ Hand {hand_data.get('hand_id')} successfully inserted")
+        print(f"Hand {hand_data.get('hand_id')} successfully inserted")
         return True
     except Exception as e:
-        print(f"❌ Failed to insert hand {hand_data.get('hand_id')}: {e}")
+        print(f"Failed to insert hand {hand_data.get('hand_id')}: {e}")
         # Try to close connection if it exists
         try:
             if 'conn' in locals():
@@ -1169,17 +1169,17 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         return False
 
 def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
-    """Log game event to database (still uses hand_id now)"""
+    """Log game event to database using hand_id"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
             INSERT INTO twomanspades.game_events 
-            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
+            (hand_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            hand_id,  # Now using hand_id
+            hand_id,
             event_type,
             json.dumps(event_data),
             kwargs.get('hand_number'),
@@ -1264,7 +1264,7 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
         events_data = []
         for event in events:
             events_data.append((
-                hand_id,  # Now using hand_id
+                hand_id,
                 event.get('event_type'),
                 json.dumps(event.get('event_data', {})),
                 event.get('hand_number'),
@@ -1276,7 +1276,7 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
         
         cur.executemany("""
             INSERT INTO twomanspades.game_events 
-            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
+            (hand_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, events_data)
         
@@ -1318,14 +1318,14 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             
             player_id = cur.fetchone()[0]
         
-        # Insert hand record
+        # Insert hand record using current_hand_id from game data
         cur.execute("""
             INSERT INTO twomanspades.hands 
             (hand_id, started_at, player_parity, computer_parity, first_leader, 
              client_ip, user_agent, player_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            hand_data['game_id'],  # Using game_id as hand_id for now
+            hand_data['current_hand_id'],  # Use current_hand_id instead of game_id
             datetime.fromtimestamp(hand_data['game_started_at']),
             hand_data['player_parity'],
             hand_data['computer_parity'], 
@@ -5114,19 +5114,19 @@ def finalize_game_logging(game):
     if IS_PRODUCTION:
         queue_db_operation(
             _finalize_game_async,
-            game.get('game_id'),
+            game.get('current_hand_id'),  # Changed to current_hand_id
             game
         )
 
-def _finalize_game_async(game_id, game):
+def _finalize_game_async(hand_id, game):
     """Async wrapper for database game finalization"""
     try:
         from .postgres_utils import finalize_game
-        success = finalize_game(game_id, game)
+        success = finalize_game(hand_id, game)
         if success:
-            print(f"[DB] Game {game_id} finalized in database")
+            print(f"[DB] Hand {hand_id} finalized in database")
         else:
-            print(f"[DB] Game {game_id} failed to finalize in database")
+            print(f"[DB] Hand {hand_id} failed to finalize in database")
         return success
     except Exception as e:
         print(f"[DB] Database game finalization failed: {e}")
@@ -5161,9 +5161,16 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
+        # Get client IP from multiple sources
+        client_ip = None
+        if client_info:
+            client_ip = client_info.get('ip_address')
+        elif game.get('client_info'):
+            client_ip = game['client_info'].get('ip_address')
+        
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('game_id'),
+            game.get('current_hand_id'),  # CHANGED: now current_hand_id
             f"action_{action_type}",
             {
                 'player': player,
@@ -5173,27 +5180,13 @@ def log_action(action_type, player, action_data, session=None, additional_contex
             hand_number=game.get('hand_number'),
             session_sequence=game.get('action_sequence'),
             player=player,
-            action_type=action_type
+            action_type=action_type,
+            client_ip=client_ip
         )
     
     # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
-
-def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
-    """Central logging function for AI decision-making process"""
-    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
-        return
-    
-    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_decision',
-        'data': decision_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_decision_log(decision_record)
 
 def log_game_event(event_type, event_data, session=None):
     """Central logging function for major game events with ASYNC database integration"""
@@ -5211,28 +5204,34 @@ def log_game_event(event_type, event_data, session=None):
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
+        # Get client IP from game state if available
+        client_ip = None
+        if game.get('client_info'):
+            client_ip = game['client_info'].get('ip_address')
+        
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('game_id'),
+            game.get('current_hand_id'),  # CHANGED: now current_hand_id
             event_type,
             event_data,
             hand_number=game.get('hand_number'),
             session_sequence=game.get('action_sequence'),
-            player=event_data.get('player'),
-            action_type=event_type
+            player=event_data.get('player') if isinstance(event_data, dict) else None,
+            action_type=event_type,
+            client_ip=client_ip
         )
     
     # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
 
-def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
+def _log_game_event_to_db_async(hand_id, event_type, event_data, **kwargs):
     """Async wrapper for database event logging"""
     try:
-        print(f"[DB] Attempting to log event: {event_type} for game {game_id}")
+        print(f"[DB] Attempting to log event: {event_type} for hand {hand_id}")
         from .postgres_utils import log_game_event_to_db
         success = log_game_event_to_db(
-            game_id,
+            hand_id,
             event_type,
             event_data,
             hand_number=kwargs.get('hand_number'),
@@ -5251,6 +5250,21 @@ def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
         import traceback
         traceback.print_exc()
         return False
+
+def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
+    """Central logging function for AI decision-making process"""
+    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
+        return
+    
+    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
+    
+    _write_to_current_log_file({
+        'log_type': 'ai_decision',
+        'data': decision_record
+    })
+    
+    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
+        _print_ai_decision_log(decision_record)
 
 def log_ai_analysis(analysis_type, analysis_data, session=None):
     """Log detailed AI analysis with structured data"""
@@ -5623,8 +5637,8 @@ def toggle_console_logging():
 # =============================================================================
 
 class GameEventBatch:
-    def __init__(self, game_id):
-        self.game_id = game_id
+    def __init__(self, hand_id):
+        self.hand_id = hand_id
         self.events = []
     
     def add_event(self, event_type, event_data, **kwargs):
@@ -5641,16 +5655,16 @@ class GameEventBatch:
         if IS_PRODUCTION and self.events:
             queue_db_operation(
                 _process_event_batch_async,
-                self.game_id,
+                self.hand_id,
                 self.events.copy()  # Copy to avoid race conditions
             )
             self.events.clear()
 
-def _process_event_batch_async(game_id, events):
+def _process_event_batch_async(hand_id, events):
     """Process event batch in background thread"""
     try:
         from .postgres_utils import batch_log_events
-        success = batch_log_events(game_id, events)
+        success = batch_log_events(hand_id, events) 
         if success:
             print(f"[DB] Async batch: {len(events)} events logged")
         return success
@@ -5673,7 +5687,7 @@ def flush_hand_events(session):
         if events:
             queue_db_operation(
                 _process_event_batch_async,
-                game.get('game_id'),
+                game.get('current_hand_id'),  # CHANGED: now current_hand_id
                 events.copy()  # Copy to avoid race conditions
             )
             # Clear immediately - don't wait for database
