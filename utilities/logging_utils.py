@@ -782,7 +782,6 @@ def toggle_console_logging():
 # =============================================================================
 # BATCH EVENT SYSTEM (ADD TO END OF FILE)
 # =============================================================================
-
 class GameEventBatch:
     def __init__(self, game_id):
         self.game_id = game_id
@@ -812,20 +811,32 @@ class GameEventBatch:
 def initialize_event_batching(game):
     """Add event batching to existing game initialization"""
     if IS_PRODUCTION:
-        batch = GameEventBatch(game.get('game_id'))
-        game['event_batch'] = batch
+        # Store just the events list in the game, not the batch object
+        game['event_batch_events'] = []
     return game
 
 def flush_hand_events(session):
     """Flush batched events at hand completion"""
     if IS_PRODUCTION and 'game' in session:
-        batch = session['game'].get('event_batch')
-        if batch:
+        game = session['game']
+        events = game.get('event_batch_events', [])
+        if events:
+            batch = GameEventBatch(game.get('game_id'))
+            batch.events = events
             batch.flush_to_db()
+            # Clear the events after flushing
+            game['event_batch_events'] = []
 
 def add_to_batch(session, event_type, event_data, **kwargs):
     """Add event to batch if in production"""
     if IS_PRODUCTION and 'game' in session:
-        batch = session['game'].get('event_batch')
-        if batch:
-            batch.add_event(event_type, event_data, **kwargs)
+        game = session['game']
+        if 'event_batch_events' not in game:
+            game['event_batch_events'] = []
+        
+        game['event_batch_events'].append({
+            'timestamp': time.time(),
+            'event_type': event_type,
+            'event_data': event_data,
+            **kwargs
+        })
