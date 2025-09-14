@@ -345,10 +345,17 @@ def _finalize_current_log_file(final_game_state):
 
 def initialize_game_logging(game):
     """Initialize logging structures and start new log file for a new game - NO FILE SCANNING"""
-    # Use Unix timestamp with microsecond precision as game ID for easy time correlation
-    game_id = str(int(time.time() * 1000000))
+    import random
+    
+    # Generate truly unique game ID using timestamp + random component
+    timestamp_part = str(int(time.time() * 1000))  # milliseconds for better precision
+    random_part = str(random.randint(1000, 9999))
+    game_id = f"{timestamp_part}{random_part}"
+    
+    # Generate unique hand ID
     hand_id = str(uuid.uuid4())
     
+    # Update game state with logging metadata
     game.update({
         'game_id': game_id,
         'current_hand_id': hand_id,
@@ -356,10 +363,10 @@ def initialize_game_logging(game):
         'action_sequence': 0
     })
     
-    # Start new log file - NO scanning of existing files
+    # Start new log file (development only) - NO scanning of existing files
     _start_new_log_file(game_id)
     
-    # Log game initialization
+    # Log game initialization to file
     _write_to_current_log_file({
         'log_type': 'game_init',
         'data': {
