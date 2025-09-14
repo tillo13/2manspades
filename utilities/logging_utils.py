@@ -558,7 +558,11 @@ def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
             game_id,
             event_type,
             event_data,
-            **kwargs
+            hand_number=kwargs.get('hand_number'),
+            session_sequence=kwargs.get('session_sequence'),
+            player=kwargs.get('player'),
+            action_type=kwargs.get('action_type'),
+            client_ip=kwargs.get('client_ip')
         )
         if success:
             print(f"[DB] Successfully logged event: {event_type}")

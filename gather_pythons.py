@@ -7,7 +7,7 @@ FILE_EXTENSIONS = [
     '.py',    # Python files (always included)
     '.html',  # HTML files
     '.js',    # JavaScript files
-    '.css',   # CSS files
+    #'.css',   # CSS files
     '.json',  # JSON configuration files
 ]
 

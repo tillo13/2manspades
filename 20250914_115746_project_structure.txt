@@ -1,4 +1,4 @@
-Number of files: 16
+Number of files: 15
 Number of directories: 5
 
 Directory structure:
@@ -9,9 +9,6 @@ utilities
 utilities/__pycache__
 
 List of file paths by type:
-
-CSS Files (1):
-  ./static/style.css
 
 HTML Files (2):
   ./templates/index.html
@@ -859,7 +856,7 @@ FILE_EXTENSIONS = [
     '.py',    # Python files (always included)
     '.html',  # HTML files
     '.js',    # JavaScript files
-    '.css',   # CSS files
+    #'.css',   # CSS files
     '.json',  # JSON configuration files
 ]
 
@@ -1067,7 +1064,7 @@ if __name__ == "__main__":
 FILE: ./utilities/postgres_utils.py
 --------------------------------------------------------------------------------
 """
-Two-Man Spades PostgreSQL Utilities
+Two-Man Spades PostgreSQL Utilities - Updated for Hands Table
 """
 import psycopg2
 import psycopg2.extras
@@ -1133,36 +1130,36 @@ def test_connection():
         print(f"❌ Database connection failed: {e}")
         return False
 
-def insert_game(game_data: Dict[str, Any]) -> bool:
-    """Insert new game record"""
+def insert_hand(hand_data: Dict[str, Any]) -> bool:
+    """Insert new hand record"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         # Debug: print what we're trying to insert
-        print(f"Attempting to insert game: {game_data.get('game_id')}")
+        print(f"Attempting to insert hand: {hand_data.get('hand_id')}")
         
         cur.execute("""
-            INSERT INTO twomanspades.games 
-            (game_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
+            INSERT INTO twomanspades.hands 
+            (hand_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-            game_data['game_id'],
-            datetime.fromtimestamp(game_data['game_started_at']),
-            game_data['player_parity'],
-            game_data['computer_parity'], 
-            game_data['first_leader'],
-            game_data.get('client_info', {}).get('ip_address'),
-            game_data.get('client_info', {}).get('user_agent')
+            hand_data['hand_id'],
+            datetime.fromtimestamp(hand_data['game_started_at']),  # Still using game_started_at from session
+            hand_data['player_parity'],
+            hand_data['computer_parity'], 
+            hand_data['first_leader'],
+            hand_data.get('client_info', {}).get('ip_address'),
+            hand_data.get('client_info', {}).get('user_agent')
         ))
         
         conn.commit()
         cur.close()
         conn.close()
-        print(f"✅ Game {game_data.get('game_id')} successfully inserted")
+        print(f"✅ Hand {hand_data.get('hand_id')} successfully inserted")
         return True
     except Exception as e:
-        print(f"❌ Failed to insert game {game_data.get('game_id')}: {e}")
+        print(f"❌ Failed to insert hand {hand_data.get('hand_id')}: {e}")
         # Try to close connection if it exists
         try:
             if 'conn' in locals():
@@ -1171,8 +1168,8 @@ def insert_game(game_data: Dict[str, Any]) -> bool:
             pass
         return False
 
-def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
-    """Log game event to database"""
+def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
+    """Log game event to database (still uses hand_id now)"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -1182,7 +1179,7 @@ def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwar
             (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-            game_id,
+            hand_id,  # Now using hand_id
             event_type,
             json.dumps(event_data),
             kwargs.get('hand_number'),
@@ -1199,33 +1196,27 @@ def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwar
         print(f"Failed to log event: {e}")
         return False
 
-def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
-    """Update game record when game ends"""
+def finalize_hand(hand_id: str, final_data: Dict[str, Any]) -> bool:
+    """Update hand record when hand completes"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
-            UPDATE twomanspades.games 
+            UPDATE twomanspades.hands 
             SET completed_at = %s,
-                final_player_score = %s,
-                final_computer_score = %s,
-                final_player_bags = %s,
-                final_computer_bags = %s,
-                winner = %s,
-                hands_played = %s,
-                game_end_reason = %s
-            WHERE game_id = %s
+                hand_player_score = %s,
+                hand_computer_score = %s,
+                player_bags = %s,
+                computer_bags = %s
+            WHERE hand_id = %s
         """, (
             datetime.now(),
             final_data.get('player_score', 0),
             final_data.get('computer_score', 0),
             final_data.get('player_bags', 0),
             final_data.get('computer_bags', 0),
-            final_data.get('winner'),
-            final_data.get('hand_number', 1),
-            final_data.get('game_end_reason', 'completed'),
-            game_id
+            hand_id
         ))
         
         conn.commit()
@@ -1233,10 +1224,8 @@ def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
         conn.close()
         return True
     except Exception as e:
-        print(f"Failed to finalize game: {e}")
+        print(f"Failed to finalize hand: {e}")
         return False
-    
-# Add these functions to the END of your existing postgres_utils.py:
 
 def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
     """Create or update player record, return player_id"""
@@ -1262,7 +1251,7 @@ def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
         print(f"Failed to upsert player: {e}")
         return None
 
-def batch_log_events(game_id: str, events: List[Dict]) -> bool:
+def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
     """Log multiple events in a single database transaction"""
     if not events:
         return True
@@ -1274,7 +1263,7 @@ def batch_log_events(game_id: str, events: List[Dict]) -> bool:
         events_data = []
         for event in events:
             events_data.append((
-                game_id,
+                hand_id,  # Now using hand_id
                 event.get('event_type'),
                 json.dumps(event.get('event_data', {})),
                 event.get('hand_number'),
@@ -1303,8 +1292,8 @@ def batch_log_events(game_id: str, events: List[Dict]) -> bool:
             pass
         return False
 
-def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
-    """Create game and player in single transaction"""
+def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
+    """Create hand and update player in single transaction"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -1314,30 +1303,31 @@ def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, An
             ip_address = client_info.get('ip_address')
             user_agent = client_info.get('user_agent')
             
+            # Update player stats - increment total_hands instead of total_games
             cur.execute("""
-                INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_games)
+                INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_hands)
                 VALUES (%s, %s, 1)
                 ON CONFLICT (ip_address) DO UPDATE SET
                     last_seen = NOW(),
                     user_agent_latest = EXCLUDED.user_agent_latest,
-                    total_games = players.total_games + 1
+                    total_hands = players.total_hands + 1
                 RETURNING player_id
             """, (ip_address, user_agent))
             
             player_id = cur.fetchone()[0]
         
-        # Add player_id to existing insert_game logic
+        # Insert hand record
         cur.execute("""
-            INSERT INTO twomanspades.games 
-            (game_id, started_at, player_parity, computer_parity, first_leader, 
+            INSERT INTO twomanspades.hands 
+            (hand_id, started_at, player_parity, computer_parity, first_leader, 
              client_ip, user_agent, player_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            game_data['game_id'],
-            datetime.fromtimestamp(game_data['game_started_at']),
-            game_data['player_parity'],
-            game_data['computer_parity'], 
-            game_data['first_leader'],
+            hand_data['game_id'],  # Using game_id as hand_id for now
+            datetime.fromtimestamp(hand_data['game_started_at']),
+            hand_data['player_parity'],
+            hand_data['computer_parity'], 
+            hand_data['first_leader'],
             client_info.get('ip_address') if client_info else None,
             client_info.get('user_agent') if client_info else None,
             player_id
@@ -1348,7 +1338,7 @@ def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, An
         conn.close()
         return True
     except Exception as e:
-        print(f"Failed to create game with player: {e}")
+        print(f"Failed to create hand with player: {e}")
         try:
             if 'conn' in locals():
                 conn.rollback()
@@ -1356,6 +1346,19 @@ def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, An
         except:
             pass
         return False
+
+# Legacy function names for backward compatibility
+def insert_game(game_data: Dict[str, Any]) -> bool:
+    """Legacy wrapper - use insert_hand instead"""
+    return insert_hand(game_data)
+
+def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
+    """Legacy wrapper - use finalize_hand instead"""
+    return finalize_hand(game_id, final_data)
+
+def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
+    """Legacy wrapper - use create_hand_with_player instead"""
+    return create_hand_with_player(game_data, client_info)
 
 ================================================================================
 
@@ -6820,1472 +6823,6 @@ window.addEventListener('orientationchange', function () {
         updatePlayArea();
     }, 100);
 });
-
-================================================================================
-
-FILE: ./static/style.css
---------------------------------------------------------------------------------
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    color: #333;
-    line-height: 1.6;
-}
-
-/* GAME PAGE LAYOUT */
-body:not(.instructions-page) {
-    padding: 140px 0 40px 0;
-}
-
-.container {
-    max-width: 650px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-/* FLOATING HEADERS (GAME ONLY) */
-.floating-game-score {
-    position: fixed;
-    top: 10px;
-    left: 8px;
-    right: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 10px;
-    padding: 10px 15px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    z-index: 999;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-}
-
-.floating-hand-score {
-    position: fixed;
-    top: 80px;
-    left: 8px;
-    right: 8px;
-    background: rgba(248, 249, 250, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 8px;
-    padding: 8px 15px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 998;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: #495057;
-}
-
-.game-score-item,
-.hand-score-item {
-    text-align: center;
-    flex: 1;
-}
-
-.game-score-label {
-    font-size: 11px;
-    color: #666;
-    margin-bottom: 2px;
-}
-
-.game-score-value {
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
-}
-
-.game-score-parity {
-    font-size: 9px;
-    color: #666;
-    margin-bottom: 2px;
-    font-weight: normal;
-    line-height: 1;
-}
-
-.hand-score-item .label {
-    color: #6c757d;
-    margin-bottom: 2px;
-}
-
-.hand-score-item .value {
-    font-weight: 600;
-    color: #333;
-}
-
-/* PLAY AREA */
-.play-area {
-    padding: 20px 8px;
-    margin-bottom: 12px;
-    min-height: 140px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.play-area.hidden-for-phase {
-    display: none !important;
-}
-
-.trick-container {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.trick-card {
-    background: white;
-    border: 2px solid #333;
-    border-radius: 10px;
-    padding: 16px 12px;
-    width: 120px;
-    height: 140px;
-    text-align: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    flex-shrink: 0;
-}
-
-.trick-card .player-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #666;
-    margin-bottom: 6px;
-}
-
-.trick-card .card-content {
-    font-size: 32px;
-    font-weight: bold;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.trick-card-placeholder {
-    width: 120px;
-    height: 140px;
-    border: 2px dashed #ccc;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #999;
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
-/* CARD COLORS */
-.trick-card.spade,
-.card.spade,
-.spade {
-    color: #000;
-}
-
-.trick-card.heart,
-.card.heart,
-.heart {
-    color: #ff0000;
-}
-
-.trick-card.diamond,
-.card.diamond,
-.diamond {
-    color: #ff6200;
-}
-
-.trick-card.club,
-.card.club,
-.club {
-    color: #333;
-}
-
-/* MESSAGES */
-.message {
-    text-align: center;
-    padding: 10px 12px;
-    margin-bottom: 20px;
-    border-radius: 6px;
-    font-weight: 400;
-    background: #f8f9fa;
-    color: #495057;
-    font-size: 14px;
-    line-height: 1.3;
-    border-left: 4px solid #6c757d;
-}
-
-.message.success {
-    color: #28a745;
-    border-left-color: #28a745;
-}
-
-.message.error {
-    color: #dc3545;
-    border-left-color: #dc3545;
-}
-
-/* GAME OVER */
-.game-over {
-    text-align: center;
-    padding: 20px 15px;
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border-radius: 10px;
-    margin-bottom: 15px;
-    border: 3px solid #ff9800;
-    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
-    animation: gameOverPulse 2s ease-in-out infinite alternate;
-}
-
-.winner-text {
-    font-size: 22px;
-    font-weight: bold;
-    color: #d84315;
-    margin-bottom: 15px;
-    line-height: 1.2;
-    text-shadow: 1px 1px 2px rgba(216, 67, 21, 0.2);
-}
-
-@keyframes gameOverPulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
-    }
-
-    100% {
-        transform: scale(1.02);
-        box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
-    }
-}
-
-/* BUTTONS */
-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 12px 18px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 80px;
-}
-
-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-}
-
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* NEXT HAND BUTTON */
-.next-hand-section {
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.next-hand-btn {
-    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%) !important;
-    color: white !important;
-    border: none !important;
-    padding: 16px 20px !important;
-    border-radius: 10px !important;
-    font-size: 18px !important;
-    font-weight: bold !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-    width: 100% !important;
-    max-width: 400px !important;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3) !important;
-}
-
-.next-hand-btn:hover {
-    background: linear-gradient(135deg, #45a049 0%, #4CAF50 100%) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4) !important;
-}
-
-/* HAND SECTIONS */
-.hand-section {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 15px;
-}
-
-.hand-title {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #333;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-/* CARD GRIDS */
-.cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-    gap: 8px;
-    justify-content: center;
-    margin-bottom: 12px;
-    max-width: 620px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.card {
-    background: white;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    padding: 14px 8px;
-    min-width: 70px;
-    min-height: 90px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 18px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.card:hover:not(.disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.card.selected {
-    border-color: #4CAF50;
-    background: #e8f5e9;
-    transform: translateY(-3px);
-    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
-}
-
-.card.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-/* MOBILE OPTIMIZATIONS */
-@media (max-width: 767px) {
-
-    /* Compact 5x2 card layout */
-    .cards {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        grid-template-rows: auto auto auto;
-        gap: 5px;
-        max-width: 300px;
-        margin: 0 auto 10px auto;
-    }
-
-    .card {
-        min-width: 50px;
-        min-height: 65px;
-        font-size: 14px;
-        padding: 8px 4px;
-        border-radius: 5px;
-    }
-
-    .card:hover:not(.disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-    }
-
-    .card.selected {
-        transform: translateY(-2px);
-        box-shadow: 0 3px 8px rgba(76, 175, 80, 0.4);
-    }
-
-    .hand-section {
-        padding: 10px;
-        margin-bottom: 12px;
-    }
-}
-
-/* BIDDING SECTIONS */
-.bidding-section {
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 12px;
-    text-align: center;
-}
-
-.bidding-title {
-    font-size: 18px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 8px;
-}
-
-.bidding-prompt {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 12px;
-    line-height: 1.3;
-}
-
-.bid-buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-top: 10px;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.bid-buttons button {
-    padding: 12px 6px;
-    font-size: 14px;
-    background: #6c757d;
-    color: white;
-    font-weight: 600;
-    min-width: 40px;
-    border-radius: 6px;
-    min-height: 50px;
-}
-
-.bid-buttons button:hover {
-    background: #5a6268;
-    transform: translateY(-2px);
-}
-
-/* Mobile bidding 6x2 layout */
-@media (max-width: 767px) {
-    .bid-buttons {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        grid-template-rows: auto auto;
-        gap: 4px;
-        max-width: 300px;
-    }
-
-    .bid-buttons button {
-        padding: 8px 2px;
-        font-size: 11px;
-        min-width: 45px;
-        border-radius: 4px;
-        min-height: 36px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        line-height: 1;
-    }
-
-    .bid-buttons button small {
-        font-size: 8px;
-        margin-top: 1px;
-        opacity: 0.9;
-    }
-
-    /* 6x2 grid arrangement */
-    .bid-buttons button:nth-child(1) {
-        grid-column: 1;
-        grid-row: 1;
-    }
-
-    .bid-buttons button:nth-child(2) {
-        grid-column: 2;
-        grid-row: 1;
-    }
-
-    .bid-buttons button:nth-child(3) {
-        grid-column: 3;
-        grid-row: 1;
-    }
-
-    .bid-buttons button:nth-child(4) {
-        grid-column: 4;
-        grid-row: 1;
-    }
-
-    .bid-buttons button:nth-child(5) {
-        grid-column: 5;
-        grid-row: 1;
-    }
-
-    .bid-buttons button:nth-child(6) {
-        grid-column: 6;
-        grid-row: 1;
-    }
-
-    .bid-buttons button:nth-child(7) {
-        grid-column: 1;
-        grid-row: 2;
-    }
-
-    .bid-buttons button:nth-child(8) {
-        grid-column: 2;
-        grid-row: 2;
-    }
-
-    .bid-buttons button:nth-child(9) {
-        grid-column: 3;
-        grid-row: 2;
-    }
-
-    .bid-buttons button:nth-child(10) {
-        grid-column: 4;
-        grid-row: 2;
-    }
-
-    .bid-buttons button:nth-child(11) {
-        grid-column: 5 / span 2;
-        grid-row: 2;
-        min-width: 90px;
-    }
-}
-
-/* BID CONFIRMATION BUTTONS */
-#confirmBidButton {
-    background: #28a745 !important;
-    color: white !important;
-    border: none !important;
-    padding: 14px 28px !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
-    font-weight: bold !important;
-    margin-right: 12px !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3) !important;
-}
-
-#confirmBidButton:hover {
-    background: #218838 !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4) !important;
-}
-
-#cancelBidButton {
-    background: #6c757d !important;
-    color: white !important;
-    border: none !important;
-    padding: 14px 28px !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-}
-
-#cancelBidButton:hover {
-    background: #5a6268 !important;
-    transform: translateY(-2px) !important;
-}
-
-.bid-btn.selected {
-    background: #28a745 !important;
-    color: white !important;
-    border: 3px solid #1e7e34 !important;
-    transform: scale(1.05) !important;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
-}
-
-/* BLIND BIDDING */
-.blind-decision-section {
-    background: #fff2f2;
-    border: 2px solid #e57373;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.blind-bidding-section {
-    background: #fff2f2;
-    border: 2px solid #e57373;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 15px;
-}
-
-.blind-header h3 {
-    color: #d32f2f;
-    margin-bottom: 6px;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.blind-header p {
-    font-size: 12px;
-    margin-bottom: 6px;
-    color: #333;
-    line-height: 1.3;
-}
-
-.blind-warning {
-    background: #ffcdd2;
-    color: #d32f2f;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    margin-bottom: 8px;
-}
-
-.blind-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-    max-width: 280px;
-    margin: 0 auto;
-}
-
-.blind-bid-btn {
-    background: #d32f2f;
-    color: white;
-    font-weight: 600;
-    padding: 12px 6px;
-    font-size: 12px;
-    min-height: 45px;
-}
-
-.blind-bid-btn:hover {
-    background: #c62828;
-    transform: translateY(-2px);
-}
-
-@media (max-width: 767px) {
-    .blind-buttons {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: auto auto;
-        gap: 6px;
-        max-width: 250px;
-    }
-
-    .blind-bid-btn {
-        padding: 10px 4px;
-        font-size: 11px;
-        min-height: 40px;
-        border-radius: 5px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        line-height: 1.1;
-    }
-}
-
-/* RESULTS AND DISCARDS */
-.results-section {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    display: none;
-    font-size: 13px;
-    color: #495057;
-    border: 1px solid #e9ecef;
-}
-
-.results-section.show {
-    display: block;
-}
-
-.results-header {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 10px;
-    font-size: 16px;
-    text-align: center;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.result-section {
-    margin-bottom: 10px;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 6px;
-}
-
-.result-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.result-header {
-    font-size: 12px;
-    font-weight: 600;
-    color: #6c757d;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-}
-
-.result-content {
-    font-size: 13px;
-    color: #495057;
-    line-height: 1.3;
-}
-
-.result-content.highlight {
-    background: #e8f5e9;
-    padding: 6px 8px;
-    border-radius: 4px;
-    color: #2e7d32;
-}
-
-.result-content.totals {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
-    background: #f8f9fa;
-    padding: 6px 8px;
-    border-radius: 4px;
-}
-
-.trick-history {
-    font-family: monospace;
-    font-size: 11px;
-    max-height: 150px;
-    overflow-y: auto;
-    background: #f8f9fa;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-}
-
-.trick-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 2px 0;
-    border-bottom: 1px solid #e9ecef;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.trick-line:last-child {
-    border-bottom: none;
-}
-
-.trick-number {
-    color: #6c757d;
-    font-weight: 600;
-    width: 100%;
-}
-
-.trick-cards {
-    width: 100%;
-    color: #495057;
-    margin: 2px 0;
-}
-
-.trick-winner {
-    color: #28a745;
-    font-weight: 600;
-    width: 100%;
-    font-size: 10px;
-}
-
-.discards-section {
-    background: #e8f5e9;
-    border: 2px solid #4caf50;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 20px;
-}
-
-.discards-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 6px;
-}
-
-.discard-item {
-    text-align: center;
-    background: white;
-    padding: 10px;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.discard-label {
-    font-size: 12px;
-    font-weight: bold;
-    color: #666;
-    margin-bottom: 6px;
-}
-
-/* BOTTOM NAVIGATION */
-.bottom-section {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(5px);
-    padding: 4px 8px;
-    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
-    z-index: 997;
-    text-align: center;
-    border-top: 1px solid #e9ecef;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.bottom-new-game-btn,
-.bottom-rules-btn {
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    height: 22px;
-    min-width: 50px;
-}
-
-.bottom-new-game-btn {
-    background: #dc3545;
-    color: white;
-}
-
-.bottom-new-game-btn:hover {
-    background: #c82333;
-}
-
-.bottom-rules-btn {
-    background: #28a745;
-    color: white;
-}
-
-.bottom-rules-btn:hover {
-    background: #218838;
-}
-
-#toggleComputerHand {
-    font-size: 12px;
-    padding: 6px 10px;
-    background: #6c757d;
-    border-radius: 4px;
-}
-
-#toggleComputerHand:hover {
-    background: #5a6268;
-}
-
-/* ENHANCED CHAT SYSTEM - FIXED POSITIONING */
-.chat-bubble-icon {
-    position: fixed;
-    bottom: 45px;
-    right: 15px;
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 1001;
-    transition: all 0.3s ease;
-}
-
-.chat-bubble-icon:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-}
-
-.chat-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #dc3545;
-    color: white;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 11px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    animation: badgePulse 2s infinite;
-}
-
-@keyframes badgePulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.1);
-    }
-}
-
-/* Mobile chat: slides up from bottom */
-.chat-window {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 300px;
-    background: white;
-    border-top: 2px solid #667eea;
-    border-radius: 15px 15px 0 0;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-    z-index: 999;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.chat-window.open {
-    transform: translateY(0);
-}
-
-.chat-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 15px;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 15px 15px 0 0;
-}
-
-.chat-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background-color 0.2s ease;
-}
-
-.chat-close:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.chat-messages {
-    flex: 1;
-    padding: 15px;
-    overflow-y: auto;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.marta-message {
-    background: #f0f2f5;
-    padding: 8px 12px;
-    border-radius: 18px;
-    margin-bottom: 8px;
-    max-width: 80%;
-    color: #333;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.player-message {
-    background: #667eea;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 18px;
-    margin-bottom: 8px;
-    margin-left: auto;
-    max-width: 80%;
-    text-align: right;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.message-content {
-    word-wrap: break-word;
-    line-height: 1.4;
-}
-
-.message-timestamp {
-    font-size: 10px;
-    opacity: 0.7;
-    margin-top: 2px;
-    font-weight: normal;
-}
-
-.marta-message .message-timestamp {
-    text-align: left;
-    color: #666;
-}
-
-.player-message .message-timestamp {
-    text-align: right;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* ENHANCED TYPING INDICATOR */
-.typing-indicator .message-content {
-    display: flex;
-    align-items: center;
-    padding: 8px 0;
-}
-
-.typing-dots {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-.typing-dots span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    animation: typingPulse 1.4s infinite ease-in-out;
-    box-shadow: 0 1px 2px rgba(102, 126, 234, 0.3);
-}
-
-.typing-dots span:nth-child(1) {
-    animation-delay: -0.32s;
-}
-
-.typing-dots span:nth-child(2) {
-    animation-delay: -0.16s;
-}
-
-.typing-dots span:nth-child(3) {
-    animation-delay: 0s;
-}
-
-@keyframes typingPulse {
-
-    0%,
-    80%,
-    100% {
-        transform: scale(0.6);
-        opacity: 0.4;
-    }
-
-    40% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.marta-message.typing-indicator {
-    opacity: 0.9;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid #dee2e6;
-    animation: typingGlow 2s ease-in-out infinite alternate;
-}
-
-@keyframes typingGlow {
-    0% {
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-
-    100% {
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-    }
-}
-
-.chat-input-area {
-    padding: 10px 15px;
-    border-top: 1px solid #eee;
-    display: flex;
-    gap: 8px;
-    background: #fafafa;
-}
-
-.chat-input-area input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s ease;
-}
-
-.chat-input-area input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-.chat-input-area input:disabled {
-    background-color: #f5f5f5;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
-.chat-input-area button {
-    background: #667eea;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    cursor: pointer;
-    min-width: 60px;
-    transition: all 0.2s ease;
-}
-
-.chat-input-area button:hover:not(:disabled) {
-    background: #5a6fd8;
-    transform: translateY(-1px);
-}
-
-.chat-input-area button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* INSTRUCTIONS PAGE LAYOUT */
-.instructions-page body {
-    padding: 20px;
-}
-
-.instructions-page .container {
-    max-width: 800px;
-    padding: 30px;
-}
-
-.instructions-page h1 {
-    color: #4a5568;
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 2.5em;
-}
-
-.instructions-page h2 {
-    color: #2d3748;
-    margin-top: 30px;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #e2e8f0;
-}
-
-.instructions-page h3 {
-    color: #4a5568;
-    margin-top: 20px;
-    margin-bottom: 10px;
-}
-
-.instructions-page .section {
-    margin-bottom: 25px;
-}
-
-.instructions-page .highlight {
-    background: #fff5f5;
-    border-left: 4px solid #e53e3e;
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-}
-
-.instructions-page .tip {
-    background: #f0fff4;
-    border-left: 4px solid #38a169;
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-}
-
-.instructions-page .example {
-    background: #ebf8ff;
-    border: 1px solid #90cdf4;
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 8px;
-}
-
-.instructions-page .card-example {
-    display: inline-block;
-    background: white;
-    border: 2px solid #333;
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin: 2px;
-    font-weight: bold;
-    min-width: 50px;
-    text-align: center;
-}
-
-.instructions-page .scoring-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 15px 0;
-}
-
-.instructions-page .scoring-table th,
-.instructions-page .scoring-table td {
-    border: 1px solid #cbd5e0;
-    padding: 12px;
-    text-align: left;
-}
-
-.instructions-page .scoring-table th {
-    background: #edf2f7;
-    font-weight: bold;
-}
-
-.instructions-page .back-button {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    background: #4299e1;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
-}
-
-.instructions-page .back-button:hover {
-    background: #3182ce;
-    transform: translateY(-2px);
-}
-
-.instructions-page ol,
-.instructions-page ul {
-    margin-left: 20px;
-    margin-bottom: 15px;
-}
-
-.instructions-page li {
-    margin-bottom: 8px;
-}
-
-.instructions-page .ai-update {
-    background: #f0f8ff;
-    border-left: 4px solid #4299e1;
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-}
-
-/* MOBILE CHAT ADJUSTMENTS */
-@media (max-width: 767px) {
-    .chat-bubble-icon {
-        bottom: 40px;
-        right: 10px;
-        width: 45px;
-        height: 45px;
-        font-size: 22px;
-    }
-
-    .chat-window {
-        height: 280px;
-    }
-
-    .chat-messages {
-        padding: 12px;
-    }
-
-    .chat-input-area {
-        padding: 8px 12px;
-    }
-}
-
-/* DESKTOP ADJUSTMENTS */
-@media (min-width: 768px) {
-    body:not(.instructions-page) {
-        padding-top: 160px;
-        padding-bottom: 45px;
-    }
-
-    .container {
-        max-width: 750px;
-        padding: 20px;
-    }
-
-    .floating-game-score,
-    .floating-hand-score {
-        max-width: 750px;
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
-    }
-
-    .floating-hand-score {
-        top: 85px;
-    }
-
-    .bottom-section {
-        max-width: 750px;
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
-        height: 35px;
-    }
-
-    .bottom-new-game-btn,
-    .bottom-rules-btn {
-        padding: 6px 10px;
-        font-size: 11px;
-        height: 25px;
-        min-width: 60px;
-    }
-
-    .play-area {
-        min-height: 170px;
-        padding: 25px 10px;
-    }
-
-    .trick-card {
-        width: 140px;
-        height: 160px;
-        padding: 18px 14px;
-    }
-
-    .trick-card .card-content {
-        font-size: 36px;
-    }
-
-    .trick-card-placeholder {
-        width: 140px;
-        height: 160px;
-    }
-
-    .game-over {
-        padding: 25px 20px;
-        margin-bottom: 20px;
-    }
-
-    .winner-text {
-        font-size: 26px;
-        margin-bottom: 18px;
-    }
-
-    .game-over button {
-        padding: 18px 30px;
-        font-size: 20px;
-    }
-
-    .cards {
-        grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
-        gap: 12px;
-        max-width: 700px;
-        margin: 0 auto 15px auto;
-    }
-
-    .card {
-        min-width: 85px;
-        min-height: 105px;
-        font-size: 22px;
-        padding: 16px 10px;
-    }
-
-    .bid-buttons {
-        grid-template-columns: repeat(11, 1fr);
-        max-width: 600px;
-    }
-
-    .blind-buttons {
-        grid-template-columns: repeat(6, 1fr);
-        max-width: 400px;
-    }
-
-    .trick-line {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .trick-number,
-    .trick-cards,
-    .trick-winner {
-        width: auto;
-        text-align: center;
-    }
-
-    .trick-cards {
-        margin: 0;
-        flex: 1;
-    }
-
-    .trick-winner {
-        font-size: 11px;
-        min-width: 60px;
-        text-align: right;
-    }
-
-    .trick-history {
-        max-height: 200px;
-    }
-
-    /* DESKTOP CHAT: positioned next to icon, not overlapping buttons */
-    .chat-bubble-icon {
-        bottom: 55px;
-        /* Above the bottom navigation */
-        right: 15px;
-    }
-
-    .chat-window {
-        /* Position to the left of the chat icon */
-        bottom: 55px;
-        /* Same level as icon */
-        right: 75px;
-        /* To the left of icon */
-        left: auto;
-        /* Override mobile left: 0 */
-        width: 380px;
-        max-width: 380px;
-        height: 350px;
-        border-radius: 15px;
-        border: 2px solid #667eea;
-        transform: scale(0) translateX(30px);
-        transform-origin: bottom right;
-    }
-
-    .chat-window.open {
-        transform: scale(1) translateX(0);
-    }
-
-    .chat-header {
-        border-radius: 15px 15px 0 0;
-    }
-}
 
 ================================================================================
 

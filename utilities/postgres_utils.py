@@ -111,8 +111,8 @@ def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwar
         
         cur.execute("""
             INSERT INTO twomanspades.game_events 
-            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             hand_id,  # Now using hand_id
             event_type,
@@ -120,7 +120,8 @@ def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwar
             kwargs.get('hand_number'),
             kwargs.get('session_sequence'),
             kwargs.get('player'),
-            kwargs.get('action_type')
+            kwargs.get('action_type'),
+            kwargs.get('client_ip')
         ))
         
         conn.commit()
@@ -204,13 +205,14 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
                 event.get('hand_number'),
                 event.get('session_sequence'),
                 event.get('player'),
-                event.get('action_type')
+                event.get('action_type'),
+                event.get('client_ip')
             ))
         
         cur.executemany("""
             INSERT INTO twomanspades.game_events 
-            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, events_data)
         
         conn.commit()
