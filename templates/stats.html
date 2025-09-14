@@ -319,14 +319,14 @@
             <table class="leaderboard-table">
                 <thead>
                     <tr>
-                        <th class="rank">Rank</th>
-                        <th>Player IP</th>
-                        <th>Games</th>
-                        <th>Win Rate</th>
-                        <th>Wins</th>
-                        <th>Losses</th>
-                        <th>Avg Win Score</th>
-                        <th>Avg Win Margin</th>
+                        <th class="rank" style="width: 8%;">Rank</th>
+                        <th style="width: 25%;">Player</th>
+                        <th style="width: 12%;">Games</th>
+                        <th style="width: 15%;">Win Rate</th>
+                        <th style="width: 10%;">Wins</th>
+                        <th style="width: 10%;">Losses</th>
+                        <th style="width: 10%;">Avg Score</th>
+                        <th style="width: 10%;">Margin</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -334,7 +334,7 @@
                     <tr {% if stats.client_ip==current_ip %}class="current-player" {% endif %}>
                         <td class="rank">{{ loop.index }}</td>
                         <td>
-                            <span class="ip-address">{{ stats.client_ip }}</span>
+                            <span class="ip-address">{{ stats.client_ip[:8] }}***</span>
                             {% if stats.client_ip == current_ip %}<strong> (You)</strong>{% endif %}
                         </td>
                         <td class="games-count">{{ stats.total_games }}</td>
