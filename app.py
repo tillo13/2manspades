@@ -19,6 +19,9 @@ from utilities.app_helpers import (
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
 
+from utilities.postgres_utils import get_ip_address_game_stats
+
+
 app = Flask(__name__)
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
@@ -411,6 +414,22 @@ def next_hand():
 @app.route('/instructions')
 def instructions():
     return render_template('instructions.html')
+
+@app.route('/stats')
+def stats():
+    """Show game statistics for the current player"""
+    client_ip = get_client_ip(request)
+    
+    # Get stats for this specific IP
+    player_stats = get_ip_address_game_stats(client_ip)
+    
+    # Get overall leaderboard (top 10)
+    all_stats = get_ip_address_game_stats()[:10]
+    
+    return render_template('stats.html', 
+                        player_stats=player_stats[0] if player_stats else None,
+                        leaderboard=all_stats,  # Just pass the list directly
+                        current_ip=client_ip)
 
 @app.route('/debug_game_creation')
 def debug_game_creation():

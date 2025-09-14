@@ -296,3 +296,32 @@ def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
 def create_game_with_player(game_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
     """Legacy wrapper - use create_hand_with_player instead"""
     return create_hand_with_player(game_data, client_info)
+
+def get_ip_address_game_stats(client_ip: str = None) -> List[Dict[str, Any]]:
+    """Get game statistics from the view, optionally filtered by IP address"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        if client_ip:
+            cur.execute("""
+                SELECT * FROM twomanspades.vw_ip_address_game_win_loss_stats 
+                WHERE client_ip = %s
+                ORDER BY total_games DESC, win_rate DESC
+            """, (client_ip,))
+        else:
+            cur.execute("""
+                SELECT * FROM twomanspades.vw_ip_address_game_win_loss_stats 
+                ORDER BY total_games DESC, win_rate DESC
+            """)
+        
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert to list of dicts for easier handling
+        return [dict(row) for row in results]
+        
+    except Exception as e:
+        print(f"Failed to get game stats: {e}")
+        return []
