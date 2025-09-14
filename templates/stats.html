@@ -275,7 +275,7 @@
 
         .player-stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             gap: 8px;
             margin-top: 8px;
         }
@@ -691,11 +691,21 @@
 
             // Create shareable text
             const statsText = `🃏 Two-Man Spades Stats 🃏
-Games: {{ player_stats.total_games if player_stats else 0 }}
+Games Started: {{ player_stats.games_started if player_stats else 0 }}
+Games Completed: {{ player_stats.total_games if player_stats else 0 }}{% if player_stats and player_stats.games_abandoned and player_stats.games_abandoned > 0 %}
+Games Abandoned: {{ player_stats.games_abandoned }}{% endif %}
 Win Rate: {{ player_stats.win_rate or 0 }}%
 Wins: {{ player_stats.wins or 0 }} | Losses: {{ player_stats.losses or 0 }}{% if player_stats and player_stats.avg_winning_score %}
-Avg Winning Score: {{ player_stats.avg_winning_score|round|int }}{% endif %}{% if player_stats and player_stats.avg_winning_margin %}
-Avg Win Margin: +{{ player_stats.avg_winning_margin|round|int }}{% endif %}
+
+📊 When I Win:
+Avg Score: {{ player_stats.avg_winning_score|round|int }}
+Avg Margin: +{{ player_stats.avg_winning_margin|round|int }}
+Opponent Avg: {{ player_stats.avg_opponent_score_when_winning|round|int }}{% endif %}{% if player_stats and player_stats.avg_losing_score %}
+
+📉 When I Lose:
+Avg Score: {{ player_stats.avg_losing_score|round|int }}
+Avg Margin: -{{ player_stats.avg_losing_margin|round|int }}
+Opponent Avg: {{ player_stats.avg_opponent_score_when_losing|round|int }}{% endif %}
 
 Play at: ${window.location.origin}`;
 
