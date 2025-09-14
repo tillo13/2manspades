@@ -277,6 +277,9 @@ def initialize_game_logging_with_client(game, request=None):
     """Enhanced game initialization with client tracking and database logging"""
     game = initialize_game_logging(game)
     
+    # Add batching system
+    game = initialize_event_batching(game)
+    
     if request:
         client_info = get_client_info(request)
         game['client_info'] = client_info
@@ -289,8 +292,8 @@ def initialize_game_logging_with_client(game, request=None):
     # NEW: Database logging for production
     if IS_PRODUCTION:
         try:
-            from .postgres_utils import insert_game
-            success = insert_game(game)
+            from .postgres_utils import create_game_with_player  # Changed function name
+            success = create_game_with_player(game, game.get('client_info'))
             if success:
                 print(f"Game {game.get('game_id')} inserted to database")
             else:
@@ -775,3 +778,54 @@ def toggle_console_logging():
     global LOG_TO_CONSOLE
     LOG_TO_CONSOLE = not LOG_TO_CONSOLE
     print(f"Console logging: {'ON' if LOG_TO_CONSOLE else 'OFF'}")
+
+# =============================================================================
+# BATCH EVENT SYSTEM (ADD TO END OF FILE)
+# =============================================================================
+
+class GameEventBatch:
+    def __init__(self, game_id):
+        self.game_id = game_id
+        self.events = []
+    
+    def add_event(self, event_type, event_data, **kwargs):
+        """Add event to batch for later database write"""
+        self.events.append({
+            'timestamp': time.time(),
+            'event_type': event_type,
+            'event_data': event_data,
+            **kwargs
+        })
+    
+    def flush_to_db(self):
+        """Write all batched events to database"""
+        if IS_PRODUCTION and self.events:
+            try:
+                from .postgres_utils import batch_log_events
+                success = batch_log_events(self.game_id, self.events)
+                if success:
+                    print(f"Flushed {len(self.events)} events to database")
+                self.events.clear()
+            except Exception as e:
+                print(f"Error flushing events: {e}")
+
+def initialize_event_batching(game):
+    """Add event batching to existing game initialization"""
+    if IS_PRODUCTION:
+        batch = GameEventBatch(game.get('game_id'))
+        game['event_batch'] = batch
+    return game
+
+def flush_hand_events(session):
+    """Flush batched events at hand completion"""
+    if IS_PRODUCTION and 'game' in session:
+        batch = session['game'].get('event_batch')
+        if batch:
+            batch.flush_to_db()
+
+def add_to_batch(session, event_type, event_data, **kwargs):
+    """Add event to batch if in production"""
+    if IS_PRODUCTION and 'game' in session:
+        batch = session['game'].get('event_batch')
+        if batch:
+            batch.add_event(event_type, event_data, **kwargs)

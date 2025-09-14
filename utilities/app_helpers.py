@@ -2,7 +2,7 @@
 App helper functions for Two-Man Spades
 Contains all non-routing logic moved from app.py
 """
-import json
+from flask import session
 import time
 from .logging_utils import log_action, log_game_event, track_session_client, get_client_ip
 from .custom_rules import (
@@ -16,7 +16,12 @@ from .computer_logic import (
     computer_follow_strategy, computer_lead_strategy, computer_bidding_brain,
     computer_discard_strategy, autoplay_remaining_cards
 )
-from .logging_utils import initialize_game_logging_with_client, finalize_game_logging
+from .logging_utils import initialize_game_logging_with_client, finalize_game_logging, flush_hand_events
+
+
+# Flush batched events to database  
+from .logging_utils import flush_hand_events
+flush_hand_events(session)
 
 # =============================================================================
 # CONTENT FILTERING
@@ -729,7 +734,6 @@ def computer_lead_with_logging(game, session_obj=None):
 # =============================================================================
 # HAND COMPLETION LOGIC
 # =============================================================================
-
 def process_hand_completion(game, session):
     """Process hand completion with all scoring logic"""
     log_game_event(
@@ -816,6 +820,10 @@ def process_hand_completion(game, session):
     
     # Store structured results for frontend
     game['hand_results'] = hand_results
+    
+    # Flush batched events to database
+    from .logging_utils import flush_hand_events
+    flush_hand_events(session)
     
     # Log final scoring
     log_game_event(
@@ -934,6 +942,10 @@ def process_auto_resolution(game, session):
         }
         
         game['hand_results'] = hand_results
+        
+        # Flush batched events to database
+        from .logging_utils import flush_hand_events
+        flush_hand_events(session)
         
         if blind_nil_ending:
             # Keep blind nil message and log completion

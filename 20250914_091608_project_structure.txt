@@ -1,4 +1,4 @@
-Number of files: 15
+Number of files: 17
 Number of directories: 5
 
 Directory structure:
@@ -23,17 +23,19 @@ JS Files (1):
 JSON Files (1):
   ./static/manifest.json
 
-PY Files (10):
+PY Files (12):
   ./app full.py
   ./app.py
   ./gather_pythons.py
   ./gcloud_deploy.py
+  ./test_postg.py
   ./utilities/app_helpers.py
   ./utilities/claude_utils.py
   ./utilities/computer_logic.py
   ./utilities/custom_rules.py
   ./utilities/gameplay_logic.py
   ./utilities/logging_utils.py
+  ./utilities/postgres_utils.py
 
 ================================================================================
 FILE CONTENTS
@@ -2010,6 +2012,44 @@ if __name__ == '__main__':
 
 ================================================================================
 
+FILE: ./test_postg.py
+--------------------------------------------------------------------------------
+# test_game_logging.py
+from utilities.postgres_utils import insert_game, log_game_event_to_db
+import time
+
+# Test game data
+test_game = {
+    'game_id': f'test_{int(time.time())}',
+    'game_started_at': time.time(),
+    'player_parity': 'even',
+    'computer_parity': 'odd',
+    'first_leader': 'player',
+    'client_info': {'ip_address': '127.0.0.1', 'user_agent': 'test'}
+}
+
+# Test inserting game
+if insert_game(test_game):
+    print("Game inserted successfully!")
+    
+    # Test logging an event
+    if log_game_event_to_db(
+        test_game['game_id'],
+        'test_event',
+        {'action': 'card_play', 'card': 'A♠'},
+        hand_number=1,
+        session_sequence=1,
+        player='player',
+        action_type='card_play'
+    ):
+        print("Event logged successfully!")
+    else:
+        print("Event logging failed")
+else:
+    print("Game insertion failed")
+
+================================================================================
+
 FILE: ./app.py
 --------------------------------------------------------------------------------
 from flask import Flask, render_template, request, session, jsonify
@@ -2619,6 +2659,180 @@ def scan_project_structure():
 
 if __name__ == "__main__":
     scan_project_structure()
+
+================================================================================
+
+FILE: ./utilities/postgres_utils.py
+--------------------------------------------------------------------------------
+"""
+Two-Man Spades PostgreSQL Utilities
+"""
+import psycopg2
+import psycopg2.extras
+import json
+import os
+from datetime import datetime
+from google.cloud import secretmanager
+from typing import Dict, Any, Optional
+
+def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
+    """Get secret from Google Secret Manager"""
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode('UTF-8')
+
+def get_db_connection():
+    """Create database connection using TWOMANSPADES secrets"""
+    is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
+    
+    if is_gcp:
+        # Production - use secrets and Cloud SQL socket
+        connection_name = get_secret('TWOMANSPADES_POSTGRES_CONNECTION_NAME')
+        host = f"/cloudsql/{connection_name}"
+        dbname = get_secret('TWOMANSPADES_POSTGRES_DB_NAME') 
+        user = get_secret('TWOMANSPADES_POSTGRES_USERNAME')
+        password = get_secret('TWOMANSPADES_POSTGRES_PASSWORD')
+    else:
+        # Local development - use environment variables or direct secrets
+        try:
+            # Try secrets first (in case you want to test with real DB locally)
+            host = get_secret('TWOMANSPADES_POSTGRES_IP')
+            dbname = get_secret('TWOMANSPADES_POSTGRES_DB_NAME')
+            user = get_secret('TWOMANSPADES_POSTGRES_USERNAME')
+            password = get_secret('TWOMANSPADES_POSTGRES_PASSWORD')
+        except:
+            # Fallback to env vars for local dev
+            host = os.getenv('DB_HOST', 'localhost')
+            dbname = os.getenv('DB_NAME', 'twomanspades_dev')
+            user = os.getenv('DB_USER', 'postgres') 
+            password = os.getenv('DB_PASSWORD', 'password')
+    
+    return psycopg2.connect(
+        host=host,
+        database=dbname,
+        user=user,
+        password=password,
+        connect_timeout=10
+    )
+
+def test_connection():
+    """Test database connection"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT version();")
+        version = cur.fetchone()
+        print(f"✅ PostgreSQL connection successful: {version[0]}")
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        return False
+
+def insert_game(game_data: Dict[str, Any]) -> bool:
+    """Insert new game record"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Debug: print what we're trying to insert
+        print(f"Attempting to insert game: {game_data.get('game_id')}")
+        
+        cur.execute("""
+            INSERT INTO twomanspades.games 
+            (game_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            game_data['game_id'],
+            datetime.fromtimestamp(game_data['game_started_at']),
+            game_data['player_parity'],
+            game_data['computer_parity'], 
+            game_data['first_leader'],
+            game_data.get('client_info', {}).get('ip_address'),
+            game_data.get('client_info', {}).get('user_agent')
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"✅ Game {game_data.get('game_id')} successfully inserted")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to insert game {game_data.get('game_id')}: {e}")
+        # Try to close connection if it exists
+        try:
+            if 'conn' in locals():
+                conn.close()
+        except:
+            pass
+        return False
+
+def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
+    """Log game event to database"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            INSERT INTO twomanspades.game_events 
+            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            game_id,
+            event_type,
+            json.dumps(event_data),
+            kwargs.get('hand_number'),
+            kwargs.get('session_sequence'),
+            kwargs.get('player'),
+            kwargs.get('action_type')
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to log event: {e}")
+        return False
+
+def finalize_game(game_id: str, final_data: Dict[str, Any]) -> bool:
+    """Update game record when game ends"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            UPDATE twomanspades.games 
+            SET completed_at = %s,
+                final_player_score = %s,
+                final_computer_score = %s,
+                final_player_bags = %s,
+                final_computer_bags = %s,
+                winner = %s,
+                hands_played = %s,
+                game_end_reason = %s
+            WHERE game_id = %s
+        """, (
+            datetime.now(),
+            final_data.get('player_score', 0),
+            final_data.get('computer_score', 0),
+            final_data.get('player_bags', 0),
+            final_data.get('computer_bags', 0),
+            final_data.get('winner'),
+            final_data.get('hand_number', 1),
+            final_data.get('game_end_reason', 'completed'),
+            game_id
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to finalize game: {e}")
+        return False
 
 ================================================================================
 
@@ -6137,7 +6351,7 @@ def initialize_game_logging(game):
     return game
 
 def initialize_game_logging_with_client(game, request=None):
-    """Enhanced game initialization with client tracking - NO FILE SCANNING"""
+    """Enhanced game initialization with client tracking and database logging"""
     game = initialize_game_logging(game)
     
     if request:
@@ -6149,11 +6363,33 @@ def initialize_game_logging_with_client(game, request=None):
             print(f"NEW GAME STARTED by {client_info['ip_address']}")
             print(f"   Game ID: {game.get('game_id', 'unknown')}")
     
+    # NEW: Database logging for production
+    if IS_PRODUCTION:
+        try:
+            from .postgres_utils import insert_game
+            success = insert_game(game)
+            if success:
+                print(f"Game {game.get('game_id')} inserted to database")
+            else:
+                print(f"Game {game.get('game_id')} failed to insert to database")
+        except Exception as e:
+            print(f"Database game insertion failed: {e}")
+    
     return game
 
 def finalize_game_logging(game):
-    """Called when a game ends to finalize the log file"""
+    """Called when a game ends to finalize the log file and database"""
+    # File logging finalization
     _finalize_current_log_file(game)
+    
+    # NEW: Database game finalization (production)
+    if IS_PRODUCTION:
+        try:
+            from .postgres_utils import finalize_game
+            finalize_game(game.get('game_id'), game)
+            print(f"Game {game.get('game_id')} finalized in database")
+        except Exception as e:
+            print(f"Database game finalization failed: {e}")
 
 def start_new_hand_logging(game):
     """Generate new hand ID and log hand start"""
@@ -6165,7 +6401,7 @@ def start_new_hand_logging(game):
 # =============================================================================
 
 def log_action(action_type, player, action_data, session=None, additional_context=None, request=None):
-    """Central logging function for all player/system game actions with optional client tracking"""
+    """Central logging function for all player/system game actions with database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_ACTIONS:
         return
     
@@ -6175,11 +6411,34 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     if client_info:
         action_record['client_info'] = client_info
     
+    # File logging (development)
     _write_to_current_log_file({
         'log_type': 'action',
         'data': action_record
     })
     
+    # NEW: Database logging (production)
+    if IS_PRODUCTION and session and 'game' in session:
+        try:
+            from .postgres_utils import log_game_event_to_db
+            game = session['game']
+            log_game_event_to_db(
+                game.get('game_id'),
+                f"action_{action_type}",
+                {
+                    'player': player,
+                    'action_data': action_data,
+                    'additional_context': additional_context
+                },
+                hand_number=game.get('hand_number'),
+                session_sequence=game.get('action_sequence'),
+                player=player,
+                action_type=action_type
+            )
+        except Exception as e:
+            print(f"Database action logging failed: {e}")
+    
+    # Console logging
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
 
@@ -6199,17 +6458,36 @@ def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None,
         _print_ai_decision_log(decision_record)
 
 def log_game_event(event_type, event_data, session=None):
-    """Central logging function for major game events"""
+    """Central logging function for major game events with database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_EVENTS:
         return
     
     event_record = _build_event_record(event_type, event_data, session)
     
+    # File logging (development)
     _write_to_current_log_file({
         'log_type': 'game_event',
         'data': event_record
     })
     
+    # NEW: Database logging (production)
+    if IS_PRODUCTION and session and 'game' in session:
+        try:
+            from .postgres_utils import log_game_event_to_db
+            game = session['game']
+            log_game_event_to_db(
+                game.get('game_id'),
+                event_type,
+                event_data,
+                hand_number=game.get('hand_number'),
+                session_sequence=game.get('action_sequence'),
+                player=event_data.get('player'),
+                action_type=event_type
+            )
+        except Exception as e:
+            print(f"Database event logging failed: {e}")
+    
+    # Console logging
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
 

@@ -2,7 +2,7 @@
 
 **Definitive guide for setting up a new GCP project that connects to the kumori-404602 database and secrets**
 
-## 🎯 Overview
+## Overview
 
 This guide creates a new GCP project that:
 
@@ -13,7 +13,7 @@ This guide creates a new GCP project that:
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Google Cloud SDK installed and authenticated
 - Access to kumori-404602 project (for granting permissions)
@@ -21,7 +21,7 @@ This guide creates a new GCP project that:
 
 ---
 
-## 🚀 PHASE 1: CREATE NEW PROJECT
+## PHASE 1: CREATE NEW PROJECT
 
 ### 1.1 Create Project
 
@@ -57,7 +57,7 @@ gcloud services enable appengine.googleapis.com --project=$NEW_PROJECT
 gcloud services enable secretmanager.googleapis.com --project=$NEW_PROJECT
 gcloud services enable cloudbuild.googleapis.com --project=$NEW_PROJECT
 
-# 🔑 CRITICAL: Enable Cloud SQL Admin API (prevents connection refused errors)
+# CRITICAL: Enable Cloud SQL Admin API (prevents connection refused errors)
 gcloud services enable sqladmin.googleapis.com --project=$NEW_PROJECT
 
 # Verify APIs are enabled
@@ -73,7 +73,7 @@ gcloud app create --region=us-central1 --project=$NEW_PROJECT
 
 ---
 
-## 🔐 PHASE 2: CONFIGURE CROSS-PROJECT ACCESS
+## PHASE 2: CONFIGURE CROSS-PROJECT ACCESS
 
 ### 2.1 Grant Secret Manager Access
 
@@ -124,7 +124,7 @@ echo "✅ Cloud SQL instance verified"
 
 ---
 
-## 📁 PHASE 3: PREPARE PROJECT FILES
+## PHASE 3: PREPARE PROJECT FILES
 
 ### 3.1 Create app.yaml
 
@@ -144,7 +144,7 @@ env_variables:
   GAE_ENV: "standard"
   FLASK_ENV: "production"
 
-# 🔑 CRITICAL: Cross-project Cloud SQL configuration
+# CRITICAL: Cross-project Cloud SQL configuration
 beta_settings:
   cloud_sql_instances: "kumori-404602:us-central1:kumori"
 
@@ -217,143 +217,147 @@ gather_files.py
 
 ---
 
-## 💻 PHASE 4: CREATE UTILITIES
+## PHASE 4: CREATE UTILITIES
 
-### 4.1 Create utilities/google_secret_utils.py
-
-```python
-# Save as utilities/google_secret_utils.py
-from google.cloud import secretmanager
-
-# Hardcode the kumori project ID
-KUMORI_PROJECT_ID = "kumori-404602"
-
-def get_secret_version(secret_id, project_id=KUMORI_PROJECT_ID, version_id="latest"):
-    client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-    response = client.access_secret_version(request={"name": name})
-    return response.payload.data.decode('UTF-8')
-
-def get_database_connection_config() -> dict:
-    """
-    Get all database connection configuration from Secret Manager
-
-    Returns:
-        Dictionary with database connection parameters
-    """
-    config = {}
-
-    # Define your secret mappings (update these based on your actual secret names)
-    config_mappings = {
-        'host': 'YOUR_PROJECT_POSTGRES_HOST',
-        'dbname': 'YOUR_PROJECT_POSTGRES_DB_NAME',
-        'user': 'YOUR_PROJECT_POSTGRES_USERNAME',
-        'password': 'YOUR_PROJECT_POSTGRES_PASSWORD',
-        'connection_name': 'YOUR_PROJECT_POSTGRES_CONNECTION_NAME'
-    }
-
-    for key, secret_name in config_mappings.items():
-        try:
-            config[key] = get_secret_version(secret_name)
-            print(f"✅ Retrieved {secret_name}")
-        except Exception as e:
-            print(f"❌ Failed to retrieve {secret_name}: {e}")
-            config[key] = None
-
-    return config
-```
-
-### 4.2 Create utilities/postgres_utils.py
+### 4.1 Create utilities/postgres_utils.py
 
 ```python
 # Save as utilities/postgres_utils.py
-import time
 import psycopg2
 import psycopg2.extras
-import logging
+import json
 import os
-from .google_secret_utils import get_database_connection_config
+from datetime import datetime
+from google.cloud import secretmanager
+from typing import Dict, Any, Optional
 
-# Configure logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
+    """Get secret from Google Secret Manager"""
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode('UTF-8')
 
-def get_db_connection(max_retries=5, delay=2):
-    logger.debug("Fetching database connection")
-    retries = 0
-    while retries < max_retries:
+def get_db_connection():
+    """Create database connection using YOUR_PROJECT secrets"""
+    is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
+    
+    if is_gcp:
+        # Production - use secrets and Cloud SQL socket
+        connection_name = get_secret('YOUR_PROJECT_POSTGRES_CONNECTION_NAME')
+        host = f"/cloudsql/{connection_name}"
+        dbname = get_secret('YOUR_PROJECT_POSTGRES_DB_NAME') 
+        user = get_secret('YOUR_PROJECT_POSTGRES_USERNAME')
+        password = get_secret('YOUR_PROJECT_POSTGRES_PASSWORD')
+    else:
+        # Local development - use environment variables or direct secrets
         try:
-            # Fetching secrets from Google Secret Manager
-            db_config = get_database_connection_config()
-
-            dbname = db_config['dbname']
-            user = db_config['user']
-            password = db_config['password']
-            port = db_config.get('port', '5432')
-            connection_name = db_config.get('connection_name', '')
-
-            # *** CROSS-PROJECT CONNECTION LOGIC ***
-            is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
-
-            if is_gcp:
-                # App Engine Standard - Use Unix socket for Cloud SQL
-                if connection_name:
-                    host = f"/cloudsql/{connection_name}"
-                    logger.debug(f"🌐 App Engine: Using Cloud SQL socket: {host}")
-                else:
-                    logger.error("❌ No connection_name provided for App Engine deployment")
-                    raise Exception("Missing Cloud SQL connection name for App Engine")
-            else:
-                # Local development: Use public IP address
-                host = db_config['host']
-                logger.debug(f"🏠 Local development: Using public IP: {host}")
-
-            logger.debug(f"DB config: DB_NAME={dbname}, DB_USER={user}, HOST={host}, DB_PORT={port}")
-
-            # Connect to database
-            dsn = {
-                'dbname': dbname,
-                'user': user,
-                'password': password,
-                'host': host,
-                'port': port,
-                'connect_timeout': 10
-            }
-            connection = psycopg2.connect(**dsn)
-            logger.debug("✅ Database connection established successfully")
-            return connection
-        except Exception as e:
-            retries += 1
-            logger.warning(f"Database connection failed. Retrying {retries}/{max_retries} in {delay} seconds. Error: {e}")
-            time.sleep(delay)
-
-    logger.error("Maximum retries reached. Could not establish a database connection.")
-    raise Exception("Failed to connect to the database after multiple attempts.")
+            # Try secrets first (in case you want to test with real DB locally)
+            host = get_secret('YOUR_PROJECT_POSTGRES_IP')
+            dbname = get_secret('YOUR_PROJECT_POSTGRES_DB_NAME')
+            user = get_secret('YOUR_PROJECT_POSTGRES_USERNAME')
+            password = get_secret('YOUR_PROJECT_POSTGRES_PASSWORD')
+        except:
+            # Fallback to env vars for local dev
+            host = os.getenv('DB_HOST', 'localhost')
+            dbname = os.getenv('DB_NAME', 'yourproject_dev')
+            user = os.getenv('DB_USER', 'postgres') 
+            password = os.getenv('DB_PASSWORD', 'password')
+    
+    return psycopg2.connect(
+        host=host,
+        database=dbname,
+        user=user,
+        password=password,
+        connect_timeout=10
+    )
 
 def test_connection():
-    """Simple test function"""
+    """Test database connection"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT version();")
         version = cur.fetchone()
-        logger.info(f"PostgreSQL version: {version[0]}")
+        print(f"✅ PostgreSQL connection successful: {version[0]}")
         cur.close()
         conn.close()
         return True
     except Exception as e:
-        logger.error(f"Connection test failed: {e}")
+        print(f"❌ Database connection failed: {e}")
+        return False
+
+# Add your specific CRUD functions here
+def insert_game(game_data: Dict[str, Any]) -> bool:
+    """Insert new game record with robust error handling"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Debug: print what we're trying to insert
+        print(f"Attempting to insert game: {game_data.get('game_id')}")
+        
+        cur.execute("""
+            INSERT INTO yourschema.games 
+            (game_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            game_data['game_id'],
+            datetime.fromtimestamp(game_data['game_started_at']),
+            game_data['player_parity'],
+            game_data['computer_parity'], 
+            game_data['first_leader'],
+            game_data.get('client_info', {}).get('ip_address'),
+            game_data.get('client_info', {}).get('user_agent')
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"✅ Game {game_data.get('game_id')} successfully inserted")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to insert game {game_data.get('game_id')}: {e}")
+        # Try to close connection if it exists
+        try:
+            if 'conn' in locals():
+                conn.close()
+        except:
+            pass
+        return False
+
+def log_game_event_to_db(game_id: str, event_type: str, event_data: Dict, **kwargs) -> bool:
+    """Log game event to database"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            INSERT INTO yourschema.game_events 
+            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            game_id,
+            event_type,
+            json.dumps(event_data),
+            kwargs.get('hand_number'),
+            kwargs.get('session_sequence'),
+            kwargs.get('player'),
+            kwargs.get('action_type')
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to log event: {e}")
         return False
 ```
 
 ---
 
-## 🧪 PHASE 5: CREATE TEST APPLICATION
+## PHASE 5: CREATE TEST APPLICATION
 
 ### 5.1 Create main.py
 
@@ -441,10 +445,10 @@ if __name__ == '__main__':
     </style>
   </head>
   <body>
-    <h1>🎉 New Kumori-Enabled Project</h1>
+    <h1>New Kumori-Enabled Project</h1>
     <p>This project is connected to kumori-404602 database and secrets.</p>
 
-    <h2>🧪 Connection Tests</h2>
+    <h2>Connection Tests</h2>
     <button onclick="testDatabase()">Test Database Connection</button>
     <button onclick="testHealth()">Test Health Endpoint</button>
 
@@ -486,41 +490,49 @@ if __name__ == '__main__':
 
 ---
 
-## 🔑 PHASE 6: CONFIGURE SECRETS
+## PHASE 6: CONFIGURE SECRETS
 
 ### 6.1 Create Secrets in Kumori Project
+
+**CRITICAL: Use printf instead of echo to avoid newline issues that cause authentication failures**
 
 ```bash
 # Switch to kumori project
 gcloud config set project $KUMORI_PROJECT
 
-# Create secrets for your new project (replace YOUR_PROJECT with actual name)
-gcloud secrets create YOUR_PROJECT_POSTGRES_HOST --data-file=- <<< "YOUR_DB_HOST_IP"
-gcloud secrets create YOUR_PROJECT_POSTGRES_DB_NAME --data-file=- <<< "YOUR_DB_NAME"
-gcloud secrets create YOUR_PROJECT_POSTGRES_USERNAME --data-file=- <<< "YOUR_DB_USER"
-gcloud secrets create YOUR_PROJECT_POSTGRES_PASSWORD --data-file=- <<< "YOUR_DB_PASSWORD"
-gcloud secrets create YOUR_PROJECT_POSTGRES_CONNECTION_NAME --data-file=- <<< "kumori-404602:us-central1:kumori"
+# Create secrets using printf to avoid trailing newlines
+# Replace YOUR_PROJECT with your actual project name and values
+printf "YOUR_DB_HOST_IP" | gcloud secrets create YOUR_PROJECT_POSTGRES_IP --data-file=- --project=$KUMORI_PROJECT
+printf "YOUR_DB_NAME" | gcloud secrets create YOUR_PROJECT_POSTGRES_DB_NAME --data-file=- --project=$KUMORI_PROJECT
+printf "YOUR_DB_USER" | gcloud secrets create YOUR_PROJECT_POSTGRES_USERNAME --data-file=- --project=$KUMORI_PROJECT
+printf "YOUR_DB_PASSWORD" | gcloud secrets create YOUR_PROJECT_POSTGRES_PASSWORD --data-file=- --project=$KUMORI_PROJECT
+printf "kumori-404602:us-central1:kumori" | gcloud secrets create YOUR_PROJECT_POSTGRES_CONNECTION_NAME --data-file=- --project=$KUMORI_PROJECT
 
 # Grant access to these specific secrets
-for secret in YOUR_PROJECT_POSTGRES_HOST YOUR_PROJECT_POSTGRES_DB_NAME YOUR_PROJECT_POSTGRES_USERNAME YOUR_PROJECT_POSTGRES_PASSWORD YOUR_PROJECT_POSTGRES_CONNECTION_NAME; do
+for secret in YOUR_PROJECT_POSTGRES_IP YOUR_PROJECT_POSTGRES_DB_NAME YOUR_PROJECT_POSTGRES_USERNAME YOUR_PROJECT_POSTGRES_PASSWORD YOUR_PROJECT_POSTGRES_CONNECTION_NAME; do
     gcloud secrets add-iam-policy-binding $secret \
         --member="serviceAccount:${NEW_PROJECT}@appspot.gserviceaccount.com" \
         --role="roles/secretmanager.secretAccessor" \
+        --project=$KUMORI_PROJECT \
         --quiet
     echo "✅ Granted access to $secret"
 done
 ```
 
-### 6.2 Update google_secret_utils.py
+### 6.2 Update postgres_utils.py Secret Names
 
-```bash
-# Update the secret names in utilities/google_secret_utils.py
-# Replace the config_mappings with your actual secret names
+Update the secret names in your `utilities/postgres_utils.py` to match what you created:
+
+```python
+# Replace YOUR_PROJECT_POSTGRES_* with your actual secret names
+connection_name = get_secret('YOUR_PROJECT_POSTGRES_CONNECTION_NAME')
+dbname = get_secret('YOUR_PROJECT_POSTGRES_DB_NAME')
+# etc.
 ```
 
 ---
 
-## 🚀 PHASE 7: DEPLOY AND TEST
+## PHASE 7: DEPLOY AND TEST
 
 ### 7.1 Create Directory Structure
 
@@ -539,7 +551,7 @@ gcloud config set project $NEW_PROJECT
 gcloud app deploy app.yaml --project=$NEW_PROJECT
 
 # Get the deployment URL
-echo "🌐 Your app is live at: https://${NEW_PROJECT}.appspot.com"
+echo "Your app is live at: https://${NEW_PROJECT}.appspot.com"
 ```
 
 ### 7.3 Test Deployment
@@ -557,7 +569,7 @@ gcloud app logs tail --project=$NEW_PROJECT
 
 ---
 
-## ✅ VERIFICATION CHECKLIST
+## VERIFICATION CHECKLIST
 
 ### APIs Enabled ✓
 
@@ -577,14 +589,14 @@ gcloud app logs tail --project=$NEW_PROJECT
 - [ ] app.yaml with `beta_settings: cloud_sql_instances`
 - [ ] requirements.txt with all dependencies
 - [ ] .gitignore and .gcloudignore
-- [ ] utilities/google_secret_utils.py
-- [ ] utilities/postgres_utils.py
+- [ ] utilities/postgres_utils.py with robust error handling
 
 ### Database Connection ✓
 
-- [ ] Secrets created in kumori-404602
+- [ ] Secrets created in kumori-404602 using printf (no newlines)
 - [ ] Connection string uses Unix socket format in App Engine
 - [ ] Connection string uses public IP for local development
+- [ ] Error handling shows actual database errors
 
 ### Test Endpoints ✓
 
@@ -595,7 +607,7 @@ gcloud app logs tail --project=$NEW_PROJECT
 
 ---
 
-## 🔧 TROUBLESHOOTING
+## TROUBLESHOOTING
 
 ### Common Issues:
 
@@ -604,6 +616,13 @@ gcloud app logs tail --project=$NEW_PROJECT
 ```bash
 # Enable Cloud SQL Admin API (most common fix)
 gcloud services enable sqladmin.googleapis.com --project=$NEW_PROJECT
+```
+
+**Authentication Failed for User:**
+
+```bash
+# Secrets have newlines - recreate using printf
+printf "correct_value" | gcloud secrets versions add SECRET_NAME --data-file=- --project=kumori-404602
 ```
 
 **Permission Denied:**
@@ -615,6 +634,13 @@ gcloud projects add-iam-policy-binding kumori-404602 \
     --role="roles/secretmanager.secretAccessor"
 ```
 
+**Foreign Key Constraint Violations:**
+
+```bash
+# Game insertion failed but logged success - check error handling
+# Look for "Failed to insert game" vs "Game inserted to database" in logs
+```
+
 **Secret Not Found:**
 
 ```bash
@@ -622,21 +648,15 @@ gcloud projects add-iam-policy-binding kumori-404602 \
 gcloud secrets list --project=kumori-404602
 ```
 
-**App Engine Service Account Missing:**
-
-```bash
-# Verify App Engine was properly initialized
-gcloud app describe --project=$NEW_PROJECT
-```
-
 ---
 
-## 📚 FINAL NOTES
+## FINAL NOTES
 
 1. **Always enable Cloud SQL Admin API** - this is the #1 cause of connection failures
-2. **Use consistent naming** - follow pattern: `PROJECTNAME_POSTGRES_*` for secrets
-3. **Test locally first** - use `.env` file with public IP for local development
-4. **Monitor logs** - use `gcloud app logs tail` to debug issues
-5. **Keep secrets secure** - never commit credentials to version control
+2. **Use printf instead of echo** - trailing newlines cause authentication failures
+3. **Use robust error handling** - database failures should be clearly logged
+4. **Test locally first** - use direct IP connection to verify credentials
+5. **Monitor logs carefully** - distinguish between actual success and misleading messages
+6. **Keep secrets secure** - never commit credentials to version control
 
-**🎉 Your new project should now be fully connected to kumori-404602!**
+**Your new project should now be fully connected to kumori-404602 with proper error handling!**
