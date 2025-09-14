@@ -199,7 +199,7 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
         events_data = []
         for event in events:
             events_data.append((
-                hand_id,  # Now using hand_id
+                hand_id,  # Now correctly using hand_id parameter
                 event.get('event_type'),
                 json.dumps(event.get('event_data', {})),
                 event.get('hand_number'),
@@ -211,7 +211,7 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
         
         cur.executemany("""
             INSERT INTO twomanspades.game_events 
-            (game_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
+            (hand_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, events_data)
         

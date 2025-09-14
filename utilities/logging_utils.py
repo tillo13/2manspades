@@ -493,7 +493,7 @@ def log_action(action_type, player, action_data, session=None, additional_contex
         
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('game_id'),
+            game.get('current_hand_id'),  # CHANGED: was game_id, now current_hand_id
             f"action_{action_type}",
             {
                 'player': player,
@@ -510,22 +510,6 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
-
-def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
-    """Central logging function for AI decision-making process"""
-    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
-        return
-    
-    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_decision',
-        'data': decision_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_decision_log(decision_record)
-
 
 def log_game_event(event_type, event_data, session=None):
     """Central logging function for major game events with ASYNC database integration"""
@@ -550,7 +534,7 @@ def log_game_event(event_type, event_data, session=None):
         
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('game_id'),
+            game.get('current_hand_id'),  # CHANGED: was game_id, now current_hand_id
             event_type,
             event_data,
             hand_number=game.get('hand_number'),
@@ -563,6 +547,22 @@ def log_game_event(event_type, event_data, session=None):
     # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
+
+def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
+    """Central logging function for AI decision-making process"""
+    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
+        return
+    
+    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
+    
+    _write_to_current_log_file({
+        'log_type': 'ai_decision',
+        'data': decision_record
+    })
+    
+    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
+        _print_ai_decision_log(decision_record)
+
 
 def _log_game_event_to_db_async(game_id, event_type, event_data, **kwargs):
     """Async wrapper for database event logging"""
@@ -984,11 +984,11 @@ class GameEventBatch:
             )
             self.events.clear()
 
-def _process_event_batch_async(game_id, events):
+def _process_event_batch_async(hand_id, events):  # Parameter name already correct
     """Process event batch in background thread"""
     try:
         from .postgres_utils import batch_log_events
-        success = batch_log_events(game_id, events)
+        success = batch_log_events(hand_id, events) 
         if success:
             print(f"[DB] Async batch: {len(events)} events logged")
         return success
