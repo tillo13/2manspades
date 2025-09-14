@@ -537,17 +537,22 @@ def log_game_event(event_type, event_data, session=None):
         if game.get('client_info'):
             client_ip = game['client_info'].get('ip_address')
         
-        queue_db_operation(
-            _log_game_event_to_db_async,
-            game.get('current_hand_id'),  # CHANGED: now current_hand_id
-            event_type,
-            event_data,
-            hand_number=game.get('hand_number'),
-            session_sequence=game.get('action_sequence'),
-            player=event_data.get('player') if isinstance(event_data, dict) else None,
-            action_type=event_type,
-            client_ip=client_ip
-        )
+        # FIXED: Ensure we have a valid hand_id before logging
+        hand_id = game.get('current_hand_id')
+        if hand_id:  # Only log if we have a valid hand_id
+            queue_db_operation(
+                _log_game_event_to_db_async,
+                hand_id,  # Now guaranteed to be non-null
+                event_type,
+                event_data,
+                hand_number=game.get('hand_number'),
+                session_sequence=game.get('action_sequence'),
+                player=event_data.get('player') if isinstance(event_data, dict) else None,
+                action_type=event_type,
+                client_ip=client_ip
+            )
+        else:
+            print(f"[DB] Skipping event {event_type} - no hand_id available")
     
     # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
