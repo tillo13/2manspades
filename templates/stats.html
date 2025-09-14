@@ -340,7 +340,7 @@
                         <td class="games-count">{{ stats.total_games }}</td>
                         <td>
                             <span
-                                class="percentage {% if stats.win_rate >= 60 %}win-rate{% elif stats.win_rate >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
+                                class="percentage {% if stats.win_rate and stats.win_rate >= 60 %}win-rate{% elif stats.win_rate and stats.win_rate >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
                                 {{ stats.win_rate or 0 }}%
                             </span>
                         </td>
@@ -378,6 +378,61 @@
             </ul>
         </div>
     </div>
+
+    <script>
+        async function shareStats() {
+            const btn = document.getElementById('shareStatsBtn');
+            const originalText = btn.textContent;
+
+            // Create shareable text
+            const statsText = `🃏 Two-Man Spades Stats 🃏
+Games: {{ player_stats.total_games if player_stats else 0 }}
+Win Rate: {{ player_stats.win_rate or 0 }}%
+Wins: {{ player_stats.wins or 0 }} | Losses: {{ player_stats.losses or 0 }}{% if player_stats and player_stats.avg_winning_score %}
+Avg Winning Score: {{ player_stats.avg_winning_score|round|int }}{% endif %}{% if player_stats and player_stats.avg_winning_margin %}
+Avg Win Margin: +{{ player_stats.avg_winning_margin|round|int }}{% endif %}
+
+Play at: ${window.location.origin}`;
+
+            try {
+                // Try to use the modern Clipboard API
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(statsText);
+                    btn.textContent = 'Copied!';
+                    btn.style.background = '#48bb78';
+                } else {
+                    // Fallback for older browsers or non-HTTPS
+                    const textArea = document.createElement('textarea');
+                    textArea.value = statsText;
+                    textArea.style.position = 'fixed';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    btn.textContent = 'Copied!';
+                    btn.style.background = '#48bb78';
+                }
+
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#38a169';
+                }, 2000);
+
+            } catch (err) {
+                console.error('Failed to copy stats:', err);
+                btn.textContent = 'Copy Failed';
+                btn.style.background = '#e53e3e';
+
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#38a169';
+                }, 2000);
+            }
+        }
+    </script>
 </body>
 
 </html>
