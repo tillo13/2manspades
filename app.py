@@ -412,10 +412,5 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
-# Then in the main block at the very end of app.py, add this:
 if __name__ == '__main__':
-    # Start async database logging in production
-    if IS_PRODUCTION:  # You'll need to import this from logging_utils too
-        start_async_db_logging()
-    
     start_development_server(app)
