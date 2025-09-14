@@ -21,7 +21,7 @@ from .logging_utils import initialize_game_logging_with_client, finalize_game_lo
 
 # Flush batched events to database  
 from .logging_utils import flush_hand_events
-flush_hand_events(session)
+
 
 # =============================================================================
 # CONTENT FILTERING
