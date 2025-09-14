@@ -489,25 +489,19 @@ def transition_to_playing_phase(game, session):
         game['turn'] = 'player'
         game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta led. Your turn to follow.'
 
+
 def transition_to_bidding_phase(game, session):
-    """Transition from discard to bidding phase (or blind decision)"""
-    player_base_score = game.get('player_score', 0)
-    computer_base_score = game.get('computer_score', 0)
-    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+    """Transition from discard to bidding phase (or blind decision) - FIXED to prevent infinite loops"""
     
-    print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
-    
-    if blind_eligibility['player_eligible']:
-        game['phase'] = 'blind_decision'
-        deficit = computer_base_score - player_base_score
-        game['message'] = f'Cards discarded! You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
-        
-        print(f"DEBUG: Entering blind_decision phase with deficit of {deficit}")
-    else:
+    # CRITICAL FIX: Only check blind eligibility ONCE per hand
+    # If we've already been through blind decision, skip straight to bidding
+    if game.get('blind_decision_made', False):
+        print(f"DEBUG: Blind decision already made this hand, proceeding to normal bidding")
         game['phase'] = 'bidding'
         first_leader = game.get('first_leader', 'player')
         
         if first_leader == 'computer':
+            # Computer bids first
             computer_bid, computer_is_blind = computer_bidding_brain(
                 game['computer_hand'], 
                 None,
@@ -535,6 +529,61 @@ def transition_to_bidding_phase(game, session):
             
             game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
         else:
+            # Player bids first
+            game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+        return
+    
+    # First time checking blind eligibility this hand
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+    
+    print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
+    
+    if blind_eligibility['player_eligible']:
+        # Player is eligible for blind bidding - ask them to choose
+        game['phase'] = 'blind_decision'
+        game['blind_decision_made'] = True  # Mark that we've presented the choice
+        deficit = computer_base_score - player_base_score
+        game['message'] = f'Cards discarded! You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
+        
+        print(f"DEBUG: Entering blind_decision phase with deficit of {deficit}")
+    else:
+        # Player not eligible for blind bidding - go straight to normal bidding
+        game['blind_decision_made'] = True  # Mark that we've checked (even though not eligible)
+        game['phase'] = 'bidding'
+        first_leader = game.get('first_leader', 'player')
+        
+        if first_leader == 'computer':
+            # Computer bids first
+            computer_bid, computer_is_blind = computer_bidding_brain(
+                game['computer_hand'], 
+                None,
+                game
+            )
+            game['computer_bid'] = computer_bid
+            
+            if computer_is_blind:
+                game['computer_blind_bid'] = computer_bid
+                computer_blind_text = " (BLIND)"
+                log_action(
+                    action_type='blind_bid',
+                    player='computer',
+                    action_data={'bid_amount': computer_bid, 'bid_first': True},
+                    session=session
+                )
+            else:
+                computer_blind_text = ""
+                log_action(
+                    action_type='regular_bid',
+                    player='computer',
+                    action_data={'bid_amount': computer_bid, 'bid_first': True},
+                    session=session
+                )
+            
+            game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+        else:
+            # Player bids first
             game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
 
 # =============================================================================

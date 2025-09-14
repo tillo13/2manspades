@@ -171,6 +171,7 @@ def choose_blind_bidding():
     )
     
     game['phase'] = 'blind_bidding'
+    game['blind_decision_made'] = True  # CRITICAL: Mark decision as made
     game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
     
     session.modified = True
@@ -195,8 +196,43 @@ def choose_normal_bidding():
         request=request
     )
     
-    game['phase'] = 'discard'
-    game['message'] = 'You chose normal bidding. Select a card to discard.'
+    # CRITICAL FIXES:
+    game['phase'] = 'bidding'  # Changed from 'discard' to 'bidding'
+    game['blind_decision_made'] = True  # Mark decision as made
+    
+    # Handle computer bidding if computer goes first
+    first_leader = game.get('first_leader', 'player')
+    
+    if first_leader == 'computer':
+        from utilities.computer_logic import computer_bidding_brain
+        computer_bid, computer_is_blind = computer_bidding_brain(
+            game['computer_hand'], 
+            None,
+            game
+        )
+        game['computer_bid'] = computer_bid
+        
+        if computer_is_blind:
+            game['computer_blind_bid'] = computer_bid
+            computer_blind_text = " (BLIND)"
+            log_action(
+                action_type='blind_bid',
+                player='computer',
+                action_data={'bid_amount': computer_bid, 'bid_first': True},
+                session=session
+            )
+        else:
+            computer_blind_text = ""
+            log_action(
+                action_type='regular_bid',
+                player='computer',
+                action_data={'bid_amount': computer_bid, 'bid_first': True},
+                session=session
+            )
+        
+        game['message'] = f'You chose normal bidding. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+    else:
+        game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
     
     session.modified = True
     return jsonify({'success': True})
