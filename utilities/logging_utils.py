@@ -402,7 +402,13 @@ def initialize_game_logging_with_client(game, request=None):
 def _create_game_with_player_async(game, client_info):
     """Async wrapper for database game creation"""
     try:
+        print(f"[DB] Attempting to create game: {game.get('game_id')}")
         from .postgres_utils import create_game_with_player
+        
+        # Add more detailed logging
+        print(f"[DB] Game data: game_id={game.get('game_id')}, started_at={game.get('game_started_at')}")
+        print(f"[DB] Client info: {client_info}")
+        
         success = create_game_with_player(game, client_info)
         if success:
             print(f"[DB] Game {game.get('game_id')} inserted to database")
@@ -411,6 +417,8 @@ def _create_game_with_player_async(game, client_info):
         return success
     except Exception as e:
         print(f"[DB] Database game insertion failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def finalize_game_logging(game):

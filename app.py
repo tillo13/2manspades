@@ -412,5 +412,46 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
+@app.route('/debug_game_creation')
+def debug_game_creation():
+    """Debug game creation issues"""
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'})
+    
+    game = session['game']
+    game_id = game.get('game_id')
+    
+    # Try to create the game synchronously to see the error
+    try:
+        from utilities.postgres_utils import create_game_with_player, get_db_connection
+        
+        # First test database connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        db_connection_ok = True
+    except Exception as e:
+        db_connection_ok = False
+        db_error = str(e)
+    
+    # Try creating the game
+    try:
+        from utilities.postgres_utils import create_game_with_player
+        creation_result = create_game_with_player(game, game.get('client_info'))
+    except Exception as e:
+        creation_result = f"Exception: {e}"
+    
+    return jsonify({
+        'game_id': game_id,
+        'game_started_at': game.get('game_started_at'),
+        'client_info': game.get('client_info'),
+        'db_connection_ok': db_connection_ok,
+        'db_error': db_error if not db_connection_ok else None,
+        'creation_result': creation_result,
+        'is_production': IS_PRODUCTION
+    })
+
 if __name__ == '__main__':
     start_development_server(app)
