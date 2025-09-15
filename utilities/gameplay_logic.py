@@ -106,6 +106,7 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
     
     return game
 
+
 def init_new_hand(game):
     """Start a new hand while preserving scores, bags, and parity assignments"""
     deck = create_deck()
@@ -115,13 +116,13 @@ def init_new_hand(game):
     current_first_leader = game.get('first_leader', 'player')
     next_first_leader = 'computer' if current_first_leader == 'player' else 'player'
     
-    # Check blind bidding eligibility using display scores (what players actually see)
+    # Get current scores and bags for blind eligibility check
     player_base_score = game.get('player_score', 0)
     computer_base_score = game.get('computer_score', 0)
     player_bags = game.get('player_bags', 0)
     computer_bags = game.get('computer_bags', 0)
     
-    # Calculate display scores for eligibility check
+    # Calculate display scores for blind eligibility check (what players actually see)
     def calc_display_score(base_score, bags):
         if bags >= 0:
             if base_score < 0:
@@ -136,7 +137,7 @@ def init_new_hand(game):
     player_display_score = calc_display_score(player_base_score, player_bags)
     computer_display_score = calc_display_score(computer_base_score, computer_bags)
     
-    # Check eligibility based on display scores
+    # Check eligibility based on display scores (not base scores)
     from .custom_rules import check_blind_bidding_eligibility
     blind_eligibility = check_blind_bidding_eligibility(player_display_score, computer_display_score)
     
@@ -180,7 +181,7 @@ def init_new_hand(game):
         'trick_history': []
     })
     
-    # NEW: Log starting hands for this new hand
+    # Log starting hands for this new hand
     from .logging_utils import log_game_event
     
     # Log player's starting hand

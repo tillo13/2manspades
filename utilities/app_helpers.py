@@ -489,9 +489,8 @@ def transition_to_playing_phase(game, session):
         game['turn'] = 'player'
         game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta led. Your turn to follow.'
 
-
 def transition_to_bidding_phase(game, session):
-    """Transition from discard to bidding phase (or blind decision) - FIXED to prevent infinite loops"""
+    """Transition from discard to bidding phase (or blind decision) - Uses display scores for eligibility"""
     
     # CRITICAL FIX: Only check blind eligibility ONCE per hand
     # If we've already been through blind decision, skip straight to bidding
@@ -533,18 +532,28 @@ def transition_to_bidding_phase(game, session):
             game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
         return
     
-    # First time checking blind eligibility this hand
+    # First time checking blind eligibility this hand - use DISPLAY SCORES
     player_base_score = game.get('player_score', 0)
     computer_base_score = game.get('computer_score', 0)
-    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+    player_bags = game.get('player_bags', 0)
+    computer_bags = game.get('computer_bags', 0)
     
-    print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
+    # Calculate display scores (what players actually see)
+    player_display_score = get_display_score(player_base_score, player_bags)
+    computer_display_score = get_display_score(computer_base_score, computer_bags)
+    
+    # Check eligibility based on display scores
+    blind_eligibility = check_blind_bidding_eligibility(player_display_score, computer_display_score)
+    
+    print(f"DEBUG BLIND CHECK: Player Display={player_display_score} (base={player_base_score}, bags={player_bags}), Computer Display={computer_display_score} (base={computer_base_score}, bags={computer_bags})")
+    print(f"DEBUG BLIND CHECK: Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
+    print(f"DEBUG BLIND CHECK: Player Deficit={blind_eligibility['player_deficit']}, Computer Deficit={blind_eligibility['computer_deficit']}")
     
     if blind_eligibility['player_eligible']:
         # Player is eligible for blind bidding - ask them to choose
         game['phase'] = 'blind_decision'
         game['blind_decision_made'] = True  # Mark that we've presented the choice
-        deficit = computer_base_score - player_base_score
+        deficit = computer_display_score - player_display_score
         game['message'] = f'Cards discarded! You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
         
         print(f"DEBUG: Entering blind_decision phase with deficit of {deficit}")
@@ -585,6 +594,8 @@ def transition_to_bidding_phase(game, session):
         else:
             # Player bids first
             game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+        
+        print(f"DEBUG: Player not eligible for blind bidding (deficit only {blind_eligibility['player_deficit']}), proceeding to normal bidding")
 
 # =============================================================================
 # GAME LOGIC HELPERS

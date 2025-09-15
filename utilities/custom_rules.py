@@ -51,6 +51,9 @@ def check_blind_bidding_eligibility(player_score, computer_score, target_score=3
     """
     Check if a player is eligible for blind bidding (down by 100+ points).
     
+    IMPORTANT: This function should receive DISPLAY SCORES, not base scores.
+    Display scores include bags in the calculation.
+    
     Returns:
         dict: {
             'player_eligible': bool,
