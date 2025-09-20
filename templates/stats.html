@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two-Man Spades - City Statistics</title>
+    <title>Two-Man Spades - Player Statistics</title>
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
@@ -227,13 +227,13 @@
             transform: translateY(-2px);
         }
 
-        .leaderboard-card.current-city {
+        .leaderboard-card.current-player {
             background: #e6fffa;
             border-left: 4px solid #38a169;
             border-color: #38a169;
         }
 
-        .city-header {
+        .player-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -242,7 +242,7 @@
             border-bottom: 1px solid #eee;
         }
 
-        .city-rank {
+        .player-rank {
             background: #4a5568;
             color: white;
             border-radius: 50%;
@@ -256,13 +256,13 @@
             flex-shrink: 0;
         }
 
-        .city-info {
+        .player-info {
             flex: 1;
             margin-left: 12px;
             min-width: 0;
         }
 
-        .city-name {
+        .player-name {
             font-weight: 600;
             color: #2d3748;
             font-size: 1.1em;
@@ -281,7 +281,7 @@
             font-size: 0.9em;
         }
 
-        .city-stats-grid {
+        .player-stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             gap: 8px;
@@ -442,7 +442,7 @@
                 background: #edf2f7;
             }
 
-            .leaderboard-table .current-city {
+            .leaderboard-table .current-player {
                 background: #e6fffa !important;
                 border-left: 4px solid #38a169;
             }
@@ -472,23 +472,120 @@
     <button id="shareStatsBtn" onclick="shareStats()" class="fixed-share-button">📤 Share Stats</button>
 
     <div class="container">
-        <h1>City Statistics</h1>
+        <h1>Player Statistics</h1>
+
+        {% if city_leaderboard %}
+        <div class="section">
+            <h2>Leaderboard - Top Players</h2>
+            <div class="leaderboard-description">
+                Players ranked by total completed games, then by win rate. Abandoned games are excluded from all stats.
+            </div>
+
+            <div class="leaderboard-container">
+                <!-- MOBILE: Card Layout -->
+                <div class="leaderboard-cards">
+                    {% for stats in city_leaderboard %}
+                    <div class="leaderboard-card {% if stats.family_member == player_city %}current-player{% endif %}">
+                        <div class="player-header">
+                            <div class="player-rank">{{ loop.index }}</div>
+                            <div class="player-info">
+                                <div class="player-name">
+                                    {{ stats.family_member }}
+                                    {% if stats.family_member == player_city %}<div class="you-indicator">(You)</div>{%
+                                    endif %}
+                                </div>
+                                <div class="games-count">{{ stats.total_games }} games completed</div>
+                            </div>
+                        </div>
+                        <div class="player-stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-item-label">Win Rate</div>
+                                <div
+                                    class="stat-item-value {% if stats.win_rate_percent >= 60 %}win-rate-value{% elif stats.win_rate_percent >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
+                                    {{ stats.win_rate_percent or 0 }}%
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Wins</div>
+                                <div class="stat-item-value">{{ stats.total_wins or 0 }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Losses</div>
+                                <div class="stat-item-value">{{ stats.total_losses or 0 }}</div>
+                            </div>
+                            {% if stats.avg_winning_score %}
+                            <div class="stat-item">
+                                <div class="stat-item-label">Avg Win Score</div>
+                                <div class="stat-item-value">{{ stats.avg_winning_score|round|int }}</div>
+                            </div>
+                            {% endif %}
+                            {% if stats.avg_winning_margin %}
+                            <div class="stat-item">
+                                <div class="stat-item-label">Win Margin</div>
+                                <div class="stat-item-value">+{{ stats.avg_winning_margin|round|int }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- DESKTOP: Table Layout -->
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th class="rank" style="width: 8%;">Rank</th>
+                            <th style="width: 22%;">Player</th>
+                            <th style="width: 14%;">Games</th>
+                            <th style="width: 14%;">Win Rate</th>
+                            <th style="width: 14%;">Wins</th>
+                            <th style="width: 14%;">Avg Win Score</th>
+                            <th style="width: 14%;">Win Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stats in city_leaderboard %}
+                        <tr {% if stats.family_member==player_city %}class="current-player" {% endif %}>
+                            <td class="rank">{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ stats.family_member }}</strong>
+                                {% if stats.family_member == player_city %} (You){% endif %}
+                            </td>
+                            <td class="games-count">{{ stats.total_games }}</td>
+                            <td>
+                                <span
+                                    class="percentage {% if stats.win_rate_percent >= 60 %}win-rate{% elif stats.win_rate_percent >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
+                                    {{ stats.win_rate_percent or 0 }}%
+                                </span>
+                            </td>
+                            <td>{{ stats.total_wins or 0 }}</td>
+                            <td class="score-stat">{{ stats.avg_winning_score|round|int if stats.avg_winning_score else
+                                '-' }}</td>
+                            <td class="score-stat">
+                                {% if stats.avg_winning_margin %}
+                                +{{ stats.avg_winning_margin|round|int }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
 
         {% if player_city_stats %}
         <div class="section">
-            <h2>Your City Performance</h2>
+            <h2>Your Performance</h2>
 
             <div class="highlight">
-                <strong>You're playing from:</strong> {{ player_city }}<br>
+                <strong>Playing as:</strong> {{ player_city }}<br>
                 <strong>Your IP:</strong> <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span>
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value games-count">{{ player_city_stats.unique_ips or 0 }}</div>
-                    <div class="stat-label">Unique Players</div>
-                </div>
-
                 <div class="stat-card">
                     <div class="stat-value games-count">{{ player_city_stats.games_started or 0 }}</div>
                     <div class="stat-label">Games Started</div>
@@ -511,7 +608,7 @@
 
                 <div class="stat-card">
                     <div class="stat-value win-rate">{{ player_city_stats.win_rate_percent or 0 }}%</div>
-                    <div class="stat-label">City Win Rate</div>
+                    <div class="stat-label">Win Rate</div>
                 </div>
 
                 <div class="stat-card">
@@ -529,13 +626,13 @@
                 <div class="stat-card">
                     <div class="stat-value neutral-rate">{{ player_city_stats.avg_opponent_score_when_winning|round|int
                         if player_city_stats.avg_opponent_score_when_winning else 'N/A' }}</div>
-                    <div class="stat-label">Opponent Score (City Wins)</div>
+                    <div class="stat-label">Opponent Score (Your Wins)</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-value neutral-rate">{{ player_city_stats.avg_opponent_score_when_losing|round|int
                         if player_city_stats.avg_opponent_score_when_losing else 'N/A' }}</div>
-                    <div class="stat-label">Opponent Score (City Losses)</div>
+                    <div class="stat-label">Opponent Score (Your Losses)</div>
                 </div>
 
                 <div class="stat-card">
@@ -565,161 +662,48 @@
 
             {% if player_city_stats.earliest_game %}
             <div class="score-stat">
-                <strong>{{ player_city }} first game:</strong> {{ player_city_stats.earliest_game.strftime('%B %d, %Y at
-                %I:%M %p') }}<br>
-                <strong>{{ player_city }} last game:</strong> {{ player_city_stats.latest_game.strftime('%B %d, %Y at
-                %I:%M %p') }}
+                <strong>First game:</strong> {{ player_city_stats.earliest_game.strftime('%B %d, %Y at %I:%M %p') }}<br>
+                <strong>Last game:</strong> {{ player_city_stats.latest_game.strftime('%B %d, %Y at %I:%M %p') }}
             </div>
             {% endif %}
         </div>
         {% else %}
         <div class="no-stats">
-            <h3>No City Statistics Available</h3>
-            <p>Your location ({{ player_city }}) doesn't have enough completed games yet!</p>
+            <h3>No Statistics Available</h3>
+            <p>Complete some games to see your statistics here!</p>
             <p>Your current IP: <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span></p>
         </div>
         {% endif %}
 
-        {% if city_leaderboard %}
-        <div class="section">
-            <h2>City Leaderboard</h2>
-            <div class="leaderboard-description">
-                Cities ranked by total completed games, then by win rate. Abandoned games are excluded from all stats.
-            </div>
-
-            <div class="leaderboard-container">
-                <!-- MOBILE: Card Layout -->
-                <div class="leaderboard-cards">
-                    {% for stats in city_leaderboard %}
-                    <div class="leaderboard-card {% if stats.family_member == player_city %}current-city{% endif %}">
-                        <div class="city-header">
-                            <div class="city-rank">{{ loop.index }}</div>
-                            <div class="city-info">
-                                <div class="city-name">
-                                    {{ stats.family_member }}
-                                    {% if stats.family_member == player_city %}<div class="you-indicator">(Your City)
-                                    </div>{% endif %}
-                                </div>
-                                <div class="games-count">{{ stats.total_games }} games, {{ stats.unique_ips }} players
-                                </div>
-                            </div>
-                        </div>
-                        <div class="city-stats-grid">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Win Rate</div>
-                                <div
-                                    class="stat-item-value {% if stats.win_rate_percent >= 60 %}win-rate-value{% elif stats.win_rate_percent >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
-                                    {{ stats.win_rate_percent or 0 }}%
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Total Wins</div>
-                                <div class="stat-item-value">{{ stats.total_wins or 0 }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Total Losses</div>
-                                <div class="stat-item-value">{{ stats.total_losses or 0 }}</div>
-                            </div>
-                            {% if stats.avg_winning_score %}
-                            <div class="stat-item">
-                                <div class="stat-item-label">Avg Win Score</div>
-                                <div class="stat-item-value">{{ stats.avg_winning_score|round|int }}</div>
-                            </div>
-                            {% endif %}
-                            {% if stats.avg_winning_margin %}
-                            <div class="stat-item">
-                                <div class="stat-item-label">Win Margin</div>
-                                <div class="stat-item-value">+{{ stats.avg_winning_margin|round|int }}</div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- DESKTOP: Table Layout -->
-                <table class="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th class="rank" style="width: 8%;">Rank</th>
-                            <th style="width: 20%;">City</th>
-                            <th style="width: 10%;">Players</th>
-                            <th style="width: 12%;">Games</th>
-                            <th style="width: 12%;">Win Rate</th>
-                            <th style="width: 12%;">Total Wins</th>
-                            <th style="width: 13%;">Avg Win Score</th>
-                            <th style="width: 13%;">Win Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for stats in city_leaderboard %}
-                        <tr {% if stats.family_member==player_city %}class="current-city" {% endif %}>
-                            <td class="rank">{{ loop.index }}</td>
-                            <td>
-                                <strong>{{ stats.family_member }}</strong>
-                                {% if stats.family_member == player_city %} (Your City){% endif %}
-                            </td>
-                            <td>{{ stats.unique_ips }}</td>
-                            <td class="games-count">{{ stats.total_games }}</td>
-                            <td>
-                                <span
-                                    class="percentage {% if stats.win_rate_percent >= 60 %}win-rate{% elif stats.win_rate_percent >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
-                                    {{ stats.win_rate_percent or 0 }}%
-                                </span>
-                            </td>
-                            <td>{{ stats.total_wins or 0 }}</td>
-                            <td class="score-stat">{{ stats.avg_winning_score|round|int if stats.avg_winning_score else
-                                '-' }}</td>
-                            <td class="score-stat">
-                                {% if stats.avg_winning_margin %}
-                                +{{ stats.avg_winning_margin|round|int }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-
         <div class="warning">
-            <strong>Note:</strong> Statistics are aggregated by geographic location (city/region). Your stats are
-            combined with other players from your area. Abandoned games are excluded from all calculations to focus on
+            <strong>Note:</strong> Statistics are aggregated by geographic location to combine stats from the same
+            player across different IP addresses. Abandoned games are excluded from all calculations to focus on
             completed gameplay.
         </div>
 
         <div class="section">
-            <h2>Understanding City Stats</h2>
+            <h2>Understanding Your Stats</h2>
             <div style="line-height: 1.8;">
-                <p><strong>City Aggregation:</strong></p>
+                <p><strong>Game Summary:</strong></p>
                 <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li><strong>Unique Players:</strong> Number of different IP addresses from your city</li>
-                    <li><strong>Games Started:</strong> Total games initiated by players from your city</li>
-                    <li><strong>Games Completed:</strong> Games that reached a conclusion (excludes abandoned games)
-                    </li>
+                    <li><strong>Games Started:</strong> Total number of games you've initiated</li>
+                    <li><strong>Games Completed:</strong> Games that reached a conclusion (win or loss)</li>
+                    <li><strong>Wins/Losses:</strong> Total count of games won and lost</li>
                 </ul>
 
                 <p><strong>Performance Metrics:</strong></p>
                 <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li><strong>City Win Rate:</strong> Percentage of completed games won by your city</li>
-                    <li><strong>Total Wins/Losses:</strong> Combined count across all city players</li>
+                    <li><strong>Win Rate:</strong> Percentage of completed games you've won</li>
+                    <li><strong>Avg Winning Score:</strong> Your average final score in games you win</li>
+                    <li><strong>Avg Losing Score:</strong> Your average final score in games you lose</li>
                 </ul>
 
                 <p><strong>Scoring Analysis:</strong></p>
                 <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li><strong>Avg Winning Score:</strong> Average final score in games your city wins</li>
-                    <li><strong>Avg Losing Score:</strong> Average final score in games your city loses</li>
-                    <li><strong>Win/Loss Margins:</strong> Average point differences in victories and defeats</li>
-                </ul>
-
-                <p><strong>Time Tracking:</strong></p>
-                <ul style="margin-left: 20px;">
-                    <li><strong>First/Last Game:</strong> When your city first started playing and most recent activity
-                    </li>
-                    <li><strong>Opponent Scores:</strong> How well Marta performs against your city's players</li>
+                    <li><strong>Avg Win Margin:</strong> Average point difference when you win</li>
+                    <li><strong>Avg Loss Margin:</strong> Average point difference when you lose</li>
+                    <li><strong>Opponent Score When You Win:</strong> Computer's average score in your victories</li>
+                    <li><strong>Opponent Score When You Lose:</strong> Computer's average score in your defeats</li>
                 </ul>
             </div>
         </div>
@@ -730,24 +714,22 @@
             const btn = document.getElementById('shareStatsBtn') || event.target;
             const originalText = btn.textContent;
 
-            // Create shareable text with city stats
-            let statsText = '🏙️ Two-Man Spades City Stats 🏙️\n';
+            // Create shareable text with player stats
+            let statsText = '🃏 Two-Man Spades Stats 🃏\n';
             {% if player_city_stats %}
-            statsText += 'City: {{ player_city }}\n';
-            statsText += 'Players: {{ player_city_stats.unique_ips }}\n';
+            statsText += 'Player: {{ player_city }}\n';
             statsText += 'Games Completed: {{ player_city_stats.total_games }}\n';
-            statsText += 'City Win Rate: {{ player_city_stats.win_rate_percent or 0 }}%\n';
-            statsText += 'Total Wins: {{ player_city_stats.total_wins or 0 }} | Losses: {{ player_city_stats.total_losses or 0 }}\n';
+            statsText += 'Win Rate: {{ player_city_stats.win_rate_percent or 0 }}%\n';
+            statsText += 'Wins: {{ player_city_stats.total_wins or 0 }} | Losses: {{ player_city_stats.total_losses or 0 }}\n';
 
             {% if player_city_stats.avg_winning_score %}
-            statsText += '\n📊 When {{ player_city }} Wins:\n';
+            statsText += '\n📊 When I Win:\n';
             statsText += 'Avg Score: {{ player_city_stats.avg_winning_score|round|int }}\n';
             {% if player_city_stats.avg_winning_margin %}
             statsText += 'Avg Margin: +{{ player_city_stats.avg_winning_margin|round|int }}\n';
             {% endif %}
             {% endif %}
             {% else %}
-            statsText += 'City: {{ player_city }}\n';
             statsText += 'No completed games yet!\n';
             {% endif %}
 
