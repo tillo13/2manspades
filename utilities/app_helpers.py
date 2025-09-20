@@ -19,8 +19,6 @@ from .computer_logic import (
 from .logging_utils import initialize_game_logging_with_client, finalize_game_logging, flush_hand_events
 
 
-# Flush batched events to database  
-from .logging_utils import flush_hand_events
 
 
 # =============================================================================

@@ -326,56 +326,86 @@ def get_ip_address_game_stats(client_ip: str = None) -> List[Dict[str, Any]]:
         print(f"Failed to get game stats: {e}")
         return []
     
-def get_or_create_ip_location(ip_address: str) -> Optional[Dict[str, Any]]:
-    """Get existing IP location data or return None if needs geolocation lookup"""
+# Add these simple functions to your postgres_utils.py
+
+def get_ip_activity_summary(ip_address: str) -> Dict[str, Any]:
+    """Get basic activity summary for an IP address"""
     try:
         conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur = conn.cursor()
         
-        cur.execute("""
-            SELECT * FROM twomanspades.ip_location_data 
-            WHERE ip_address = %s
-        """, (ip_address,))
+        # Simple query combining both tables
+        query = """
+        WITH all_activities AS (
+            SELECT started_at as activity_time FROM twomanspades.hands 
+            WHERE client_ip = %s AND client_ip IS NOT NULL
+            UNION ALL
+            SELECT timestamp as activity_time FROM twomanspades.game_events 
+            WHERE client_ip = %s AND client_ip IS NOT NULL
+        )
+        SELECT 
+            COUNT(*) as total_activities,
+            MIN(activity_time) as first_seen,
+            MAX(activity_time) as last_seen
+        FROM all_activities
+        """
         
+        cur.execute(query, (ip_address, ip_address))
         result = cur.fetchone()
         cur.close()
         conn.close()
         
-        return dict(result) if result else None
+        if result and result[0] > 0:
+            return {
+                'total_activities': result[0],
+                'first_seen': result[1],
+                'last_seen': result[2]
+            }
+        return None
         
     except Exception as e:
-        print(f"Failed to get IP location data for {ip_address}: {e}")
+        print(f"Failed to get activity summary for {ip_address}: {e}")
         return None
 
-def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> bool:
-    """Save IP geolocation data to database"""
+def save_simple_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> bool:
+    """Save IP location data with activity stats - simple version"""
     try:
+        # Get activity stats
+        activity_stats = get_ip_activity_summary(ip_address)
+        if not activity_stats:
+            print(f"No activity found for {ip_address}, skipping")
+            return False
+        
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
             INSERT INTO twomanspades.ip_location_data 
-            (ip_address, city, region, country, timezone, zip_code, latitude, longitude, 
-             isp, org, as_number, as_name, lookup_success)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (ip_address, total_activities, first_seen, last_seen,
+             city, region, country, latitude, longitude, isp, lookup_success)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (ip_address) DO UPDATE SET
+                total_activities = EXCLUDED.total_activities,
+                last_seen = EXCLUDED.last_seen,
                 city = EXCLUDED.city,
                 region = EXCLUDED.region,
                 country = EXCLUDED.country,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                isp = EXCLUDED.isp,
+                lookup_success = EXCLUDED.lookup_success,
                 updated_at = NOW()
         """, (
             ip_address,
+            activity_stats['total_activities'],
+            activity_stats['first_seen'],
+            activity_stats['last_seen'],
             location_data.get('city'),
-            location_data.get('region'), 
+            location_data.get('region'),
             location_data.get('country'),
-            location_data.get('timezone'),
-            location_data.get('zip'),
             location_data.get('lat'),
             location_data.get('lon'),
             location_data.get('isp'),
-            location_data.get('org'),
-            location_data.get('as', '').split(' ')[0] if location_data.get('as') else None,
-            ' '.join(location_data.get('as', '').split(' ')[1:]) if location_data.get('as') else None,
             True
         ))
         
@@ -385,5 +415,46 @@ def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> boo
         return True
         
     except Exception as e:
-        print(f"Failed to save IP location data for {ip_address}: {e}")
+        print(f"Failed to save simple IP location data for {ip_address}: {e}")
         return False
+
+# Update your existing function to use the simple version
+def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> bool:
+    """Use the simple version"""
+    return save_simple_ip_location_data(ip_address, location_data)
+
+def get_ip_location_stats_summary():
+    """Get a quick summary of IP location data"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT 
+                COUNT(*) as total_ips,
+                COUNT(CASE WHEN lookup_success THEN 1 END) as successful_lookups,
+                COUNT(CASE WHEN country IS NOT NULL THEN 1 END) as with_country,
+                SUM(total_activities) as total_activities,
+                MAX(total_activities) as max_activities,
+                COUNT(DISTINCT country) as unique_countries
+            FROM twomanspades.ip_location_data
+        """)
+        
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if result:
+            return {
+                'total_ips': result[0],
+                'successful_lookups': result[1], 
+                'with_country': result[2],
+                'total_activities': result[3],
+                'max_activities': result[4],
+                'unique_countries': result[5]
+            }
+        return None
+        
+    except Exception as e:
+        print(f"Failed to get IP location stats: {e}")
+        return None
