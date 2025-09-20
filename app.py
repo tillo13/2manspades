@@ -457,6 +457,7 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
+
 @app.route('/stats')
 def stats():
     """Show game statistics for the current player"""
@@ -470,6 +471,14 @@ def stats():
     
     # Get city leaders stats
     city_leaders = get_city_leaders_stats()
+    
+    # DEBUG: Print what we're getting
+    print(f"DEBUG - Client IP: {client_ip}")
+    print(f"DEBUG - Player stats: {player_stats}")
+    print(f"DEBUG - City leaders: {city_leaders}")
+    print(f"DEBUG - City leaders length: {len(city_leaders) if city_leaders else 0}")
+    if city_leaders:
+        print(f"DEBUG - First city leader: {city_leaders[0]}")
     
     return render_template('stats.html', 
                         player_stats=player_stats[0] if player_stats else None,

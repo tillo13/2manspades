@@ -404,28 +404,6 @@ def save_failed_ip_lookup(ip_address: str) -> bool:
     except Exception as e:
         print(f"Failed to save failed lookup for {ip_address}: {e}")
         return False
-    
-def get_city_leaders_stats():
-    """Get city leaders statistics from the view, excluding 'Other'"""
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cur.execute("""
-            SELECT * FROM twomanspades.vw_city_leaders 
-            WHERE family_member != 'Other'
-            ORDER BY total_games DESC, win_rate_percent DESC
-        """)
-        
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        return [dict(row) for row in results]
-        
-    except Exception as e:
-        print(f"Failed to get city leaders stats: {e}")
-        return []
 
 def get_player_city_membership(client_ip):
     """Get which city/family member this IP belongs to"""
