@@ -14,7 +14,7 @@ from utilities.app_helpers import (
     process_discard_phase, resolve_trick_with_delay,
     computer_follow_with_logging, computer_lead_with_logging,
     process_hand_completion, process_auto_resolution,
-    start_development_server
+    start_development_server, process_ip_geolocation
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
@@ -59,6 +59,11 @@ def index():
     if force_new or 'game' not in session:
         session.clear()
         session['game'] = initialize_new_game_session(request)
+        
+        # ADD THIS: Trigger geolocation for new visitors
+        client_info = track_request_session(session, request)
+        if client_info and client_info.get('ip_address'):
+            process_ip_geolocation(client_info['ip_address'])
     
     return render_template('index.html')
 
