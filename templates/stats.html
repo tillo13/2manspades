@@ -488,7 +488,7 @@
                 <div class="leaderboard-cards">
                     {% for stats in city_leaders %}
                     <div
-                        class="leaderboard-card {% if stats.family_member == player_city_stats.family_member if player_city_stats else '' %}current-player{% endif %}">
+                        class="leaderboard-card {% if player_city_stats and stats.family_member == player_city_stats.family_member %}current-player{% endif %}">
                         <div class="player-header">
                             <div class="player-rank">{{ loop.index }}</div>
                             <div class="player-info">
