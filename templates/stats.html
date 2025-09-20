@@ -5,16 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Two-Man Spades - Player Statistics</title>
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'G-F5VP0CXERK');
-    </script>
-
     <style>
         * {
             margin: 0;
@@ -32,112 +22,80 @@
         }
 
         .container {
-            max-width: 650px;
+            max-width: 1000px;
             margin: 0 auto;
             background: white;
             border-radius: 15px;
-            padding: 20px;
+            padding: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            overflow-x: hidden;
         }
 
         h1 {
             color: #4a5568;
             text-align: center;
             margin-bottom: 25px;
-            font-size: 2em;
+            font-size: 2.5em;
         }
 
         h2 {
             color: #2d3748;
-            margin-top: 25px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             padding-bottom: 8px;
             border-bottom: 2px solid #e2e8f0;
-            font-size: 1.3em;
+            font-size: 1.5em;
         }
 
-        /* MOBILE-FIRST BUTTON LAYOUT */
-        .mobile-buttons {
-            display: flex;
-            gap: 8px;
+        .leaderboard-description {
             margin-bottom: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
+            color: #666;
+            font-size: 1em;
+            line-height: 1.4;
         }
 
-        .back-button,
-        .share-button {
-            background: #4299e1;
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            flex: 1;
-            min-width: 120px;
-            text-align: center;
-        }
-
-        .share-button {
-            background: #38a169;
-        }
-
-        .back-button:hover {
-            background: #3182ce;
-            transform: translateY(-1px);
-        }
-
-        .share-button:hover {
-            background: #2f855a;
-            transform: translateY(-1px);
-        }
-
-        /* Hide fixed positioned buttons - we'll use mobile buttons instead */
-        .fixed-back-button,
-        .fixed-share-button {
-            display: none;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 25px;
-        }
-
-        .stat-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
             border-radius: 12px;
-            padding: 15px;
-            text-align: center;
-            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        .leaderboard-table th {
+            background: #4a5568;
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
         }
 
-        .stat-value {
-            font-size: 1.8em;
+        .leaderboard-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .leaderboard-table tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .leaderboard-table tr:hover {
+            background: #edf2f7;
+        }
+
+        .leaderboard-table .current-player {
+            background: #e6fffa !important;
+            border-left: 4px solid #38a169;
+        }
+
+        .rank {
             font-weight: bold;
-            color: #2d3748;
-            margin-bottom: 6px;
-            word-break: break-word;
+            text-align: center;
+            color: #4a5568;
         }
 
-        .stat-label {
-            font-size: 0.8em;
-            color: #4a5568;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.2;
+        .percentage {
+            font-weight: 600;
         }
 
         .win-rate {
@@ -161,423 +119,62 @@
             border-radius: 12px;
             margin: 20px 0;
         }
-
-        .highlight {
-            background: #e6fffa;
-            border-left: 4px solid #38a169;
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 4px;
-            word-break: break-all;
-        }
-
-        .warning {
-            background: #fff5f5;
-            border-left: 4px solid #e53e3e;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-            font-size: 0.9em;
-            color: #666;
-        }
-
-        .ip-address {
-            font-family: 'Courier New', monospace;
-            background: #edf2f7;
-            padding: 4px 6px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            word-break: break-all;
-            display: inline-block;
-            max-width: 100%;
-        }
-
-        .section {
-            margin-bottom: 30px;
-        }
-
-        /* MOBILE-OPTIMIZED LEADERBOARD - Card Layout */
-        .leaderboard-container {
-            overflow-x: hidden;
-            margin: 15px 0;
-        }
-
-        .leaderboard-description {
-            margin-bottom: 15px;
-            color: #666;
-            font-size: 0.9em;
-            line-height: 1.4;
-        }
-
-        .leaderboard-cards {
-            display: block;
-        }
-
-        .leaderboard-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease;
-        }
-
-        .leaderboard-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .leaderboard-card.current-player {
-            background: #e6fffa;
-            border-left: 4px solid #38a169;
-            border-color: #38a169;
-        }
-
-        .player-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .player-rank {
-            background: #4a5568;
-            color: white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .player-info {
-            flex: 1;
-            margin-left: 12px;
-            min-width: 0;
-        }
-
-        .player-name {
-            font-weight: 600;
-            color: #2d3748;
-            font-size: 1.1em;
-            margin-bottom: 2px;
-        }
-
-        .you-indicator {
-            color: #38a169;
-            font-weight: bold;
-            font-size: 0.8em;
-        }
-
-        .games-count {
-            color: #4a5568;
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-
-        .player-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: 8px 4px;
-            background: #f8fafc;
-            border-radius: 6px;
-        }
-
-        .stat-item-label {
-            font-size: 0.7em;
-            color: #6c757d;
-            margin-bottom: 2px;
-            line-height: 1;
-        }
-
-        .stat-item-value {
-            font-weight: 600;
-            font-size: 0.9em;
-            color: #333;
-        }
-
-        .win-rate-value {
-            color: #38a169;
-        }
-
-        .loss-rate-value {
-            color: #e53e3e;
-        }
-
-        .neutral-rate-value {
-            color: #3182ce;
-        }
-
-        /* TABLE FALLBACK FOR DESKTOP */
-        .leaderboard-table {
-            display: none;
-        }
-
-        .score-stat {
-            font-size: 0.9em;
-            color: #4a5568;
-            line-height: 1.4;
-        }
-
-        /* DESKTOP BREAKPOINT */
-        @media (min-width: 768px) {
-            .container {
-                max-width: 1000px;
-                padding: 30px;
-            }
-
-            h1 {
-                font-size: 2.5em;
-                margin-bottom: 30px;
-            }
-
-            h2 {
-                margin-top: 30px;
-                margin-bottom: 20px;
-                font-size: 1.5em;
-            }
-
-            /* Show desktop buttons, hide mobile */
-            .mobile-buttons {
-                display: none;
-            }
-
-            .fixed-back-button,
-            .fixed-share-button {
-                display: block;
-                position: fixed;
-                top: 20px;
-                padding: 12px 20px;
-                border-radius: 8px;
-                font-weight: bold;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                transition: all 0.2s;
-            }
-
-            .fixed-back-button {
-                left: 20px;
-                background: #4299e1;
-                color: white;
-                text-decoration: none;
-            }
-
-            .fixed-share-button {
-                right: 20px;
-                background: #38a169;
-                color: white;
-                border: none;
-                cursor: pointer;
-            }
-
-            .fixed-back-button:hover {
-                background: #3182ce;
-                transform: translateY(-2px);
-            }
-
-            .fixed-share-button:hover {
-                background: #2f855a;
-                transform: translateY(-2px);
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }
-
-            .stat-value {
-                font-size: 2.5em;
-            }
-
-            .stat-label {
-                font-size: 0.9em;
-            }
-
-            /* Show table on desktop, hide cards */
-            .leaderboard-cards {
-                display: none;
-            }
-
-            .leaderboard-table {
-                display: table;
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-                background: white;
-                border-radius: 12px;
-                overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            }
-
-            .leaderboard-table th {
-                background: #4a5568;
-                color: white;
-                padding: 15px 12px;
-                text-align: left;
-                font-weight: 600;
-            }
-
-            .leaderboard-table td {
-                padding: 12px;
-                border-bottom: 1px solid #e2e8f0;
-            }
-
-            .leaderboard-table tr:nth-child(even) {
-                background: #f8fafc;
-            }
-
-            .leaderboard-table tr:hover {
-                background: #edf2f7;
-            }
-
-            .leaderboard-table .current-player {
-                background: #e6fffa !important;
-                border-left: 4px solid #38a169;
-            }
-
-            .rank {
-                font-weight: bold;
-                text-align: center;
-                color: #4a5568;
-            }
-
-            .percentage {
-                font-weight: 600;
-            }
-        }
     </style>
 </head>
 
 <body>
-    <!-- Mobile buttons -->
-    <div class="mobile-buttons">
-        <a href="/" class="back-button">← Back to Game</a>
-        <button onclick="shareStats()" class="share-button">📤 Share Stats</button>
-    </div>
-
-    <!-- Desktop fixed buttons -->
-    <a href="/" class="fixed-back-button">← Back to Game</a>
-    <button id="shareStatsBtn" onclick="shareStats()" class="fixed-share-button">📤 Share Stats</button>
-
     <div class="container">
         <h1>Player Statistics</h1>
 
-        <!-- LEADERBOARD ALWAYS SHOWS FIRST -->
         <div class="section">
             <h2>Leaderboard - Top Players</h2>
             <div class="leaderboard-description">
                 Players ranked by total completed games, then by win rate.
             </div>
 
-            <!-- Show leaderboard if we have any data -->
             {% if city_leaders %}
-            <div class="leaderboard-container">
-                <!-- MOBILE: Card Layout -->
-                <div class="leaderboard-cards">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th class="rank" style="width: 8%;">Rank</th>
+                        <th style="width: 22%;">Player</th>
+                        <th style="width: 14%;">Games</th>
+                        <th style="width: 14%;">Win Rate</th>
+                        <th style="width: 14%;">Wins</th>
+                        <th style="width: 14%;">Avg Win Score</th>
+                        <th style="width: 14%;">Win Margin</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {% for stats in city_leaders %}
-                    <div
-                        class="leaderboard-card {% if player_city_stats and stats.family_member == player_city_stats.family_member %}current-player{% endif %}">
-                        <div class="player-header">
-                            <div class="player-rank">{{ loop.index }}</div>
-                            <div class="player-info">
-                                <div class="player-name">
-                                    {{ stats.family_member }}
-                                    {% if player_city_stats and stats.family_member == player_city_stats.family_member
-                                    %}<div class="you-indicator">(You)</div>{% endif %}
-                                </div>
-                                <div class="games-count">{{ stats.total_games }} games completed</div>
-                            </div>
-                        </div>
-                        <div class="player-stats-grid">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Win Rate</div>
-                                <div
-                                    class="stat-item-value {% if (stats.win_rate_percent or 0) >= 60 %}win-rate-value{% elif (stats.win_rate_percent or 0) >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
-                                    {{ stats.win_rate_percent or 0 }}%
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Wins</div>
-                                <div class="stat-item-value">{{ stats.total_wins or 0 }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Losses</div>
-                                <div class="stat-item-value">{{ stats.total_losses or 0 }}</div>
-                            </div>
-                            {% if stats.avg_winning_score %}
-                            <div class="stat-item">
-                                <div class="stat-item-label">Avg Win Score</div>
-                                <div class="stat-item-value">{{ stats.avg_winning_score|round|int }}</div>
-                            </div>
-                            {% endif %}
+                    <tr {% if player_city_stats and stats.family_member==player_city_stats.family_member
+                        %}class="current-player" {% endif %}>
+                        <td class="rank">{{ loop.index }}</td>
+                        <td>
+                            <strong>{{ stats.family_member }}</strong>
+                            {% if player_city_stats and stats.family_member == player_city_stats.family_member %}
+                            (You){% endif %}
+                        </td>
+                        <td>{{ stats.total_games }}</td>
+                        <td>
+                            <span
+                                class="percentage {% if stats.win_rate_percent >= 60 %}win-rate{% elif stats.win_rate_percent >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
+                                {{ stats.win_rate_percent or 0 }}%
+                            </span>
+                        </td>
+                        <td>{{ stats.total_wins or 0 }}</td>
+                        <td>{{ stats.avg_winning_score|round|int if stats.avg_winning_score else '-' }}</td>
+                        <td>
                             {% if stats.avg_winning_margin %}
-                            <div class="stat-item">
-                                <div class="stat-item-label">Win Margin</div>
-                                <div class="stat-item-value">+{{ stats.avg_winning_margin|round|int }}</div>
-                            </div>
+                            +{{ stats.avg_winning_margin|round|int }}
+                            {% else %}
+                            -
                             {% endif %}
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                     {% endfor %}
-                </div>
-
-                <!-- DESKTOP: Table Layout -->
-                <table class="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th class="rank" style="width: 8%;">Rank</th>
-                            <th style="width: 22%;">Player</th>
-                            <th style="width: 14%;">Games</th>
-                            <th style="width: 14%;">Win Rate</th>
-                            <th style="width: 14%;">Wins</th>
-                            <th style="width: 14%;">Avg Win Score</th>
-                            <th style="width: 14%;">Win Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for stats in city_leaders %}
-                        <tr {% if player_city_stats and stats.family_member==player_city_stats.family_member
-                            %}class="current-player" {% endif %}>
-                            <td class="rank">{{ loop.index }}</td>
-                            <td>
-                                <strong>{{ stats.family_member }}</strong>
-                                {% if player_city_stats and stats.family_member == player_city_stats.family_member %}
-                                (You){% endif %}
-                            </td>
-                            <td class="games-count">{{ stats.total_games }}</td>
-                            <td>
-                                <span
-                                    class="percentage {% if (stats.win_rate_percent or 0) >= 60 %}win-rate{% elif (stats.win_rate_percent or 0) >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
-                                    {{ stats.win_rate_percent or 0 }}%
-                                </span>
-                            </td>
-                            <td>{{ stats.total_wins or 0 }}</td>
-                            <td class="score-stat">{{ stats.avg_winning_score|round|int if stats.avg_winning_score else
-                                '-' }}</td>
-                            <td class="score-stat">
-                                {% if stats.avg_winning_margin %}
-                                +{{ stats.avg_winning_margin|round|int }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            </table>
             {% else %}
             <div class="no-stats">
                 <h3>No Players Yet</h3>
@@ -585,201 +182,7 @@
             </div>
             {% endif %}
         </div>
-
-        <!-- YOUR PERFORMANCE SECTION -->
-        {% if player_city_stats %}
-        <div class="section">
-            <h2>Your Performance</h2>
-
-            <div class="highlight">
-                <strong>Playing as:</strong> {{ player_city_stats.family_member }}<br>
-                <strong>Your IP:</strong> <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value games-count">{{ player_city_stats.games_started or 0 }}</div>
-                    <div class="stat-label">Games Started</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value games-count">{{ player_city_stats.total_games or 0 }}</div>
-                    <div class="stat-label">Games Completed</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value win-rate">{{ player_city_stats.total_wins or 0 }}</div>
-                    <div class="stat-label">Total Wins</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value loss-rate">{{ player_city_stats.total_losses or 0 }}</div>
-                    <div class="stat-label">Total Losses</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value win-rate">{{ player_city_stats.win_rate_percent or 0 }}%</div>
-                    <div class="stat-label">Win Rate</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_city_stats.avg_winning_score|round|int if
-                        player_city_stats.avg_winning_score else 'N/A' }}</div>
-                    <div class="stat-label">Avg Winning Score</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_city_stats.avg_losing_score|round|int if
-                        player_city_stats.avg_losing_score else 'N/A' }}</div>
-                    <div class="stat-label">Avg Losing Score</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_city_stats.avg_opponent_score_when_winning|round|int
-                        if player_city_stats.avg_opponent_score_when_winning else 'N/A' }}</div>
-                    <div class="stat-label">Opponent Score (Your Wins)</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_city_stats.avg_opponent_score_when_losing|round|int
-                        if player_city_stats.avg_opponent_score_when_losing else 'N/A' }}</div>
-                    <div class="stat-label">Opponent Score (Your Losses)</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value win-rate">{{ '+' + (player_city_stats.avg_winning_margin|round|int|string) if
-                        player_city_stats.avg_winning_margin else 'N/A' }}</div>
-                    <div class="stat-label">Avg Win Margin</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value loss-rate">{{ '-' + (player_city_stats.avg_losing_margin|round|int|string) if
-                        player_city_stats.avg_losing_margin else 'N/A' }}</div>
-                    <div class="stat-label">Avg Loss Margin</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_city_stats.earliest_game.strftime('%m/%d/%Y') if
-                        player_city_stats.earliest_game else 'N/A' }}</div>
-                    <div class="stat-label">First Game</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_city_stats.latest_game.strftime('%m/%d/%Y') if
-                        player_city_stats.latest_game else 'N/A' }}</div>
-                    <div class="stat-label">Last Game</div>
-                </div>
-            </div>
-
-            {% if player_city_stats.earliest_game %}
-            <div class="score-stat">
-                <strong>First game:</strong> {{ player_city_stats.earliest_game.strftime('%B %d, %Y at %I:%M %p') }}<br>
-                <strong>Last game:</strong> {{ player_city_stats.latest_game.strftime('%B %d, %Y at %I:%M %p') }}
-            </div>
-            {% endif %}
-        </div>
-        {% else %}
-        <div class="no-stats">
-            <h3>Your Statistics</h3>
-            <p>Complete some games to see your statistics here!</p>
-            <p>Your current IP: <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span></p>
-        </div>
-        {% endif %}
-
-        <div class="warning">
-            <strong>Note:</strong> Statistics are aggregated by geographic location to combine stats from the same
-            player across different IP addresses.
-        </div>
-
-        <div class="section">
-            <h2>Understanding Your Stats</h2>
-            <div style="line-height: 1.8;">
-                <p><strong>Game Summary:</strong></p>
-                <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li><strong>Games Started:</strong> Total number of games you've initiated</li>
-                    <li><strong>Games Completed:</strong> Games that reached a conclusion (win or loss)</li>
-                    <li><strong>Wins/Losses:</strong> Total count of games won and lost</li>
-                </ul>
-
-                <p><strong>Performance Metrics:</strong></p>
-                <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li><strong>Win Rate:</strong> Percentage of completed games you've won</li>
-                    <li><strong>Avg Winning Score:</strong> Your average final score in games you win</li>
-                    <li><strong>Avg Losing Score:</strong> Your average final score in games you lose</li>
-                </ul>
-
-                <p><strong>Scoring Analysis:</strong></p>
-                <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li><strong>Avg Win Margin:</strong> Average point difference when you win</li>
-                    <li><strong>Avg Loss Margin:</strong> Average point difference when you lose</li>
-                    <li><strong>Opponent Score When You Win:</strong> Computer's average score in your victories</li>
-                    <li><strong>Opponent Score When You Lose:</strong> Computer's average score in your defeats</li>
-                </ul>
-            </div>
-        </div>
     </div>
-
-    <script>
-        async function shareStats() {
-            const btn = document.getElementById('shareStatsBtn') || event.target;
-            const originalText = btn.textContent;
-
-            // Create shareable text with player stats
-            let statsText = '🃏 Two-Man Spades Stats 🃏\n';
-            {% if player_city_stats %}
-            statsText += 'Player: {{ player_city_stats.family_member }}\n';
-            statsText += 'Games Completed: {{ player_city_stats.total_games }}\n';
-            statsText += 'Win Rate: {{ player_city_stats.win_rate_percent or 0 }}%\n';
-            statsText += 'Wins: {{ player_city_stats.total_wins or 0 }} | Losses: {{ player_city_stats.total_losses or 0 }}\n';
-
-            {% if player_city_stats.avg_winning_score %}
-            statsText += '\n📊 When I Win:\n';
-            statsText += 'Avg Score: {{ player_city_stats.avg_winning_score|round|int }}\n';
-            {% if player_city_stats.avg_winning_margin %}
-            statsText += 'Avg Margin: +{{ player_city_stats.avg_winning_margin|round|int }}\n';
-            {% endif %}
-            {% endif %}
-            {% else %}
-            statsText += 'No completed games yet!\n';
-            {% endif %}
-
-            statsText += '\nPlay at: ' + window.location.origin;
-
-            try {
-                if (navigator.clipboard && window.isSecureContext) {
-                    await navigator.clipboard.writeText(statsText);
-                    btn.textContent = '✅ Copied!';
-                    btn.style.background = '#48bb78';
-                } else {
-                    const textArea = document.createElement('textarea');
-                    textArea.value = statsText;
-                    textArea.style.position = 'fixed';
-                    textArea.style.opacity = '0';
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    btn.textContent = '✅ Copied!';
-                    btn.style.background = '#48bb78';
-                }
-
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '#38a169';
-                }, 2000);
-
-            } catch (err) {
-                console.error('Failed to copy stats:', err);
-                btn.textContent = '❌ Copy Failed';
-                btn.style.background = '#e53e3e';
-
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '#38a169';
-                }, 2000);
-            }
-        }
-    </script>
 </body>
 
 </html>
