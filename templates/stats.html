@@ -474,25 +474,28 @@
     <div class="container">
         <h1>Player Statistics</h1>
 
-        {% if city_leaderboard %}
+        <!-- LEADERBOARD ALWAYS SHOWS FIRST -->
         <div class="section">
             <h2>Leaderboard - Top Players</h2>
             <div class="leaderboard-description">
-                Players ranked by total completed games, then by win rate. Abandoned games are excluded from all stats.
+                Players ranked by total completed games, then by win rate.
             </div>
 
+            <!-- Show leaderboard if we have any data -->
+            {% if city_leaders %}
             <div class="leaderboard-container">
                 <!-- MOBILE: Card Layout -->
                 <div class="leaderboard-cards">
-                    {% for stats in city_leaderboard %}
-                    <div class="leaderboard-card {% if stats.family_member == player_city %}current-player{% endif %}">
+                    {% for stats in city_leaders %}
+                    <div
+                        class="leaderboard-card {% if stats.family_member == player_city_stats.family_member if player_city_stats else '' %}current-player{% endif %}">
                         <div class="player-header">
                             <div class="player-rank">{{ loop.index }}</div>
                             <div class="player-info">
                                 <div class="player-name">
                                     {{ stats.family_member }}
-                                    {% if stats.family_member == player_city %}<div class="you-indicator">(You)</div>{%
-                                    endif %}
+                                    {% if player_city_stats and stats.family_member == player_city_stats.family_member
+                                    %}<div class="you-indicator">(You)</div>{% endif %}
                                 </div>
                                 <div class="games-count">{{ stats.total_games }} games completed</div>
                             </div>
@@ -544,12 +547,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for stats in city_leaderboard %}
-                        <tr {% if stats.family_member==player_city %}class="current-player" {% endif %}>
+                        {% for stats in city_leaders %}
+                        <tr {% if player_city_stats and stats.family_member==player_city_stats.family_member
+                            %}class="current-player" {% endif %}>
                             <td class="rank">{{ loop.index }}</td>
                             <td>
                                 <strong>{{ stats.family_member }}</strong>
-                                {% if stats.family_member == player_city %} (You){% endif %}
+                                {% if player_city_stats and stats.family_member == player_city_stats.family_member %}
+                                (You){% endif %}
                             </td>
                             <td class="games-count">{{ stats.total_games }}</td>
                             <td>
@@ -573,15 +578,21 @@
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <div class="no-stats">
+                <h3>No Players Yet</h3>
+                <p>Be the first to complete a game and claim the top spot!</p>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
 
+        <!-- YOUR PERFORMANCE SECTION -->
         {% if player_city_stats %}
         <div class="section">
             <h2>Your Performance</h2>
 
             <div class="highlight">
-                <strong>Playing as:</strong> {{ player_city }}<br>
+                <strong>Playing as:</strong> {{ player_city_stats.family_member }}<br>
                 <strong>Your IP:</strong> <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span>
             </div>
 
@@ -669,7 +680,7 @@
         </div>
         {% else %}
         <div class="no-stats">
-            <h3>No Statistics Available</h3>
+            <h3>Your Statistics</h3>
             <p>Complete some games to see your statistics here!</p>
             <p>Your current IP: <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span></p>
         </div>
@@ -716,7 +727,7 @@
             // Create shareable text with player stats
             let statsText = '🃏 Two-Man Spades Stats 🃏\n';
             {% if player_city_stats %}
-            statsText += 'Player: {{ player_city }}\n';
+            statsText += 'Player: {{ player_city_stats.family_member }}\n';
             statsText += 'Games Completed: {{ player_city_stats.total_games }}\n';
             statsText += 'Win Rate: {{ player_city_stats.win_rate_percent or 0 }}%\n';
             statsText += 'Wins: {{ player_city_stats.total_wins or 0 }} | Losses: {{ player_city_stats.total_losses or 0 }}\n';
