@@ -486,46 +486,47 @@
             <div class="leaderboard-container">
                 <!-- MOBILE: Card Layout -->
                 <div class="leaderboard-cards">
-                    {% for stats in city_leaders %}
+                    {% for player_stats in city_leaders %}
                     <div
-                        class="leaderboard-card {% if player_city_stats and stats.family_member == player_city_stats.family_member %}current-player{% endif %}">
+                        class="leaderboard-card {% if player_city_stats and player_stats.family_member == player_city_stats.family_member %}current-player{% endif %}">
                         <div class="player-header">
                             <div class="player-rank">{{ loop.index }}</div>
                             <div class="player-info">
                                 <div class="player-name">
-                                    {{ stats.family_member }}
-                                    {% if player_city_stats and stats.family_member == player_city_stats.family_member
+                                    {{ player_stats.family_member }}
+                                    {% if player_city_stats and player_stats.family_member ==
+                                    player_city_stats.family_member
                                     %}<div class="you-indicator">(You)</div>{% endif %}
                                 </div>
-                                <div class="games-count">{{ stats.total_games }} games completed</div>
+                                <div class="games-count">{{ player_stats.total_games }} games completed</div>
                             </div>
                         </div>
                         <div class="player-stats-grid">
                             <div class="stat-item">
                                 <div class="stat-item-label">Win Rate</div>
                                 <div
-                                    class="stat-item-value {% if stats.win_rate_percent >= 60 %}win-rate-value{% elif stats.win_rate_percent >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
-                                    {{ stats.win_rate_percent or 0 }}%
+                                    class="stat-item-value {% if (player_stats.win_rate_percent or 0) >= 60 %}win-rate-value{% elif (player_stats.win_rate_percent or 0) >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
+                                    {{ player_stats.win_rate_percent or 0 }}%
                                 </div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-item-label">Wins</div>
-                                <div class="stat-item-value">{{ stats.total_wins or 0 }}</div>
+                                <div class="stat-item-value">{{ player_stats.total_wins or 0 }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-item-label">Losses</div>
-                                <div class="stat-item-value">{{ stats.total_losses or 0 }}</div>
+                                <div class="stat-item-value">{{ player_stats.total_losses or 0 }}</div>
                             </div>
-                            {% if stats.avg_winning_score %}
+                            {% if player_stats.avg_winning_score %}
                             <div class="stat-item">
                                 <div class="stat-item-label">Avg Win Score</div>
-                                <div class="stat-item-value">{{ stats.avg_winning_score|round|int }}</div>
+                                <div class="stat-item-value">{{ player_stats.avg_winning_score|round|int }}</div>
                             </div>
                             {% endif %}
-                            {% if stats.avg_winning_margin %}
+                            {% if player_stats.avg_winning_margin %}
                             <div class="stat-item">
                                 <div class="stat-item-label">Win Margin</div>
-                                <div class="stat-item-value">+{{ stats.avg_winning_margin|round|int }}</div>
+                                <div class="stat-item-value">+{{ player_stats.avg_winning_margin|round|int }}</div>
                             </div>
                             {% endif %}
                         </div>
@@ -547,28 +548,30 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for stats in city_leaders %}
-                        <tr {% if player_city_stats and stats.family_member==player_city_stats.family_member
+                        {% for player_stats in city_leaders %}
+                        <tr {% if player_city_stats and player_stats.family_member==player_city_stats.family_member
                             %}class="current-player" {% endif %}>
                             <td class="rank">{{ loop.index }}</td>
                             <td>
-                                <strong>{{ stats.family_member }}</strong>
-                                {% if player_city_stats and stats.family_member == player_city_stats.family_member %}
+                                <strong>{{ player_stats.family_member }}</strong>
+                                {% if player_city_stats and player_stats.family_member ==
+                                player_city_stats.family_member %}
                                 (You){% endif %}
                             </td>
-                            <td class="games-count">{{ stats.total_games }}</td>
+                            <td class="games-count">{{ player_stats.total_games }}</td>
                             <td>
                                 <span
-                                    class="percentage {% if stats.win_rate_percent >= 60 %}win-rate{% elif stats.win_rate_percent >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
-                                    {{ stats.win_rate_percent or 0 }}%
+                                    class="percentage {% if (player_stats.win_rate_percent or 0) >= 60 %}win-rate{% elif (player_stats.win_rate_percent or 0) >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
+                                    {{ player_stats.win_rate_percent or 0 }}%
                                 </span>
                             </td>
-                            <td>{{ stats.total_wins or 0 }}</td>
-                            <td class="score-stat">{{ stats.avg_winning_score|round|int if stats.avg_winning_score else
+                            <td>{{ player_stats.total_wins or 0 }}</td>
+                            <td class="score-stat">{{ player_stats.avg_winning_score|round|int if
+                                player_stats.avg_winning_score else
                                 '-' }}</td>
                             <td class="score-stat">
-                                {% if stats.avg_winning_margin %}
-                                +{{ stats.avg_winning_margin|round|int }}
+                                {% if player_stats.avg_winning_margin %}
+                                +{{ player_stats.avg_winning_margin|round|int }}
                                 {% else %}
                                 -
                                 {% endif %}
