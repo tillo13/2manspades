@@ -285,9 +285,9 @@ def process_new_game_request(session, request):
     
     game = initialize_new_game_session(request)
     
-    # NEW: Process IP geolocation
-    if client_info and client_info.get('ip_address'):
-        process_ip_geolocation(client_info['ip_address'])
+    # TEMPORARILY DISABLED - FIX IMPORTS LATER
+    # if client_info and client_info.get('ip_address'):
+    #     process_ip_geolocation(client_info['ip_address'])
     
     log_game_event(
         event_type='new_game_started',
