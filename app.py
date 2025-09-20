@@ -19,7 +19,8 @@ from utilities.app_helpers import (
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
 
-from utilities.postgres_utils import get_ip_address_game_stats
+from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_player_city_membership
+
 
 
 app = Flask(__name__)
@@ -458,18 +459,27 @@ def instructions():
 
 @app.route('/stats')
 def stats():
-    """Show game statistics for the current player"""
+    """Show city-based game statistics"""
     client_ip = get_client_ip(request)
     
-    # Get stats for this specific IP
-    player_stats = get_ip_address_game_stats(client_ip)
+    # Get city leaders data (excluding 'Other')
+    city_stats = get_city_leaders_stats()
     
-    # Get overall leaderboard (top 10)
-    all_stats = get_ip_address_game_stats()[:10]
+    # Get which city this player belongs to
+    player_city = get_player_city_membership(client_ip)
+    
+    # Find this player's city stats
+    player_city_stats = None
+    if player_city != 'Other':
+        for stats in city_stats:
+            if stats['family_member'] == player_city:
+                player_city_stats = stats
+                break
     
     return render_template('stats.html', 
-                        player_stats=player_stats[0] if player_stats else None,
-                        leaderboard=all_stats,  # Just pass the list directly
+                        player_city_stats=player_city_stats,
+                        player_city=player_city,
+                        city_leaderboard=city_stats,
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')
