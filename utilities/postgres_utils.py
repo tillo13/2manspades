@@ -327,9 +327,7 @@ def get_ip_address_game_stats(client_ip: str = None) -> List[Dict[str, Any]]:
         return []
     
 def get_or_create_ip_location(ip_address: str) -> Optional[Dict[str, Any]]:
-    """
-    Get existing IP location data or return None if needs geolocation lookup
-    """
+    """Get existing IP location data or return None if needs geolocation lookup"""
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -343,18 +341,14 @@ def get_or_create_ip_location(ip_address: str) -> Optional[Dict[str, Any]]:
         cur.close()
         conn.close()
         
-        if result:
-            return dict(result)
-        return None
+        return dict(result) if result else None
         
     except Exception as e:
         print(f"Failed to get IP location data for {ip_address}: {e}")
         return None
 
 def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> bool:
-    """
-    Save IP geolocation data to database
-    """
+    """Save IP geolocation data to database"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -362,26 +356,17 @@ def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> boo
         cur.execute("""
             INSERT INTO twomanspades.ip_location_data 
             (ip_address, city, region, country, timezone, zip_code, latitude, longitude, 
-             isp, org, as_number, as_name, lookup_success, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+             isp, org, as_number, as_name, lookup_success)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (ip_address) DO UPDATE SET
                 city = EXCLUDED.city,
                 region = EXCLUDED.region,
                 country = EXCLUDED.country,
-                timezone = EXCLUDED.timezone,
-                zip_code = EXCLUDED.zip_code,
-                latitude = EXCLUDED.latitude,
-                longitude = EXCLUDED.longitude,
-                isp = EXCLUDED.isp,
-                org = EXCLUDED.org,
-                as_number = EXCLUDED.as_number,
-                as_name = EXCLUDED.as_name,
-                lookup_success = EXCLUDED.lookup_success,
                 updated_at = NOW()
         """, (
             ip_address,
             location_data.get('city'),
-            location_data.get('region'),
+            location_data.get('region'), 
             location_data.get('country'),
             location_data.get('timezone'),
             location_data.get('zip'),
@@ -401,69 +386,4 @@ def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> boo
         
     except Exception as e:
         print(f"Failed to save IP location data for {ip_address}: {e}")
-        try:
-            if 'conn' in locals():
-                conn.close()
-        except:
-            pass
-        return False
-
-def update_ip_activity_stats(ip_address: str, total_activities: int, 
-                           first_seen: datetime, last_seen: datetime) -> bool:
-    """
-    Update activity statistics for an IP address
-    """
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Calculate derived fields
-        activity_span = (last_seen - first_seen).days + 1
-        activities_per_day = round(total_activities / activity_span, 2) if activity_span > 0 else 0
-        
-        # Determine player type
-        if total_activities >= 1000:
-            player_type = "Heavy Player"
-        elif total_activities >= 100:
-            player_type = "Regular Player"
-        elif total_activities >= 10:
-            player_type = "Casual Player"
-        else:
-            player_type = "Light Player"
-        
-        cur.execute("""
-            UPDATE twomanspades.ip_location_data 
-            SET total_activities = %s,
-                first_seen_date = %s,
-                first_seen_time = %s,
-                last_seen_date = %s,
-                last_seen_time = %s,
-                activity_span_days = %s,
-                activities_per_day = %s,
-                player_type = %s,
-                first_seen_timestamp = %s,
-                last_seen_timestamp = %s,
-                updated_at = NOW()
-            WHERE ip_address = %s
-        """, (
-            total_activities,
-            first_seen.date(),
-            first_seen.time(),
-            last_seen.date(),
-            last_seen.time(),
-            activity_span,
-            activities_per_day,
-            player_type,
-            first_seen,
-            last_seen,
-            ip_address
-        ))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        return True
-        
-    except Exception as e:
-        print(f"Failed to update IP activity stats for {ip_address}: {e}")
         return False

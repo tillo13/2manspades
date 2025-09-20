@@ -29,28 +29,24 @@ from .logging_utils import flush_hand_events
 
 
 def process_ip_geolocation(client_ip: str):
-    """
-    Process IP geolocation lookup - check cache first, then queue background lookup if needed
-    """
+    """Process IP geolocation lookup - check cache first, then queue background lookup if needed"""
     if not client_ip or client_ip == 'unknown':
         return
     
-    from .postgres_utils import get_or_create_ip_location, queue_db_operation
+    from .postgres_utils import get_or_create_ip_location
+    from .logging_utils import queue_db_operation
     
     # Check if we already have location data for this IP
     existing_data = get_or_create_ip_location(client_ip)
     
     if existing_data and existing_data.get('lookup_success'):
-        print(f"[GEO] IP {client_ip} already has location data: {existing_data.get('city')}, {existing_data.get('country')}")
+        print(f"[GEO] IP {client_ip} already has location data")
         return existing_data
     
     # Queue background geolocation lookup
     if IS_PRODUCTION:
-        from .logging_utils import queue_db_operation
         queue_db_operation(_perform_ip_geolocation_lookup, client_ip)
         print(f"[GEO] Queued geolocation lookup for new IP: {client_ip}")
-    else:
-        print(f"[GEO] Would queue geolocation lookup for {client_ip} (development mode)")
     
     return None
 
@@ -284,10 +280,9 @@ def process_new_game_request(session, request):
         finalize_game_logging(session['game'])
     
     game = initialize_new_game_session(request)
-    
-    # TEMPORARILY DISABLED - FIX IMPORTS LATER
-    # if client_info and client_info.get('ip_address'):
-    #     process_ip_geolocation(client_info['ip_address'])
+
+    if client_info and client_info.get('ip_address'):
+        process_ip_geolocation(client_info['ip_address'])
     
     log_game_event(
         event_type='new_game_started',
