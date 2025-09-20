@@ -280,7 +280,8 @@ def process_new_game_request(session, request):
         finalize_game_logging(session['game'])
     
     game = initialize_new_game_session(request)
-
+    
+    # UNCOMMENT THIS LINE:
     if client_info and client_info.get('ip_address'):
         process_ip_geolocation(client_info['ip_address'])
     
