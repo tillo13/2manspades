@@ -34,10 +34,36 @@ def process_ip_geolocation(client_ip: str):
     
     # Always queue background geolocation lookup for production
     if IS_PRODUCTION:
-        queue_db_operation(_perform_ip_geolocation_lookup, client_ip)
-        print(f"[GEO] Queued geolocation lookup for IP: {client_ip}")
+        queue_db_operation(_check_and_perform_ip_geolocation, client_ip)
+        print(f"[GEO] Queued geolocation check for IP: {client_ip}")
     
     return None
+
+def _check_and_perform_ip_geolocation(ip_address: str):
+    """Check if IP exists in database, only call API if missing"""
+    try:
+        from .postgres_utils import get_db_connection
+        
+        # Check if we already have data for this IP
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT ip_address FROM twomanspades.ip_location_data WHERE ip_address = %s", (ip_address,))
+        existing = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if existing:
+            print(f"[GEO] IP {ip_address} already in database, skipping API call")
+            return True
+        
+        # No existing data, proceed with API call
+        print(f"[GEO] IP {ip_address} not found, calling API...")
+        return _perform_ip_geolocation_lookup(ip_address)
+        
+    except Exception as e:
+        print(f"[GEO] Database check failed for {ip_address}: {e}")
+        # Fall back to API call if database check fails
+        return _perform_ip_geolocation_lookup(ip_address)
 
 def _perform_ip_geolocation_lookup(ip_address: str):
     """

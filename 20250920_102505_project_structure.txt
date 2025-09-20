@@ -2905,72 +2905,45 @@ def get_ip_address_game_stats(client_ip: str = None) -> List[Dict[str, Any]]:
         print(f"Failed to get game stats: {e}")
         return []
     
-def get_or_create_ip_location(ip_address: str) -> Optional[Dict[str, Any]]:
-    """
-    Get existing IP location data or return None if needs geolocation lookup
-    """
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cur.execute("""
-            SELECT * FROM twomanspades.ip_location_data 
-            WHERE ip_address = %s
-        """, (ip_address,))
-        
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        
-        if result:
-            return dict(result)
-        return None
-        
-    except Exception as e:
-        print(f"Failed to get IP location data for {ip_address}: {e}")
-        return None
+# Replace the save_ip_location_data function in postgres_utils.py
 
 def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> bool:
-    """
-    Save IP geolocation data to database
-    """
+    """Save IP location data - ONLY data that comes from the IP API call"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
             INSERT INTO twomanspades.ip_location_data 
-            (ip_address, city, region, country, timezone, zip_code, latitude, longitude, 
-             isp, org, as_number, as_name, lookup_success, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            (ip_address, country, region, city, latitude, longitude, timezone, zip_code,
+             isp, org, as_info, lookup_success)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (ip_address) DO UPDATE SET
-                city = EXCLUDED.city,
-                region = EXCLUDED.region,
                 country = EXCLUDED.country,
-                timezone = EXCLUDED.timezone,
-                zip_code = EXCLUDED.zip_code,
+                region = EXCLUDED.region,
+                city = EXCLUDED.city,
                 latitude = EXCLUDED.latitude,
                 longitude = EXCLUDED.longitude,
+                timezone = EXCLUDED.timezone,
+                zip_code = EXCLUDED.zip_code,
                 isp = EXCLUDED.isp,
                 org = EXCLUDED.org,
-                as_number = EXCLUDED.as_number,
-                as_name = EXCLUDED.as_name,
+                as_info = EXCLUDED.as_info,
                 lookup_success = EXCLUDED.lookup_success,
-                updated_at = NOW()
+                created_at = NOW()
         """, (
             ip_address,
-            location_data.get('city'),
-            location_data.get('region'),
             location_data.get('country'),
-            location_data.get('timezone'),
-            location_data.get('zip'),
+            location_data.get('region'),
+            location_data.get('city'),
             location_data.get('lat'),
             location_data.get('lon'),
+            location_data.get('timezone'),
+            location_data.get('zip'),
             location_data.get('isp'),
             location_data.get('org'),
-            location_data.get('as', '').split(' ')[0] if location_data.get('as') else None,
-            ' '.join(location_data.get('as', '').split(' ')[1:]) if location_data.get('as') else None,
-            True
+            location_data.get('as'),  # Store the full AS string
+            True  # lookup_success
         ))
         
         conn.commit()
@@ -2982,61 +2955,25 @@ def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> boo
         print(f"Failed to save IP location data for {ip_address}: {e}")
         try:
             if 'conn' in locals():
+                conn.rollback()
                 conn.close()
         except:
             pass
         return False
 
-def update_ip_activity_stats(ip_address: str, total_activities: int, 
-                           first_seen: datetime, last_seen: datetime) -> bool:
-    """
-    Update activity statistics for an IP address
-    """
+def save_failed_ip_lookup(ip_address: str) -> bool:
+    """Save a record for failed IP lookup"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Calculate derived fields
-        activity_span = (last_seen - first_seen).days + 1
-        activities_per_day = round(total_activities / activity_span, 2) if activity_span > 0 else 0
-        
-        # Determine player type
-        if total_activities >= 1000:
-            player_type = "Heavy Player"
-        elif total_activities >= 100:
-            player_type = "Regular Player"
-        elif total_activities >= 10:
-            player_type = "Casual Player"
-        else:
-            player_type = "Light Player"
-        
         cur.execute("""
-            UPDATE twomanspades.ip_location_data 
-            SET total_activities = %s,
-                first_seen_date = %s,
-                first_seen_time = %s,
-                last_seen_date = %s,
-                last_seen_time = %s,
-                activity_span_days = %s,
-                activities_per_day = %s,
-                player_type = %s,
-                first_seen_timestamp = %s,
-                last_seen_timestamp = %s,
-                updated_at = NOW()
-            WHERE ip_address = %s
-        """, (
-            total_activities,
-            first_seen.date(),
-            first_seen.time(),
-            last_seen.date(),
-            last_seen.time(),
-            activity_span,
-            activities_per_day,
-            player_type,
-            first_seen,
-            last_seen,
-            ip_address
-        ))
+            INSERT INTO twomanspades.ip_location_data (ip_address, lookup_success)
+            VALUES (%s, %s)
+            ON CONFLICT (ip_address) DO UPDATE SET
+                lookup_success = EXCLUDED.lookup_success,
+                created_at = NOW()
+        """, (ip_address, False))
         
         conn.commit()
         cur.close()
@@ -3044,7 +2981,7 @@ def update_ip_activity_stats(ip_address: str, total_activities: int,
         return True
         
     except Exception as e:
-        print(f"Failed to update IP activity stats for {ip_address}: {e}")
+        print(f"Failed to save failed lookup for {ip_address}: {e}")
         return False
 
 ================================================================================
@@ -3592,44 +3529,30 @@ from .computer_logic import (
 from .logging_utils import initialize_game_logging_with_client, finalize_game_logging, flush_hand_events
 
 
-# Flush batched events to database  
-from .logging_utils import flush_hand_events
 
 
 # =============================================================================
 # CONTENT FILTERING
 # =============================================================================
 
-
 def process_ip_geolocation(client_ip: str):
-    """
-    Process IP geolocation lookup - check cache first, then queue background lookup if needed
-    """
+    """Process IP geolocation lookup - queue background lookup if needed"""
     if not client_ip or client_ip == 'unknown':
         return
     
-    from .postgres_utils import get_or_create_ip_location, queue_db_operation
+    from .logging_utils import queue_db_operation
     
-    # Check if we already have location data for this IP
-    existing_data = get_or_create_ip_location(client_ip)
-    
-    if existing_data and existing_data.get('lookup_success'):
-        print(f"[GEO] IP {client_ip} already has location data: {existing_data.get('city')}, {existing_data.get('country')}")
-        return existing_data
-    
-    # Queue background geolocation lookup
+    # Always queue background geolocation lookup for production
     if IS_PRODUCTION:
-        from .logging_utils import queue_db_operation
         queue_db_operation(_perform_ip_geolocation_lookup, client_ip)
-        print(f"[GEO] Queued geolocation lookup for new IP: {client_ip}")
-    else:
-        print(f"[GEO] Would queue geolocation lookup for {client_ip} (development mode)")
+        print(f"[GEO] Queued geolocation lookup for IP: {client_ip}")
     
     return None
 
 def _perform_ip_geolocation_lookup(ip_address: str):
     """
     Background worker function to perform actual geolocation API call
+    Saves ONLY the data returned from the IP API - no calculated fields
     """
     import urllib.request
     import urllib.error
@@ -3637,9 +3560,9 @@ def _perform_ip_geolocation_lookup(ip_address: str):
     import time
     
     try:
-        print(f"[GEO] Starting background geolocation lookup for {ip_address}")
+        print(f"[GEO] Starting geolocation lookup for {ip_address}")
         
-        # Use same API as your geolocation script
+        # Use ip-api.com
         url = f"http://ip-api.com/json/{ip_address}"
         
         request = urllib.request.Request(url)
@@ -3650,17 +3573,18 @@ def _perform_ip_geolocation_lookup(ip_address: str):
                 data = json.loads(response.read().decode('utf-8'))
                 
                 if data.get('status') == 'success':
+                    # Extract ALL the data from the API response
                     location_data = {
                         'country': data.get('country', 'Unknown'),
-                        'region': data.get('regionName', 'Unknown'),
+                        'region': data.get('regionName', 'Unknown'),  # Note: API returns 'regionName'
                         'city': data.get('city', 'Unknown'),
-                        'isp': data.get('isp', 'Unknown'),
                         'lat': data.get('lat', 0),
                         'lon': data.get('lon', 0),
                         'timezone': data.get('timezone', 'Unknown'),
                         'zip': data.get('zip', 'Unknown'),
-                        'org': data.get('org', data.get('isp', 'Unknown')),
-                        'as': data.get('as', 'Unknown')
+                        'isp': data.get('isp', 'Unknown'),
+                        'org': data.get('org', data.get('isp', 'Unknown')),  # Fallback to ISP if org missing
+                        'as': data.get('as', 'Unknown')  # Full AS string like "AS7922 Comcast Cable Communications, LLC"
                     }
                     
                     from .postgres_utils import save_ip_location_data
@@ -3674,6 +3598,10 @@ def _perform_ip_geolocation_lookup(ip_address: str):
                     return success
                 else:
                     print(f"[GEO] API returned failure for {ip_address}: {data.get('message', 'Unknown error')}")
+                    
+                    # Save failed lookup record
+                    from .postgres_utils import save_failed_ip_lookup
+                    save_failed_ip_lookup(ip_address)
                     return False
             else:
                 print(f"[GEO] HTTP error {response.getcode()} for {ip_address}")
@@ -3858,7 +3786,7 @@ def process_new_game_request(session, request):
     
     game = initialize_new_game_session(request)
     
-    # NEW: Process IP geolocation
+    # UNCOMMENT THIS LINE:
     if client_info and client_info.get('ip_address'):
         process_ip_geolocation(client_info['ip_address'])
     
