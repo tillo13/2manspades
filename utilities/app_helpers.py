@@ -48,9 +48,12 @@ def process_ip_geolocation(client_ip: str):
     
     return None
 
+# Replace the _perform_ip_geolocation_lookup function in app_helpers.py
+
 def _perform_ip_geolocation_lookup(ip_address: str):
     """
     Background worker function to perform actual geolocation API call
+    Saves ONLY the data returned from the IP API - no calculated fields
     """
     import urllib.request
     import urllib.error
@@ -58,9 +61,9 @@ def _perform_ip_geolocation_lookup(ip_address: str):
     import time
     
     try:
-        print(f"[GEO] Starting background geolocation lookup for {ip_address}")
+        print(f"[GEO] Starting geolocation lookup for {ip_address}")
         
-        # Use same API as your geolocation script
+        # Use ip-api.com
         url = f"http://ip-api.com/json/{ip_address}"
         
         request = urllib.request.Request(url)
@@ -71,17 +74,18 @@ def _perform_ip_geolocation_lookup(ip_address: str):
                 data = json.loads(response.read().decode('utf-8'))
                 
                 if data.get('status') == 'success':
+                    # Extract ALL the data from the API response
                     location_data = {
                         'country': data.get('country', 'Unknown'),
-                        'region': data.get('regionName', 'Unknown'),
+                        'region': data.get('regionName', 'Unknown'),  # Note: API returns 'regionName'
                         'city': data.get('city', 'Unknown'),
-                        'isp': data.get('isp', 'Unknown'),
                         'lat': data.get('lat', 0),
                         'lon': data.get('lon', 0),
                         'timezone': data.get('timezone', 'Unknown'),
                         'zip': data.get('zip', 'Unknown'),
-                        'org': data.get('org', data.get('isp', 'Unknown')),
-                        'as': data.get('as', 'Unknown')
+                        'isp': data.get('isp', 'Unknown'),
+                        'org': data.get('org', data.get('isp', 'Unknown')),  # Fallback to ISP if org missing
+                        'as': data.get('as', 'Unknown')  # Full AS string like "AS7922 Comcast Cable Communications, LLC"
                     }
                     
                     from .postgres_utils import save_ip_location_data
@@ -95,6 +99,10 @@ def _perform_ip_geolocation_lookup(ip_address: str):
                     return success
                 else:
                     print(f"[GEO] API returned failure for {ip_address}: {data.get('message', 'Unknown error')}")
+                    
+                    # Save failed lookup record
+                    from .postgres_utils import save_failed_ip_lookup
+                    save_failed_ip_lookup(ip_address)
                     return False
             else:
                 print(f"[GEO] HTTP error {response.getcode()} for {ip_address}")
