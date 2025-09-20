@@ -147,26 +147,28 @@
                 </thead>
                 <tbody>
                     {% for stats in city_leaders %}
-                    <tr {% if player_city_stats and stats.family_member==player_city_stats.family_member
+                    <tr {% if player_city_stats and stats.get('family_member')==player_city_stats.get('family_member')
                         %}class="current-player" {% endif %}>
                         <td class="rank">{{ loop.index }}</td>
                         <td>
-                            <strong>{{ stats.family_member }}</strong>
-                            {% if player_city_stats and stats.family_member == player_city_stats.family_member %}
+                            <strong>{{ stats.get('family_member', '') }}</strong>
+                            {% if player_city_stats and stats.get('family_member') ==
+                            player_city_stats.get('family_member') %}
                             (You){% endif %}
                         </td>
-                        <td>{{ stats.total_games }}</td>
+                        <td>{{ stats.get('total_games', 0) }}</td>
                         <td>
                             <span
-                                class="percentage {% if stats.win_rate_percent >= 60 %}win-rate{% elif stats.win_rate_percent >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
-                                {{ stats.win_rate_percent or 0 }}%
+                                class="percentage {% if stats.get('win_rate_percent', 0) >= 60 %}win-rate{% elif stats.get('win_rate_percent', 0) >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
+                                {{ stats.get('win_rate_percent', 0) }}%
                             </span>
                         </td>
-                        <td>{{ stats.total_wins or 0 }}</td>
-                        <td>{{ stats.avg_winning_score|round|int if stats.avg_winning_score else '-' }}</td>
+                        <td>{{ stats.get('total_wins', 0) }}</td>
+                        <td>{{ stats.get('avg_winning_score')|round|int if stats.get('avg_winning_score') else '-' }}
+                        </td>
                         <td>
-                            {% if stats.avg_winning_margin %}
-                            +{{ stats.avg_winning_margin|round|int }}
+                            {% if stats.get('avg_winning_margin') %}
+                            +{{ stats.get('avg_winning_margin')|round|int }}
                             {% else %}
                             -
                             {% endif %}
