@@ -2,6 +2,10 @@
 .DS_Store
 
 #venv
+# Virtual environments
+venv_2man/
+venv/
+.venv/
 
 #json keys
 /json_keys

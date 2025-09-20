@@ -31,7 +31,7 @@ EXCLUDED_DIRECTORIES = [
     "projects",
     "tools",
     "revisions_app",
-    "venv_de",
+    "venv_2man",
     ".git",
     "archives"
 
