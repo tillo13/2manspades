@@ -171,17 +171,6 @@
             word-break: break-all;
         }
 
-        .ip-address {
-            font-family: 'Courier New', monospace;
-            background: #edf2f7;
-            padding: 4px 6px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            word-break: break-all;
-            display: inline-block;
-            max-width: 100%;
-        }
-
         .section {
             margin-bottom: 30px;
         }
@@ -483,214 +472,6 @@
     <div class="container">
         <h1>Player Statistics</h1>
 
-        {% if player_stats %}
-        <div class="section">
-            <h2>Your Performance</h2>
-
-            <div class="highlight">
-                <strong>Playing as:</strong> <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:]
-                    }}</span>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value games-count">{{ player_stats.games_started or 0 }}</div>
-                    <div class="stat-label">Games Started</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value games-count">{{ player_stats.total_games or 0 }}</div>
-                    <div class="stat-label">Games Completed</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value win-rate">{{ player_stats.wins or 0 }}</div>
-                    <div class="stat-label">Wins</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value loss-rate">{{ player_stats.losses or 0 }}</div>
-                    <div class="stat-label">Losses</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value win-rate">{{ player_stats.win_rate or 0 }}%</div>
-                    <div class="stat-label">Win Rate</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.avg_winning_score|round|int if
-                        player_stats.avg_winning_score else 'N/A' }}</div>
-                    <div class="stat-label">Avg Winning Score</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.avg_losing_score|round|int if
-                        player_stats.avg_losing_score else 'N/A' }}</div>
-                    <div class="stat-label">Avg Losing Score</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.avg_opponent_score_when_winning|round|int if
-                        player_stats.avg_opponent_score_when_winning else 'N/A' }}</div>
-                    <div class="stat-label">Opponent Score (Your Wins)</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.avg_opponent_score_when_losing|round|int if
-                        player_stats.avg_opponent_score_when_losing else 'N/A' }}</div>
-                    <div class="stat-label">Opponent Score (Your Losses)</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value win-rate">{{ '+' + (player_stats.avg_winning_margin|round|int|string) if
-                        player_stats.avg_winning_margin else 'N/A' }}</div>
-                    <div class="stat-label">Avg Win Margin</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value loss-rate">{{ '-' + (player_stats.avg_losing_margin|round|int|string) if
-                        player_stats.avg_losing_margin else 'N/A' }}</div>
-                    <div class="stat-label">Avg Loss Margin</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.first_game.strftime('%m/%d/%Y') if
-                        player_stats.first_game else 'N/A' }}</div>
-                    <div class="stat-label">First Game</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.last_game.strftime('%m/%d/%Y') if
-                        player_stats.last_game else 'N/A' }}</div>
-                    <div class="stat-label">Last Game</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</div>
-                    <div class="stat-label">Player ID</div>
-                </div>
-            </div>
-
-            {% if player_stats.first_game %}
-            <div class="score-stat">
-                <strong>First game:</strong> {{ player_stats.first_game.strftime('%B %d, %Y at %I:%M %p') }}<br>
-                <strong>Last game:</strong> {{ player_stats.last_game.strftime('%B %d, %Y at %I:%M %p') }}
-            </div>
-            {% endif %}
-        </div>
-        {% else %}
-        <div class="no-stats">
-            <h3>No Statistics Available</h3>
-            <p>Complete some games to see your statistics here!</p>
-            <p>Your current IP: <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span></p>
-        </div>
-        {% endif %}
-
-        {% if leaderboard %}
-        <div class="section">
-            <h2>Leaderboard - Top Players</h2>
-            <div class="leaderboard-description">
-                Players ranked by total games completed, then by win rate.
-            </div>
-
-            <div class="leaderboard-container">
-                <!-- MOBILE: Card Layout -->
-                <div class="leaderboard-cards">
-                    {% for stats in leaderboard %}
-                    <div class="leaderboard-card {% if stats.client_ip == current_ip %}current-player{% endif %}">
-                        <div class="player-header">
-                            <div class="player-rank">{{ loop.index }}</div>
-                            <div class="player-info">
-                                <div class="player-name">
-                                    {{ stats.client_ip[:3] }}***{{ stats.client_ip[-3:] }}
-                                    {% if stats.client_ip == current_ip %}<div class="you-indicator">(You)</div>{% endif
-                                    %}
-                                </div>
-                                <div class="games-count">{{ stats.total_games }} games</div>
-                            </div>
-                        </div>
-                        <div class="player-stats-grid">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Win Rate</div>
-                                <div
-                                    class="stat-item-value {% if stats.win_rate and stats.win_rate >= 60 %}win-rate-value{% elif stats.win_rate and stats.win_rate >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
-                                    {{ stats.win_rate or 0 }}%
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Wins</div>
-                                <div class="stat-item-value">{{ stats.wins or 0 }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Losses</div>
-                                <div class="stat-item-value">{{ stats.losses or 0 }}</div>
-                            </div>
-                            {% if stats.avg_winning_score %}
-                            <div class="stat-item">
-                                <div class="stat-item-label">Avg Score</div>
-                                <div class="stat-item-value">{{ stats.avg_winning_score|round|int }}</div>
-                            </div>
-                            {% endif %}
-                            {% if stats.avg_winning_margin %}
-                            <div class="stat-item">
-                                <div class="stat-item-label">Margin</div>
-                                <div class="stat-item-value">+{{ stats.avg_winning_margin|round|int }}</div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- DESKTOP: Table Layout -->
-                <table class="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th class="rank" style="width: 8%;">Rank</th>
-                            <th style="width: 25%;">Player</th>
-                            <th style="width: 12%;">Games</th>
-                            <th style="width: 15%;">Win Rate</th>
-                            <th style="width: 10%;">Wins</th>
-                            <th style="width: 10%;">Losses</th>
-                            <th style="width: 10%;">Avg Score</th>
-                            <th style="width: 10%;">Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for stats in leaderboard %}
-                        <tr {% if stats.client_ip==current_ip %}class="current-player" {% endif %}>
-                            <td class="rank">{{ loop.index }}</td>
-                            <td>
-                                <span class="ip-address">{{ stats.client_ip[:3] }}***{{ stats.client_ip[-3:] }}</span>
-                                {% if stats.client_ip == current_ip %}<strong> (You)</strong>{% endif %}
-                            </td>
-                            <td class="games-count">{{ stats.total_games }}</td>
-                            <td>
-                                <span
-                                    class="percentage {% if stats.win_rate and stats.win_rate >= 60 %}win-rate{% elif stats.win_rate and stats.win_rate >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
-                                    {{ stats.win_rate or 0 }}%
-                                </span>
-                            </td>
-                            <td>{{ stats.wins or 0 }}</td>
-                            <td>{{ stats.losses or 0 }}</td>
-                            <td class="score-stat">{{ stats.avg_winning_score|round|int if stats.avg_winning_score else
-                                '-' }}</td>
-                            <td class="score-stat">
-                                {% if stats.avg_winning_margin %}
-                                +{{ stats.avg_winning_margin|round|int }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-
         {% if city_leaders %}
         <div class="section">
             <h2>City Leaders</h2>
@@ -765,10 +546,202 @@
         </div>
         {% endif %}
 
-        <div class="warning">
-            <strong>Note:</strong> We don't have a login, so we're guessing a bit based on your IP address as to your
-            stats. Maybe I make something that combines them for known stats at some point. Meh.
+        {% if leaderboard %}
+        <div class="section">
+            <h2>Leaderboard - Top Players</h2>
+            <div class="leaderboard-description">
+                Players ranked by total games completed, then by win rate.
+            </div>
+
+            <div class="leaderboard-container">
+                <!-- MOBILE: Card Layout -->
+                <div class="leaderboard-cards">
+                    {% for stats in leaderboard %}
+                    <div class="leaderboard-card {% if stats.client_ip == current_ip %}current-player{% endif %}">
+                        <div class="player-header">
+                            <div class="player-rank">{{ loop.index }}</div>
+                            <div class="player-info">
+                                <div class="player-name">
+                                    Player {{ loop.index }}
+                                    {% if stats.client_ip == current_ip %}<div class="you-indicator">(You)</div>{% endif
+                                    %}
+                                </div>
+                                <div class="games-count">{{ stats.total_games }} games</div>
+                            </div>
+                        </div>
+                        <div class="player-stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-item-label">Win Rate</div>
+                                <div
+                                    class="stat-item-value {% if stats.win_rate and stats.win_rate >= 60 %}win-rate-value{% elif stats.win_rate and stats.win_rate >= 40 %}neutral-rate-value{% else %}loss-rate-value{% endif %}">
+                                    {{ stats.win_rate or 0 }}%
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Wins</div>
+                                <div class="stat-item-value">{{ stats.wins or 0 }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Losses</div>
+                                <div class="stat-item-value">{{ stats.losses or 0 }}</div>
+                            </div>
+                            {% if stats.avg_winning_score %}
+                            <div class="stat-item">
+                                <div class="stat-item-label">Avg Score</div>
+                                <div class="stat-item-value">{{ stats.avg_winning_score|round|int }}</div>
+                            </div>
+                            {% endif %}
+                            {% if stats.avg_winning_margin %}
+                            <div class="stat-item">
+                                <div class="stat-item-label">Margin</div>
+                                <div class="stat-item-value">+{{ stats.avg_winning_margin|round|int }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- DESKTOP: Table Layout -->
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th class="rank" style="width: 8%;">Rank</th>
+                            <th style="width: 25%;">Player</th>
+                            <th style="width: 12%;">Games</th>
+                            <th style="width: 15%;">Win Rate</th>
+                            <th style="width: 10%;">Wins</th>
+                            <th style="width: 10%;">Losses</th>
+                            <th style="width: 10%;">Avg Score</th>
+                            <th style="width: 10%;">Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stats in leaderboard %}
+                        <tr {% if stats.client_ip==current_ip %}class="current-player" {% endif %}>
+                            <td class="rank">{{ loop.index }}</td>
+                            <td>
+                                <strong>Player {{ loop.index }}</strong>
+                                {% if stats.client_ip == current_ip %}<strong> (You)</strong>{% endif %}
+                            </td>
+                            <td class="games-count">{{ stats.total_games }}</td>
+                            <td>
+                                <span
+                                    class="percentage {% if stats.win_rate and stats.win_rate >= 60 %}win-rate{% elif stats.win_rate and stats.win_rate >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
+                                    {{ stats.win_rate or 0 }}%
+                                </span>
+                            </td>
+                            <td>{{ stats.wins or 0 }}</td>
+                            <td>{{ stats.losses or 0 }}</td>
+                            <td class="score-stat">{{ stats.avg_winning_score|round|int if stats.avg_winning_score else
+                                '-' }}</td>
+                            <td class="score-stat">
+                                {% if stats.avg_winning_margin %}
+                                +{{ stats.avg_winning_margin|round|int }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+        {% endif %}
+
+        {% if player_stats %}
+        <div class="section">
+            <h2>Your Performance</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value games-count">{{ player_stats.games_started or 0 }}</div>
+                    <div class="stat-label">Games Started</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value games-count">{{ player_stats.total_games or 0 }}</div>
+                    <div class="stat-label">Games Completed</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value win-rate">{{ player_stats.wins or 0 }}</div>
+                    <div class="stat-label">Wins</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value loss-rate">{{ player_stats.losses or 0 }}</div>
+                    <div class="stat-label">Losses</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value win-rate">{{ player_stats.win_rate or 0 }}%</div>
+                    <div class="stat-label">Win Rate</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value neutral-rate">{{ player_stats.avg_winning_score|round|int if
+                        player_stats.avg_winning_score else 'N/A' }}</div>
+                    <div class="stat-label">Avg Winning Score</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value neutral-rate">{{ player_stats.avg_losing_score|round|int if
+                        player_stats.avg_losing_score else 'N/A' }}</div>
+                    <div class="stat-label">Avg Losing Score</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value neutral-rate">{{ player_stats.avg_opponent_score_when_winning|round|int if
+                        player_stats.avg_opponent_score_when_winning else 'N/A' }}</div>
+                    <div class="stat-label">Opponent Score (Your Wins)</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value neutral-rate">{{ player_stats.avg_opponent_score_when_losing|round|int if
+                        player_stats.avg_opponent_score_when_losing else 'N/A' }}</div>
+                    <div class="stat-label">Opponent Score (Your Losses)</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value win-rate">{{ '+' + (player_stats.avg_winning_margin|round|int|string) if
+                        player_stats.avg_winning_margin else 'N/A' }}</div>
+                    <div class="stat-label">Avg Win Margin</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value loss-rate">{{ '-' + (player_stats.avg_losing_margin|round|int|string) if
+                        player_stats.avg_losing_margin else 'N/A' }}</div>
+                    <div class="stat-label">Avg Loss Margin</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value neutral-rate">{{ player_stats.first_game.strftime('%m/%d/%Y') if
+                        player_stats.first_game else 'N/A' }}</div>
+                    <div class="stat-label">First Game</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-value neutral-rate">{{ player_stats.last_game.strftime('%m/%d/%Y') if
+                        player_stats.last_game else 'N/A' }}</div>
+                    <div class="stat-label">Last Game</div>
+                </div>
+            </div>
+
+            {% if player_stats.first_game %}
+            <div class="score-stat">
+                <strong>First game:</strong> {{ player_stats.first_game.strftime('%B %d, %Y at %I:%M %p') }}<br>
+                <strong>Last game:</strong> {{ player_stats.last_game.strftime('%B %d, %Y at %I:%M %p') }}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="no-stats">
+            <h3>No Statistics Available</h3>
+            <p>Complete some games to see your statistics here!</p>
+        </div>
+        {% endif %}
 
         <div class="section">
             <h2>Understanding Your Stats</h2>
