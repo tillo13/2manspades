@@ -25,30 +25,19 @@ from .logging_utils import initialize_game_logging_with_client, finalize_game_lo
 # CONTENT FILTERING
 # =============================================================================
 
-
 def process_ip_geolocation(client_ip: str):
-    """Process IP geolocation lookup - check cache first, then queue background lookup if needed"""
+    """Process IP geolocation lookup - queue background lookup if needed"""
     if not client_ip or client_ip == 'unknown':
         return
     
-    from .postgres_utils import get_or_create_ip_location
     from .logging_utils import queue_db_operation
     
-    # Check if we already have location data for this IP
-    existing_data = get_or_create_ip_location(client_ip)
-    
-    if existing_data and existing_data.get('lookup_success'):
-        print(f"[GEO] IP {client_ip} already has location data")
-        return existing_data
-    
-    # Queue background geolocation lookup
+    # Always queue background geolocation lookup for production
     if IS_PRODUCTION:
         queue_db_operation(_perform_ip_geolocation_lookup, client_ip)
-        print(f"[GEO] Queued geolocation lookup for new IP: {client_ip}")
+        print(f"[GEO] Queued geolocation lookup for IP: {client_ip}")
     
     return None
-
-# Replace the _perform_ip_geolocation_lookup function in app_helpers.py
 
 def _perform_ip_geolocation_lookup(ip_address: str):
     """
