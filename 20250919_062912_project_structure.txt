@@ -559,6 +559,7 @@ def choose_blind_bidding():
     )
     
     game['phase'] = 'blind_bidding'
+    game['blind_decision_made'] = True  # CRITICAL: Mark decision as made
     game['message'] = 'Choose your blind bid amount (5-10 tricks). Double points if you make it, double penalty if you fail!'
     
     session.modified = True
@@ -583,8 +584,43 @@ def choose_normal_bidding():
         request=request
     )
     
-    game['phase'] = 'discard'
-    game['message'] = 'You chose normal bidding. Select a card to discard.'
+    # CRITICAL FIXES:
+    game['phase'] = 'bidding'  # Changed from 'discard' to 'bidding'
+    game['blind_decision_made'] = True  # Mark decision as made
+    
+    # Handle computer bidding if computer goes first
+    first_leader = game.get('first_leader', 'player')
+    
+    if first_leader == 'computer':
+        from utilities.computer_logic import computer_bidding_brain
+        computer_bid, computer_is_blind = computer_bidding_brain(
+            game['computer_hand'], 
+            None,
+            game
+        )
+        game['computer_bid'] = computer_bid
+        
+        if computer_is_blind:
+            game['computer_blind_bid'] = computer_bid
+            computer_blind_text = " (BLIND)"
+            log_action(
+                action_type='blind_bid',
+                player='computer',
+                action_data={'bid_amount': computer_bid, 'bid_first': True},
+                session=session
+            )
+        else:
+            computer_blind_text = ""
+            log_action(
+                action_type='regular_bid',
+                player='computer',
+                action_data={'bid_amount': computer_bid, 'bid_first': True},
+                session=session
+            )
+        
+        game['message'] = f'You chose normal bidding. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+    else:
+        game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
     
     session.modified = True
     return jsonify({'success': True})
@@ -1523,6 +1559,7 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
     
     return game
 
+
 def init_new_hand(game):
     """Start a new hand while preserving scores, bags, and parity assignments"""
     deck = create_deck()
@@ -1532,13 +1569,13 @@ def init_new_hand(game):
     current_first_leader = game.get('first_leader', 'player')
     next_first_leader = 'computer' if current_first_leader == 'player' else 'player'
     
-    # Check blind bidding eligibility using display scores (what players actually see)
+    # Get current scores and bags for blind eligibility check
     player_base_score = game.get('player_score', 0)
     computer_base_score = game.get('computer_score', 0)
     player_bags = game.get('player_bags', 0)
     computer_bags = game.get('computer_bags', 0)
     
-    # Calculate display scores for eligibility check
+    # Calculate display scores for blind eligibility check (what players actually see)
     def calc_display_score(base_score, bags):
         if bags >= 0:
             if base_score < 0:
@@ -1553,7 +1590,7 @@ def init_new_hand(game):
     player_display_score = calc_display_score(player_base_score, player_bags)
     computer_display_score = calc_display_score(computer_base_score, computer_bags)
     
-    # Check eligibility based on display scores
+    # Check eligibility based on display scores (not base scores)
     from .custom_rules import check_blind_bidding_eligibility
     blind_eligibility = check_blind_bidding_eligibility(player_display_score, computer_display_score)
     
@@ -1597,7 +1634,7 @@ def init_new_hand(game):
         'trick_history': []
     })
     
-    # NEW: Log starting hands for this new hand
+    # Log starting hands for this new hand
     from .logging_utils import log_game_event
     
     # Log player's starting hand
@@ -2426,24 +2463,17 @@ def transition_to_playing_phase(game, session):
         game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Marta led. Your turn to follow.'
 
 def transition_to_bidding_phase(game, session):
-    """Transition from discard to bidding phase (or blind decision)"""
-    player_base_score = game.get('player_score', 0)
-    computer_base_score = game.get('computer_score', 0)
-    blind_eligibility = check_blind_bidding_eligibility(player_base_score, computer_base_score)
+    """Transition from discard to bidding phase (or blind decision) - Uses display scores for eligibility"""
     
-    print(f"DEBUG BLIND CHECK: Player={player_base_score}, Computer={computer_base_score}, Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
-    
-    if blind_eligibility['player_eligible']:
-        game['phase'] = 'blind_decision'
-        deficit = computer_base_score - player_base_score
-        game['message'] = f'Cards discarded! You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
-        
-        print(f"DEBUG: Entering blind_decision phase with deficit of {deficit}")
-    else:
+    # CRITICAL FIX: Only check blind eligibility ONCE per hand
+    # If we've already been through blind decision, skip straight to bidding
+    if game.get('blind_decision_made', False):
+        print(f"DEBUG: Blind decision already made this hand, proceeding to normal bidding")
         game['phase'] = 'bidding'
         first_leader = game.get('first_leader', 'player')
         
         if first_leader == 'computer':
+            # Computer bids first
             computer_bid, computer_is_blind = computer_bidding_brain(
                 game['computer_hand'], 
                 None,
@@ -2471,7 +2501,74 @@ def transition_to_bidding_phase(game, session):
             
             game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
         else:
+            # Player bids first
             game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+        return
+    
+    # First time checking blind eligibility this hand - use DISPLAY SCORES
+    player_base_score = game.get('player_score', 0)
+    computer_base_score = game.get('computer_score', 0)
+    player_bags = game.get('player_bags', 0)
+    computer_bags = game.get('computer_bags', 0)
+    
+    # Calculate display scores (what players actually see)
+    player_display_score = get_display_score(player_base_score, player_bags)
+    computer_display_score = get_display_score(computer_base_score, computer_bags)
+    
+    # Check eligibility based on display scores
+    blind_eligibility = check_blind_bidding_eligibility(player_display_score, computer_display_score)
+    
+    print(f"DEBUG BLIND CHECK: Player Display={player_display_score} (base={player_base_score}, bags={player_bags}), Computer Display={computer_display_score} (base={computer_base_score}, bags={computer_bags})")
+    print(f"DEBUG BLIND CHECK: Player Eligible={blind_eligibility['player_eligible']}, Computer Eligible={blind_eligibility['computer_eligible']}")
+    print(f"DEBUG BLIND CHECK: Player Deficit={blind_eligibility['player_deficit']}, Computer Deficit={blind_eligibility['computer_deficit']}")
+    
+    if blind_eligibility['player_eligible']:
+        # Player is eligible for blind bidding - ask them to choose
+        game['phase'] = 'blind_decision'
+        game['blind_decision_made'] = True  # Mark that we've presented the choice
+        deficit = computer_display_score - player_display_score
+        game['message'] = f'Cards discarded! You are down by {deficit} points. Choose: Go BLIND for double points/penalties, or bid normally?'
+        
+        print(f"DEBUG: Entering blind_decision phase with deficit of {deficit}")
+    else:
+        # Player not eligible for blind bidding - go straight to normal bidding
+        game['blind_decision_made'] = True  # Mark that we've checked (even though not eligible)
+        game['phase'] = 'bidding'
+        first_leader = game.get('first_leader', 'player')
+        
+        if first_leader == 'computer':
+            # Computer bids first
+            computer_bid, computer_is_blind = computer_bidding_brain(
+                game['computer_hand'], 
+                None,
+                game
+            )
+            game['computer_bid'] = computer_bid
+            
+            if computer_is_blind:
+                game['computer_blind_bid'] = computer_bid
+                computer_blind_text = " (BLIND)"
+                log_action(
+                    action_type='blind_bid',
+                    player='computer',
+                    action_data={'bid_amount': computer_bid, 'bid_first': True},
+                    session=session
+                )
+            else:
+                computer_blind_text = ""
+                log_action(
+                    action_type='regular_bid',
+                    player='computer',
+                    action_data={'bid_amount': computer_bid, 'bid_first': True},
+                    session=session
+                )
+            
+            game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+        else:
+            # Player bids first
+            game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
+        
+        print(f"DEBUG: Player not eligible for blind bidding (deficit only {blind_eligibility['player_deficit']}), proceeding to normal bidding")
 
 # =============================================================================
 # GAME LOGIC HELPERS
@@ -2971,6 +3068,9 @@ def is_special_card(card):
 def check_blind_bidding_eligibility(player_score, computer_score, target_score=300):
     """
     Check if a player is eligible for blind bidding (down by 100+ points).
+    
+    IMPORTANT: This function should receive DISPLAY SCORES, not base scores.
+    Display scores include bags in the calculation.
     
     Returns:
         dict: {
@@ -7440,7 +7540,8 @@ FILE: ./templates/stats.html
             <h2>Your Performance</h2>
 
             <div class="highlight">
-                <strong>Playing as:</strong> <span class="ip-address">{{ current_ip }}</span>
+                <strong>Playing as:</strong> <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:]
+                    }}</span>
             </div>
 
             <div class="stats-grid">
@@ -7523,8 +7624,7 @@ FILE: ./templates/stats.html
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-value neutral-rate">{{ player_stats.client_ip[:8] + '***' if player_stats.client_ip
-                        else current_ip[:8] + '***' }}</div>
+                    <div class="stat-value neutral-rate">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</div>
                     <div class="stat-label">Player ID</div>
                 </div>
             </div>
@@ -7540,7 +7640,7 @@ FILE: ./templates/stats.html
         <div class="no-stats">
             <h3>No Statistics Available</h3>
             <p>Complete some games to see your statistics here!</p>
-            <p>Your current IP: <span class="ip-address">{{ current_ip }}</span></p>
+            <p>Your current IP: <span class="ip-address">{{ current_ip[:3] }}***{{ current_ip[-3:] }}</span></p>
         </div>
         {% endif %}
 
@@ -7560,7 +7660,7 @@ FILE: ./templates/stats.html
                             <div class="player-rank">{{ loop.index }}</div>
                             <div class="player-info">
                                 <div class="player-name">
-                                    {{ stats.client_ip[:8] }}***
+                                    {{ stats.client_ip[:3] }}***{{ stats.client_ip[-3:] }}
                                     {% if stats.client_ip == current_ip %}<div class="you-indicator">(You)</div>{% endif
                                     %}
                                 </div>
@@ -7619,7 +7719,7 @@ FILE: ./templates/stats.html
                         <tr {% if stats.client_ip==current_ip %}class="current-player" {% endif %}>
                             <td class="rank">{{ loop.index }}</td>
                             <td>
-                                <span class="ip-address">{{ stats.client_ip[:8] }}***</span>
+                                <span class="ip-address">{{ stats.client_ip[:3] }}***{{ stats.client_ip[-3:] }}</span>
                                 {% if stats.client_ip == current_ip %}<strong> (You)</strong>{% endif %}
                             </td>
                             <td class="games-count">{{ stats.total_games }}</td>

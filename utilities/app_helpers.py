@@ -4,7 +4,7 @@ Contains all non-routing logic moved from app.py
 """
 from flask import session
 import time
-from .logging_utils import log_action, log_game_event, track_session_client, get_client_ip
+from .logging_utils import log_action, log_game_event, track_session_client, get_client_ip, IS_PRODUCTION
 from .custom_rules import (
     check_special_cards_in_trick, reduce_bags_safely, assign_even_odd_at_game_start,
     calculate_discard_score_with_winner, calculate_hand_scores_with_bags, 
@@ -26,6 +26,89 @@ from .logging_utils import flush_hand_events
 # =============================================================================
 # CONTENT FILTERING
 # =============================================================================
+
+
+def process_ip_geolocation(client_ip: str):
+    """
+    Process IP geolocation lookup - check cache first, then queue background lookup if needed
+    """
+    if not client_ip or client_ip == 'unknown':
+        return
+    
+    from .postgres_utils import get_or_create_ip_location, queue_db_operation
+    
+    # Check if we already have location data for this IP
+    existing_data = get_or_create_ip_location(client_ip)
+    
+    if existing_data and existing_data.get('lookup_success'):
+        print(f"[GEO] IP {client_ip} already has location data: {existing_data.get('city')}, {existing_data.get('country')}")
+        return existing_data
+    
+    # Queue background geolocation lookup
+    if IS_PRODUCTION:
+        from .logging_utils import queue_db_operation
+        queue_db_operation(_perform_ip_geolocation_lookup, client_ip)
+        print(f"[GEO] Queued geolocation lookup for new IP: {client_ip}")
+    else:
+        print(f"[GEO] Would queue geolocation lookup for {client_ip} (development mode)")
+    
+    return None
+
+def _perform_ip_geolocation_lookup(ip_address: str):
+    """
+    Background worker function to perform actual geolocation API call
+    """
+    import urllib.request
+    import urllib.error
+    import json
+    import time
+    
+    try:
+        print(f"[GEO] Starting background geolocation lookup for {ip_address}")
+        
+        # Use same API as your geolocation script
+        url = f"http://ip-api.com/json/{ip_address}"
+        
+        request = urllib.request.Request(url)
+        request.add_header('User-Agent', 'TwoManSpades-GeoLookup/1.0')
+        
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.getcode() == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                
+                if data.get('status') == 'success':
+                    location_data = {
+                        'country': data.get('country', 'Unknown'),
+                        'region': data.get('regionName', 'Unknown'),
+                        'city': data.get('city', 'Unknown'),
+                        'isp': data.get('isp', 'Unknown'),
+                        'lat': data.get('lat', 0),
+                        'lon': data.get('lon', 0),
+                        'timezone': data.get('timezone', 'Unknown'),
+                        'zip': data.get('zip', 'Unknown'),
+                        'org': data.get('org', data.get('isp', 'Unknown')),
+                        'as': data.get('as', 'Unknown')
+                    }
+                    
+                    from .postgres_utils import save_ip_location_data
+                    success = save_ip_location_data(ip_address, location_data)
+                    
+                    if success:
+                        print(f"[GEO] Successfully saved location data for {ip_address}: {location_data['city']}, {location_data['country']}")
+                    else:
+                        print(f"[GEO] Failed to save location data for {ip_address}")
+                    
+                    return success
+                else:
+                    print(f"[GEO] API returned failure for {ip_address}: {data.get('message', 'Unknown error')}")
+                    return False
+            else:
+                print(f"[GEO] HTTP error {response.getcode()} for {ip_address}")
+                return False
+                
+    except Exception as e:
+        print(f"[GEO] Geolocation lookup failed for {ip_address}: {e}")
+        return False
 
 def get_blocked_words():
     """Get blocked words from tinyurl"""
@@ -201,6 +284,10 @@ def process_new_game_request(session, request):
         finalize_game_logging(session['game'])
     
     game = initialize_new_game_session(request)
+    
+    # NEW: Process IP geolocation
+    if client_info and client_info.get('ip_address'):
+        process_ip_geolocation(client_info['ip_address'])
     
     log_game_event(
         event_type='new_game_started',

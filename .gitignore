@@ -6,6 +6,8 @@
 #json keys
 /json_keys
 
+/venv_2man
+
 # Deployment script
 gcloud_deploy.py
 
