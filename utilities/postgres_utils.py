@@ -469,3 +469,25 @@ def get_player_city_membership(client_ip):
     except Exception as e:
         print(f"Failed to get player city membership: {e}")
         return 'Other'
+
+def get_city_leaders_stats() -> List[Dict[str, Any]]:
+    """Get city leaders statistics from the view"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        cur.execute("""
+            SELECT * FROM twomanspades.vw_city_leaders_totals 
+            ORDER BY total_hands_with_bids DESC, total_hands_with_scoring DESC
+        """)
+        
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert to list of dicts for easier handling
+        return [dict(row) for row in results]
+        
+    except Exception as e:
+        print(f"Failed to get city leaders stats: {e}")
+        return []
