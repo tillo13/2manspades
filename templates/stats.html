@@ -241,7 +241,6 @@
                             <th>Avg Bid</th>
                             <th>Computer Bid</th>
                             <th>Nil Bids</th>
-                            <th>Computer Nils</th>
                             <th>Player Bags</th>
                             <th>Computer Bags</th>
                             <th>Avg Player Bags</th>
@@ -258,7 +257,6 @@
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }}</td>
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }}</td>
                             <td class="nil-stat">{{ player.total_player_nil_bids }}</td>
-                            <td class="nil-stat">{{ player.total_computer_nil_bids }}</td>
                             <td class="bags-stat">{{ player.total_player_bags }}</td>
                             <td class="bags-stat">{{ player.total_computer_bags }}</td>
                             <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }}</td>
