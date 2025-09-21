@@ -4,7 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two-Man Spades - Player Statistics</title>
+    <title>Game Statistics - Two-Player Spades</title>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-F5VP0CXERK');
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -13,178 +23,275 @@
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            line-height: 1.6;
-            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 15px;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px 8px;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 650px;
             margin: 0 auto;
             background: white;
             border-radius: 15px;
-            padding: 30px;
+            padding: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
-        h1 {
-            color: #4a5568;
+        .header {
             text-align: center;
             margin-bottom: 25px;
-            font-size: 2.5em;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
         }
 
-        h2 {
-            color: #2d3748;
-            margin-bottom: 20px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e2e8f0;
-            font-size: 1.5em;
-        }
-
-        .leaderboard-description {
-            margin-bottom: 20px;
-            color: #666;
-            font-size: 1em;
-            line-height: 1.4;
-        }
-
-        .leaderboard-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .leaderboard-table th {
-            background: #4a5568;
-            color: white;
-            padding: 15px 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .leaderboard-table td {
-            padding: 12px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .leaderboard-table tr:nth-child(even) {
-            background: #f8fafc;
-        }
-
-        .leaderboard-table tr:hover {
-            background: #edf2f7;
-        }
-
-        .leaderboard-table .current-player {
-            background: #e6fffa !important;
-            border-left: 4px solid #38a169;
-        }
-
-        .rank {
-            font-weight: bold;
-            text-align: center;
+        .header h1 {
             color: #4a5568;
+            font-size: 24px;
+            margin-bottom: 8px;
         }
 
-        .percentage {
-            font-weight: 600;
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
         }
 
-        .win-rate {
-            color: #38a169;
+        .back-button {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        .loss-rate {
-            color: #e53e3e;
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
         }
 
-        .neutral-rate {
-            color: #3182ce;
+        .stats-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #dee2e6;
+            text-align: center;
         }
 
         .no-stats {
             text-align: center;
-            padding: 30px 15px;
             color: #666;
             font-style: italic;
-            background: #f8fafc;
-            border-radius: 12px;
-            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .stats-table th,
+        .stats-table td {
+            padding: 8px 6px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .stats-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            font-size: 11px;
+        }
+
+        .stats-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .rank-1 {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            font-weight: 600;
+        }
+
+        .rank-2 {
+            background: linear-gradient(135deg, #e2e3e5 0%, #f8f9fa 100%);
+            font-weight: 600;
+        }
+
+        .rank-3 {
+            background: linear-gradient(135deg, #f4cccc 0%, #fce4ec 100%);
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        .percentage {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .nil-stat {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .bags-stat {
+            color: #fd7e14;
+            font-weight: 600;
+        }
+
+        .bid-stat {
+            color: #6f42c1;
+            font-weight: 600;
+        }
+
+        @media (max-width: 767px) {
+            .container {
+                padding: 15px;
+                margin: 0 8px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .stats-table {
+                font-size: 10px;
+            }
+
+            .stats-table th,
+            .stats-table td {
+                padding: 6px 4px;
+            }
+
+            .section-title {
+                font-size: 16px;
+            }
+
+            .back-button {
+                top: 10px;
+                left: 10px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+
+        .table-note {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin-top: 8px;
+            font-style: italic;
         }
     </style>
 </head>
 
 <body>
+    <a href="/" class="back-button">← Back to Game</a>
+
     <div class="container">
-        <h1>Player Statistics</h1>
+        <div class="header">
+            <h1>Player Statistics</h1>
+            <div class="subtitle">Game performance leaderboard</div>
+        </div>
 
-        <div class="section">
-            <h2>Leaderboard - Top Players</h2>
-            <div class="leaderboard-description">
-                Players ranked by total completed games, then by win rate.
-            </div>
-
+        <!-- Player Stats -->
+        <div class="stats-section">
+            <div class="section-title">Player Leaderboard</div>
             {% if city_leaders %}
-            <table class="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th class="rank" style="width: 8%;">Rank</th>
-                        <th style="width: 22%;">Player</th>
-                        <th style="width: 14%;">Games</th>
-                        <th style="width: 14%;">Win Rate</th>
-                        <th style="width: 14%;">Wins</th>
-                        <th style="width: 14%;">Avg Win Score</th>
-                        <th style="width: 14%;">Win Margin</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for stats in city_leaders %}
-                    <tr {% if player_city_stats and stats.get('family_member')==player_city_stats.get('family_member')
-                        %}class="current-player" {% endif %}>
-                        <td class="rank">{{ loop.index }}</td>
-                        <td>
-                            <strong>{{ stats.get('family_member', '') }}</strong>
-                            {% if player_city_stats and stats.get('family_member') ==
-                            player_city_stats.get('family_member') %}
-                            (You){% endif %}
-                        </td>
-                        <td>{{ stats.get('total_games', 0) }}</td>
-                        <td>
-                            <span
-                                class="percentage {% if stats.get('win_rate_percent', 0) >= 60 %}win-rate{% elif stats.get('win_rate_percent', 0) >= 40 %}neutral-rate{% else %}loss-rate{% endif %}">
-                                {{ stats.get('win_rate_percent', 0) }}%
-                            </span>
-                        </td>
-                        <td>{{ stats.get('total_wins', 0) }}</td>
-                        <td>{{ stats.get('avg_winning_score')|round|int if stats.get('avg_winning_score') else '-' }}
-                        </td>
-                        <td>
-                            {% if stats.get('avg_winning_margin') %}
-                            +{{ stats.get('avg_winning_margin')|round|int }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="no-stats">
-                <h3>No Players Yet</h3>
-                <p>Be the first to complete a game and claim the top spot!</p>
+            <div class="table-container">
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Hands</th>
+                            <th>Avg Bid</th>
+                            <th>Computer Bid</th>
+                            <th>Nil Bids</th>
+                            <th>Computer Nils</th>
+                            <th>Player Bags</th>
+                            <th>Computer Bags</th>
+                            <th>Avg Player Bags</th>
+                            <th>Avg Computer Bags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in city_leaders %}
+                        <tr
+                            class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ player.family_member }}</strong></td>
+                            <td>{{ player.total_hands_with_bids }}</td>
+                            <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }}</td>
+                            <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }}</td>
+                            <td class="nil-stat">{{ player.total_player_nil_bids }}</td>
+                            <td class="nil-stat">{{ player.total_computer_nil_bids }}</td>
+                            <td class="bags-stat">{{ player.total_player_bags }}</td>
+                            <td class="bags-stat">{{ player.total_computer_bags }}</td>
+                            <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }}</td>
+                            <td class="bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
+            <div class="table-note">Ranked by total hands played</div>
+            {% else %}
+            <div class="no-stats">No player data available</div>
             {% endif %}
         </div>
     </div>
+
+    <script>
+        // Add smooth scrolling for mobile
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add click handlers for table rows on mobile for better interaction
+            if (window.innerWidth <= 767) {
+                document.querySelectorAll('table tr').forEach(row => {
+                    row.addEventListener('click', function () {
+                        // Highlight clicked row temporarily
+                        this.style.background = '#e3f2fd';
+                        setTimeout(() => {
+                            this.style.background = '';
+                        }, 500);
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>
