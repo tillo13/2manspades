@@ -558,8 +558,7 @@
                 </div>
             </div>
         </div>
-
-        <!-- Competitive Leaderboard Section -->
+        <!-- Competitive Leaderboard Section - UPDATED to remove games_started -->
         <div class="stats-section">
             <div class="section-title">Competitive Rankings</div>
             {% if competitive_leaders %}
@@ -590,10 +589,14 @@
                                 player.total_losses|default(0) }}</td>
                             <td class="percentage">{{ "%.1f"|format(player.win_rate_percent or 0) }}%</td>
                             <td>{{ player.total_games|default(0) }}</td>
-                            <td class="win-stat">{{ player.avg_winning_score|default('-') }}</td>
-                            <td class="win-stat">+{{ player.avg_winning_margin|default('-') }}</td>
-                            <td class="loss-stat">{{ player.avg_losing_score|default('-') }}</td>
-                            <td class="loss-stat">-{{ player.avg_losing_margin|default('-') }}</td>
+                            <td class="win-stat">{{ "%.0f"|format(player.avg_winning_score) if player.avg_winning_score
+                                else '-' }}</td>
+                            <td class="win-stat">+{{ "%.0f"|format(player.avg_winning_margin) if
+                                player.avg_winning_margin else '-' }}</td>
+                            <td class="loss-stat">{{ "%.0f"|format(player.avg_losing_score) if player.avg_losing_score
+                                else '-' }}</td>
+                            <td class="loss-stat">-{{ "%.0f"|format(player.avg_losing_margin) if
+                                player.avg_losing_margin else '-' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -619,21 +622,21 @@
                                 <div class="stat-value">{{ player.total_games|default(0) }} games</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-label">Games Started</div>
-                                <div class="stat-value">{{ player.games_started|default(0) }} games</div>
+                                <div class="stat-label">Unique Players</div>
+                                <div class="stat-value">{{ player.unique_ips|default(0) }} IPs</div>
                             </div>
                         </div>
 
                         <div class="stat-group winning-stats">
                             <div class="stat-item">
                                 <div class="stat-label">Average Winning Score</div>
-                                <div class="stat-value win-stat">{{ player.avg_winning_score|default('No wins yet') }}
-                                </div>
+                                <div class="stat-value win-stat">{{ "%.0f"|format(player.avg_winning_score) if
+                                    player.avg_winning_score else 'No wins yet' }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Average Winning Margin</div>
-                                <div class="stat-value win-stat">+{{ player.avg_winning_margin|default('No wins yet') }}
-                                </div>
+                                <div class="stat-value win-stat">+{{ "%.0f"|format(player.avg_winning_margin) if
+                                    player.avg_winning_margin else 'No wins yet' }}</div>
                             </div>
                         </div>
 
@@ -641,11 +644,11 @@
                         <div class="stat-group losing-stats">
                             <div class="stat-item">
                                 <div class="stat-label">Average Losing Score</div>
-                                <div class="stat-value loss-stat">{{ player.avg_losing_score }}</div>
+                                <div class="stat-value loss-stat">{{ "%.0f"|format(player.avg_losing_score) }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Average Losing Margin</div>
-                                <div class="stat-value loss-stat">-{{ player.avg_losing_margin }}</div>
+                                <div class="stat-value loss-stat">-{{ "%.0f"|format(player.avg_losing_margin) }}</div>
                             </div>
                         </div>
                         {% endif %}
@@ -659,7 +662,6 @@
             <div class="no-stats">No competitive data available</div>
             {% endif %}
         </div>
-
         <!-- Detailed Performance Section -->
         <div class="stats-section">
             <div class="section-title">Detailed Hand Performance</div>
