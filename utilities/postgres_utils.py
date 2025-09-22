@@ -447,23 +447,50 @@ def get_player_city_membership(client_ip):
     except Exception as e:
         print(f"Failed to get player city membership: {e}")
         return 'Other'
-
-def get_city_leaders_stats() -> List[Dict[str, Any]]:
-    """Get city leaders statistics from the view"""
+    
+def get_competitive_leaders_stats() -> List[Dict[str, Any]]:
+    """Get competitive win/loss records from vw_city_leaders view"""
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         cur.execute("""
-            SELECT * FROM twomanspades.vw_city_leaders_totals 
-            ORDER BY total_hands_with_bids DESC, total_hands_with_scoring DESC
+            SELECT family_member, unique_ips, games_started, total_games, 
+                   games_abandoned, total_wins, total_losses, win_rate_percent,
+                   avg_winning_score, avg_winning_margin, avg_losing_score, avg_losing_margin
+            FROM twomanspades.vw_city_leaders 
+            ORDER BY win_rate_percent DESC, total_games DESC
         """)
         
         results = cur.fetchall()
         cur.close()
         conn.close()
         
-        # Convert to list of dicts for easier handling
+        return [dict(row) for row in results]
+        
+    except Exception as e:
+        print(f"Failed to get competitive leaders stats: {e}")
+        return []
+
+def get_city_leaders_stats() -> List[Dict[str, Any]]:
+    """Get detailed hand performance stats from vw_city_leaders_totals view"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        cur.execute("""
+            SELECT family_member, total_hands_with_bids, total_hands_with_scoring,
+                   avg_player_bid, avg_computer_bid, total_player_nil_bids,
+                   total_player_bags, total_computer_bags, 
+                   avg_player_bags, avg_computer_bags
+            FROM twomanspades.vw_city_leaders_totals 
+            ORDER BY total_hands_with_bids DESC
+        """)
+        
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        
         return [dict(row) for row in results]
         
     except Exception as e:

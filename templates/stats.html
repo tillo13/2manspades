@@ -109,6 +109,24 @@
             border: 2px dashed #dee2e6;
         }
 
+        /* Responsive display logic */
+        .desktop-table {
+            display: none;
+        }
+
+        .mobile-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
         .stats-table {
             width: 100%;
             border-collapse: collapse;
@@ -135,75 +153,318 @@
             background: #f8f9fa;
         }
 
-        .rank-1 {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            font-weight: 600;
-        }
-
-        .rank-2 {
-            background: linear-gradient(135deg, #e2e3e5 0%, #f8f9fa 100%);
-            font-weight: 600;
-        }
-
-        .rank-3 {
-            background: linear-gradient(135deg, #f4cccc 0%, #fce4ec 100%);
-            font-weight: 600;
-        }
-
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
+        .player-card {
+            background: white;
             border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .percentage {
+        .player-card.rank-1 {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-color: #ffc107;
+            box-shadow: 0 3px 8px rgba(255, 193, 7, 0.3);
+        }
+
+        .player-card.rank-2 {
+            background: linear-gradient(135deg, #e2e3e5 0%, #f8f9fa 100%);
+            border-color: #6c757d;
+        }
+
+        .player-card.rank-3 {
+            background: linear-gradient(135deg, #f4cccc 0%, #fce4ec 100%);
+            border-color: #e91e63;
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .player-rank {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .player-name {
+            font-weight: bold;
+            font-size: 16px;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .player-hands {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .player-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .stat-value.bid-stat {
+            color: #6f42c1;
+        }
+
+        .stat-value.nil-stat {
+            color: #dc3545;
+        }
+
+        .stat-value.bags-stat {
+            color: #fd7e14;
+        }
+
+        /* Desktop layout */
+        @media (min-width: 768px) {
+            .container {
+                padding: 25px;
+                max-width: 900px;
+            }
+
+            /* Show table on desktop, hide mobile cards */
+            .desktop-table {
+                display: block;
+            }
+
+            .mobile-cards {
+                display: none;
+            }
+
+            .player-stats {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+
+            .stat-item {
+                padding: 10px;
+            }
+
+            .player-card {
+                padding: 20px;
+            }
+
+            .player-header {
+                margin-bottom: 15px;
+            }
+
+            .player-name {
+                font-size: 18px;
+            }
+
+            .legend-columns {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .competitive-stats {
+                flex-direction: row;
+                gap: 15px;
+            }
+
+            .stat-group {
+                flex: 1;
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+
+        /* Legend Section */
+        .legend-section {
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+            overflow: hidden;
+        }
+
+        .legend-toggle {
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #667eea;
+            color: white;
+            user-select: none;
+            transition: background 0.3s ease;
+        }
+
+        .legend-toggle:hover {
+            background: #5a67d8;
+        }
+
+        .legend-toggle-text {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .legend-chevron {
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+
+        .legend-section.expanded .legend-chevron {
+            transform: rotate(180deg);
+        }
+
+        .legend-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .legend-section.expanded .legend-content {
+            max-height: 500px;
+        }
+
+        .legend-columns {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .legend-column {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .legend-category {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        /* Competitive stats styling */
+        .competitive-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .competitive-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stat-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+        }
+
+        .winning-stats {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+
+        .losing-stats {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+
+        .win-loss-record {
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+        }
+
+        .win-loss-stat {
+            color: #333;
+            font-weight: bold;
+        }
+
+        .win-stat {
             color: #28a745;
             font-weight: 600;
         }
 
-        .nil-stat {
+        .loss-stat {
             color: #dc3545;
             font-weight: 600;
         }
 
-        .bags-stat {
-            color: #fd7e14;
-            font-weight: 600;
-        }
-
-        .bid-stat {
-            color: #6f42c1;
-            font-weight: 600;
-        }
-
-        @media (max-width: 767px) {
+        @media (max-width: 480px) {
             .container {
                 padding: 15px;
-                margin: 0 8px;
+                margin: 0 4px;
             }
 
             .header h1 {
                 font-size: 20px;
             }
 
-            .stats-table {
-                font-size: 10px;
-            }
-
-            .stats-table th,
-            .stats-table td {
-                padding: 6px 4px;
-            }
-
-            .section-title {
-                font-size: 16px;
-            }
-
             .back-button {
                 top: 10px;
                 left: 10px;
                 padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .player-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+
+            .stat-item {
+                padding: 6px;
+            }
+
+            .stat-label {
+                font-size: 10px;
+            }
+
+            .stat-value {
                 font-size: 12px;
             }
         }
@@ -224,14 +485,188 @@
     <div class="container">
         <div class="header">
             <h1>Player Statistics</h1>
-            <div class="subtitle">Game performance leaderboard</div>
+            <div class="subtitle">Competitive leaderboard and performance metrics</div>
         </div>
 
-        <!-- Player Stats -->
+        <!-- Collapsible Legend Section -->
+        <div class="legend-section collapsed" id="legendSection">
+            <div class="legend-toggle" onclick="toggleLegend()">
+                <span class="legend-toggle-text">Statistics Guide</span>
+                <span class="legend-chevron" id="legendChevron">▼</span>
+            </div>
+            <div class="legend-content" id="legendContent">
+                <div class="legend-columns">
+                    <div class="legend-column">
+                        <div class="legend-category">Competitive Stats</div>
+                        <div class="legend-item">
+                            <span class="legend-label">Games Started:</span>
+                            <span class="legend-description">Total games initiated (including abandoned)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Total Games:</span>
+                            <span class="legend-description">Completed games only (excludes abandoned)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Win Rate:</span>
+                            <span class="legend-description">Percentage of completed games won</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Avg Winning Score:</span>
+                            <span class="legend-description">Average final score when you win</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Avg Losing Score:</span>
+                            <span class="legend-description">Average final score when you lose</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Avg Losing Margin:</span>
+                            <span class="legend-description">Average points behind when losing</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Games Abandoned:</span>
+                            <span class="legend-description">Games started but not completed</span>
+                        </div>
+                    </div>
+                    <div class="legend-column">
+                        <div class="legend-category">Detailed Hand Performance</div>
+                        <div class="legend-item">
+                            <span class="legend-label">Hands Played:</span>
+                            <span class="legend-description">Individual hands with successful bids</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Average Bids:</span>
+                            <span class="legend-description">Mean tricks bid per hand by you and Marta</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Nil Attempts:</span>
+                            <span class="legend-description">Times you attempted 0-trick bids</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Total Bags:</span>
+                            <span class="legend-description">Cumulative penalty points from overtricks</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-label">Average Bags:</span>
+                            <span class="legend-description">Mean bags per hand (overtricks beyond bid)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="legend-note">
+                    <strong>Note:</strong> Rankings are determined by sports-style competitive performance (win rate,
+                    then total wins) rather than hand-level statistics. Competitive stats show game outcomes, while
+                    detailed stats show bidding patterns and bag management across individual hands.
+                </div>
+            </div>
+        </div>
+
+        <!-- Competitive Leaderboard Section -->
         <div class="stats-section">
-            <div class="section-title">Player Leaderboard</div>
-            {% if city_leaders %}
-            <div class="table-container">
+            <div class="section-title">Competitive Rankings</div>
+            {% if competitive_leaders %}
+
+            <!-- Competitive Table View (Desktop) -->
+            <div class="table-container desktop-table">
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>W-L</th>
+                            <th>Win %</th>
+                            <th>Games</th>
+                            <th>Avg Win Score</th>
+                            <th>Avg Win Margin</th>
+                            <th>Avg Loss Score</th>
+                            <th>Avg Loss Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in competitive_leaders %}
+                        <tr
+                            class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ player.family_member }}</strong></td>
+                            <td class="win-loss-stat">{{ player.total_wins|default(0) }}-{{
+                                player.total_losses|default(0) }}</td>
+                            <td class="percentage">{{ "%.1f"|format(player.win_rate_percent or 0) }}%</td>
+                            <td>{{ player.total_games|default(0) }}</td>
+                            <td class="win-stat">{{ player.avg_winning_score|default('-') }}</td>
+                            <td class="win-stat">+{{ player.avg_winning_margin|default('-') }}</td>
+                            <td class="loss-stat">{{ player.avg_losing_score|default('-') }}</td>
+                            <td class="loss-stat">-{{ player.avg_losing_margin|default('-') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Competitive Card View (Mobile) -->
+            <div class="player-cards mobile-cards">
+                {% for player in competitive_leaders %}
+                <div
+                    class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                    <div class="player-header">
+                        <div class="player-rank">#{{ loop.index }}</div>
+                        <div class="player-name">{{ player.family_member }}</div>
+                        <div class="win-loss-record">{{ player.total_wins|default(0) }}-{{
+                            player.total_losses|default(0) }} ({{ "%.1f"|format(player.win_rate_percent or 0) }}%)</div>
+                    </div>
+
+                    <div class="competitive-stats">
+                        <div class="stat-group">
+                            <div class="stat-item">
+                                <div class="stat-label">Total Games Completed</div>
+                                <div class="stat-value">{{ player.total_games|default(0) }} games</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Games Started</div>
+                                <div class="stat-value">{{ player.games_started|default(0) }} games</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-group winning-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Average Winning Score</div>
+                                <div class="stat-value win-stat">{{ player.avg_winning_score|default('No wins yet') }}
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Average Winning Margin</div>
+                                <div class="stat-value win-stat">+{{ player.avg_winning_margin|default('No wins yet') }}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if player.avg_losing_score %}
+                        <div class="stat-group losing-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Average Losing Score</div>
+                                <div class="stat-value loss-stat">{{ player.avg_losing_score }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Average Losing Margin</div>
+                                <div class="stat-value loss-stat">-{{ player.avg_losing_margin }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-note">Ranked by win rate, then total wins</div>
+            {% else %}
+            <div class="no-stats">No competitive data available</div>
+            {% endif %}
+        </div>
+
+        <!-- Detailed Performance Section -->
+        <div class="stats-section">
+            <div class="section-title">Detailed Hand Performance</div>
+            {% if detailed_leaders and detailed_leaders|length > 0 %}
+
+            <!-- Traditional Table View (Desktop) -->
+            <div class="table-container desktop-table">
                 <table class="stats-table">
                     <thead>
                         <tr>
@@ -248,17 +683,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for player in city_leaders %}
+                        {% for player in detailed_leaders %}
                         <tr
                             class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
                             <td>{{ loop.index }}</td>
                             <td><strong>{{ player.family_member }}</strong></td>
-                            <td>{{ player.total_hands_with_bids }}</td>
+                            <td>{{ player.total_hands_with_bids|default(0) }}</td>
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }}</td>
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }}</td>
-                            <td class="nil-stat">{{ player.total_player_nil_bids }}</td>
-                            <td class="bags-stat">{{ player.total_player_bags }}</td>
-                            <td class="bags-stat">{{ player.total_computer_bags }}</td>
+                            <td class="nil-stat">{{ player.total_player_nil_bids|default(0) }}</td>
+                            <td class="bags-stat">{{ player.total_player_bags|default(0) }}</td>
+                            <td class="bags-stat">{{ player.total_computer_bags|default(0) }}</td>
                             <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }}</td>
                             <td class="bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) }}</td>
                         </tr>
@@ -266,28 +701,196 @@
                     </tbody>
                 </table>
             </div>
-            <div class="table-note">Ranked by total hands played</div>
+
+            <!-- Card View (Mobile) -->
+            <div class="player-cards mobile-cards">
+                {% for player in detailed_leaders %}
+                <div
+                    class="player-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                    <div class="player-header">
+                        <div class="player-rank">#{{ loop.index }}</div>
+                        <div class="player-name">{{ player.family_member }}</div>
+                        <div class="player-hands">{{ player.total_hands_with_bids|default(0) }} hands played</div>
+                    </div>
+
+                    <div class="player-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Average Player Bid</div>
+                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }} tricks
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Average Computer Bid</div>
+                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }} tricks
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Nil Bids</div>
+                            <div class="stat-value nil-stat">{{ player.total_player_nil_bids|default(0) }} attempts
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Player Bags</div>
+                            <div class="stat-value bags-stat">{{ player.total_player_bags|default(0) }} bags</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Computer Bags</div>
+                            <div class="stat-value bags-stat">{{ player.total_computer_bags|default(0) }} bags</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Average Player Bags</div>
+                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }} per hand
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Average Computer Bags</div>
+                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) }} per
+                                hand</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-note">Hand-level bidding and bag statistics</div>
+
+            {% elif competitive_leaders and competitive_leaders|length > 0 %}
+            <!-- Fallback: Show competitive data in detailed section if detailed_leaders is empty -->
+            <div class="table-container desktop-table">
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Hands</th>
+                            <th>Avg Bid</th>
+                            <th>Computer Bid</th>
+                            <th>Nil Bids</th>
+                            <th>Player Bags</th>
+                            <th>Computer Bags</th>
+                            <th>Avg Player Bags</th>
+                            <th>Avg Computer Bags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in competitive_leaders %}
+                        <tr
+                            class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ player.family_member }}</strong></td>
+                            <td>{{ player.total_hands_with_bids|default('N/A') }}</td>
+                            <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) if player.avg_player_bid
+                                else 'N/A' }}</td>
+                            <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) if
+                                player.avg_computer_bid else 'N/A' }}</td>
+                            <td class="nil-stat">{{ player.total_player_nil_bids|default('N/A') }}</td>
+                            <td class="bags-stat">{{ player.total_player_bags|default('N/A') }}</td>
+                            <td class="bags-stat">{{ player.total_computer_bags|default('N/A') }}</td>
+                            <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) if
+                                player.avg_player_bags else 'N/A' }}</td>
+                            <td class="bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) if
+                                player.avg_computer_bags else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Card View (Mobile) -->
+            <div class="player-cards mobile-cards">
+                {% for player in competitive_leaders %}
+                <div
+                    class="player-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                    <div class="player-header">
+                        <div class="player-rank">#{{ loop.index }}</div>
+                        <div class="player-name">{{ player.family_member }}</div>
+                        <div class="player-hands">{{ player.total_hands_with_bids|default('N/A') }} hands played</div>
+                    </div>
+
+                    <div class="player-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Average Player Bid</div>
+                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) if
+                                player.avg_player_bid else 'N/A' }} tricks</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Average Computer Bid</div>
+                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) if
+                                player.avg_computer_bid else 'N/A' }} tricks</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Nil Bids</div>
+                            <div class="stat-value nil-stat">{{ player.total_player_nil_bids|default('N/A') }} attempts
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Player Bags</div>
+                            <div class="stat-value bags-stat">{{ player.total_player_bags|default('N/A') }} bags</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Computer Bags</div>
+                            <div class="stat-value bags-stat">{{ player.total_computer_bags|default('N/A') }} bags</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Average Player Bags</div>
+                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) if
+                                player.avg_player_bags else 'N/A' }} per hand</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Average Computer Bags</div>
+                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) if
+                                player.avg_computer_bags else 'N/A' }} per hand</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="table-note">Using competitive data (detailed hand stats not available)</div>
+
             {% else %}
-            <div class="no-stats">No player data available</div>
+            <div class="no-stats">No detailed performance data available</div>
             {% endif %}
         </div>
     </div>
 
     <script>
-        // Add smooth scrolling for mobile
+        function toggleLegend() {
+            const legendSection = document.getElementById('legendSection');
+            const chevron = document.getElementById('legendChevron');
+
+            legendSection.classList.toggle('expanded');
+
+            if (legendSection.classList.contains('expanded')) {
+                chevron.textContent = '▲';
+            } else {
+                chevron.textContent = '▼';
+            }
+        }
+
+        // Add smooth scrolling for mobile and touch interactions
         document.addEventListener('DOMContentLoaded', function () {
-            // Add click handlers for table rows on mobile for better interaction
+            // Add click handlers for cards on mobile for better interaction
             if (window.innerWidth <= 767) {
-                document.querySelectorAll('table tr').forEach(row => {
-                    row.addEventListener('click', function () {
-                        // Highlight clicked row temporarily
-                        this.style.background = '#e3f2fd';
+                document.querySelectorAll('.player-card').forEach(card => {
+                    card.addEventListener('click', function () {
+                        // Highlight clicked card temporarily
+                        this.style.transform = 'scale(0.98)';
                         setTimeout(() => {
-                            this.style.background = '';
-                        }, 500);
+                            this.style.transform = '';
+                        }, 150);
                     });
                 });
             }
+
+            // Add hover effects for legend items on desktop
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.addEventListener('mouseenter', function () {
+                    this.style.backgroundColor = '#e3f2fd';
+                });
+                item.addEventListener('mouseleave', function () {
+                    this.style.backgroundColor = 'white';
+                });
+            });
         });
     </script>
 </body>

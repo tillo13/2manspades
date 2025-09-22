@@ -19,7 +19,7 @@ from utilities.app_helpers import (
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
 
-from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats
+from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats
 
 
 
@@ -463,27 +463,19 @@ def stats():
     """Show game statistics for the current player"""
     client_ip = get_client_ip(request)
     
-    # Get stats for this specific IP
+    # Get competitive stats (win/loss records)
+    competitive_leaders = get_competitive_leaders_stats()
+    
+    # Get detailed hand performance stats  
+    detailed_leaders = get_city_leaders_stats()
+    
+    # Get stats for this specific IP (if needed for individual player view)
     player_stats = get_ip_address_game_stats(client_ip)
     
-    # Get overall leaderboard (top 10)
-    all_stats = get_ip_address_game_stats()[:10]
-    
-    # Get city leaders stats
-    city_leaders = get_city_leaders_stats()
-    
-    # DEBUG: Print what we're getting
-    print(f"DEBUG - Client IP: {client_ip}")
-    print(f"DEBUG - Player stats: {player_stats}")
-    print(f"DEBUG - City leaders: {city_leaders}")
-    print(f"DEBUG - City leaders length: {len(city_leaders) if city_leaders else 0}")
-    if city_leaders:
-        print(f"DEBUG - First city leader: {city_leaders[0]}")
-    
     return render_template('stats.html', 
+                        competitive_leaders=competitive_leaders,
+                        detailed_leaders=detailed_leaders,
                         player_stats=player_stats[0] if player_stats else None,
-                        leaderboard=all_stats,
-                        city_leaders=city_leaders,
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')
