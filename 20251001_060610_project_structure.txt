@@ -1,4 +1,4 @@
-Number of files: 21
+Number of files: 22
 Number of directories: 5
 
 Directory structure:
@@ -21,7 +21,7 @@ JS Files (1):
 JSON Files (1):
   ./static/manifest.json
 
-PY Files (16):
+PY Files (17):
   ./app.py
   ./gather_pythons.py
   ./gcloud_deploy.py
@@ -36,6 +36,7 @@ PY Files (16):
   ./utilities/computer_logic.py
   ./utilities/custom_rules.py
   ./utilities/gameplay_logic.py
+  ./utilities/gmail_utils.py
   ./utilities/logging_utils.py
   ./utilities/postgres_utils.py
 
@@ -1152,6 +1153,8 @@ from flask import Flask, render_template, request, session, jsonify
 import sys
 import os
 import time
+import traceback
+from datetime import datetime
 
 # Add utilities directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -1168,14 +1171,14 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-
 from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats
-
-
+from utilities.gmail_utils import send_notification_email
 
 app = Flask(__name__)
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
+# Error monitoring configuration
+ADMIN_EMAIL = "andy.tillo@gmail.com"
 
 # Initialize async logging for production immediately when module loads
 if IS_PRODUCTION:
@@ -1185,6 +1188,143 @@ if IS_PRODUCTION:
 DEBUG_MODE = False
 session_tracker = {}
 
+# =============================================================================
+# ERROR HANDLERS
+# =============================================================================
+
+@app.errorhandler(500)
+def handle_internal_error(error):
+    """Handle 500 errors and send email notification"""
+    try:
+        # Get error details
+        error_info = {
+            'time': datetime.now().isoformat(),
+            'error': str(error),
+            'traceback': traceback.format_exc(),
+            'url': request.url if request else 'Unknown',
+            'method': request.method if request else 'Unknown',
+            'client_ip': get_client_ip(request) if request else 'Unknown',
+            'user_agent': request.headers.get('User-Agent', 'Unknown') if request else 'Unknown'
+        }
+        
+        # Send email (non-blocking)
+        try:
+            email_body = f"""
+GAME SERVER ERROR DETECTED
+
+Time: {error_info['time']}
+Error: {error_info['error']}
+URL: {error_info['url']}
+Method: {error_info['method']}
+Client: {error_info['client_ip']}
+User Agent: {error_info['user_agent']}
+
+Full Traceback:
+{error_info['traceback']}
+
+This error caused the game to fail for a user.
+They likely had to refresh to continue playing.
+"""
+            send_notification_email(
+                title="Two-Man Spades Server Error",
+                message=email_body,
+                recipient=ADMIN_EMAIL,
+                priority="high"
+            )
+            print(f"[ERROR] Sent error notification email for: {error_info['error']}")
+        except Exception as email_error:
+            print(f"[ERROR] Failed to send error notification: {email_error}")
+        
+        print(f"[ERROR] Server error: {error_info['error']}")
+        
+    except Exception as handler_error:
+        print(f"[ERROR] Error in error handler: {handler_error}")
+    
+    # Return user-friendly page
+    return '''
+    <html><head><title>Game Error</title></head>
+    <body style="font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div style="background: white; color: #333; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto;">
+            <h2>Oops! Game Error</h2>
+            <p>Something went wrong with the game. This has been automatically reported.</p>
+            <button onclick="window.location.reload()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin: 10px;">Refresh Game</button>
+            <br><br>
+            <a href="/" style="color: #667eea; text-decoration: none;">Start New Game</a>
+        </div>
+    </body></html>
+    ''', 500
+
+@app.route('/report_client_error', methods=['POST'])
+def report_client_error():
+    """Handle client-side error reports"""
+    try:
+        data = request.get_json()
+        error_type = data.get('errorType', 'Unknown')
+        error_data = data.get('errorData', {})
+        game_state = data.get('gameState', {})
+        
+        client_ip = get_client_ip(request)
+        
+        # Log the error
+        print(f"[CLIENT ERROR] {error_type} from {client_ip}")
+        print(f"[CLIENT ERROR] Details: {error_data}")
+        
+        # Email for critical errors (especially hanging/stuck issues)
+        should_email = (
+            'stuck' in error_type.lower() or
+            'hang' in error_type.lower() or
+            'timeout' in str(error_data).lower() or
+            'freeze' in str(error_data).lower() or
+            'network' in error_type.lower() or
+            error_type == 'JavaScript Error'
+        )
+        
+        if should_email:
+            try:
+                email_body = f"""
+CLIENT-SIDE ERROR DETECTED
+
+Time: {datetime.now().isoformat()}
+Error Type: {error_type}
+Client IP: {client_ip}
+User Agent: {request.headers.get('User-Agent', 'Unknown')}
+
+Game State at Error:
+  Phase: {game_state.get('phase', 'Unknown')}
+  Hand: {game_state.get('hand_number', 'Unknown')}
+  Hand Over: {game_state.get('hand_over', 'Unknown')}
+  Game Over: {game_state.get('game_over', 'Unknown')}
+  Turn: {game_state.get('turn', 'Unknown')}
+  Message: {game_state.get('message', 'Unknown')}
+
+Error Details:
+{str(error_data)}
+
+{('*** This might be the hanging bug users report! ***' if 'stuck' in error_type.lower() else '')}
+"""
+                
+                priority = "high" if 'stuck' in error_type.lower() else "normal"
+                title = "HANGING BUG DETECTED" if 'stuck' in error_type.lower() else "Client Error"
+                
+                send_notification_email(
+                    title=title,
+                    message=email_body,
+                    recipient=ADMIN_EMAIL,
+                    priority=priority
+                )
+                print(f"[CLIENT ERROR] Sent email notification for: {error_type}")
+            except Exception as email_error:
+                print(f"[CLIENT ERROR] Failed to send email: {email_error}")
+        
+        return jsonify({'status': 'reported'}), 200
+        
+    except Exception as e:
+        print(f"[CLIENT ERROR] Error handling client error report: {e}")
+        return jsonify({'status': 'failed'}), 500
+
+# =============================================================================
+# EXISTING ROUTES (unchanged)
+# =============================================================================
 
 @app.route('/debug_async_logging')
 def debug_async_logging():
@@ -1606,7 +1746,6 @@ def next_hand():
 @app.route('/instructions')
 def instructions():
     return render_template('instructions.html')
-
 
 @app.route('/stats')
 def stats():
@@ -7073,6 +7212,271 @@ if __name__ == "__main__":
 
 ================================================================================
 
+FILE: ./utilities/gmail_utils.py
+--------------------------------------------------------------------------------
+#!/usr/bin/env python3
+"""
+Gmail utilities for sending emails and notifications
+100% self-contained - NO sibling imports allowed.
+"""
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from google.cloud import secretmanager
+from os import path
+import logging
+from typing import List, Optional, Dict, Any
+
+# =============================================================================
+# GLOBAL VARIABLES - Email configuration
+# =============================================================================
+
+# Define the project ID and the secret IDs for username and app password
+PROJECT_ID = 'kumori-404602'
+GMAIL_USERNAME_SECRET_ID = 'KUMORI_GMAIL_USERNAME'
+GMAIL_APP_PASSWORD_SECRET_ID = 'KUMORI_GMAIL_APP_PASSWORD'
+
+# Email defaults
+EMAIL_DEFAULTS = {
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 465,
+    "default_from_name": "Kumori.ai",
+    "use_ssl": True,
+    "timeout_seconds": 30
+}
+
+# =============================================================================
+# CORE FUNCTIONS
+# =============================================================================
+
+def get_secret_version(project_id: str, secret_id: str, version_id: str = "latest") -> str:
+    """Get secret from Google Cloud Secret Manager."""
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode('UTF-8')
+
+def get_gmail_credentials() -> Dict[str, str]:
+    """Get Gmail credentials from Google Cloud Secret Manager."""
+    return {
+        'user': get_secret_version(PROJECT_ID, GMAIL_USERNAME_SECRET_ID),
+        'password': get_secret_version(PROJECT_ID, GMAIL_APP_PASSWORD_SECRET_ID),
+    }
+
+def send_email(
+    subject: str,
+    body: str,
+    to_emails: List[str],
+    cc_emails: Optional[List[str]] = None,
+    bcc_emails: Optional[List[str]] = None,
+    attachment_paths: Optional[List[str]] = None,
+    is_html: bool = False,
+    from_name: str = None
+) -> bool:
+    """
+    Send an email using Gmail SMTP.
+    
+    Args:
+        subject: Email subject line
+        body: Email body content
+        to_emails: List of recipient email addresses
+        cc_emails: List of CC email addresses (optional)
+        bcc_emails: List of BCC email addresses (optional)
+        attachment_paths: List of file paths to attach (optional)
+        is_html: Whether the body is HTML format (default: False)
+        from_name: Display name for sender (uses default if None)
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    if from_name is None:
+        from_name = EMAIL_DEFAULTS["default_from_name"]
+    
+    try:
+        # Get credentials
+        gmail_credentials = get_gmail_credentials()
+        gmail_user = gmail_credentials['user']
+        gmail_password = gmail_credentials['password']
+        
+        # Create message
+        message = MIMEMultipart()
+        message['From'] = f'{from_name} <{gmail_user}>'
+        message['To'] = ', '.join(to_emails)
+        message['Subject'] = subject
+        
+        # Add CC and BCC if provided
+        if cc_emails:
+            message['Cc'] = ', '.join(cc_emails)
+        if bcc_emails:
+            message['Bcc'] = ', '.join(bcc_emails)
+        
+        # Attach body
+        if is_html:
+            message.attach(MIMEText(body, 'html'))
+        else:
+            message.attach(MIMEText(body, 'plain'))
+        
+        # Add attachments if provided
+        if attachment_paths:
+            for attachment_path in attachment_paths:
+                if not path.exists(attachment_path):
+                    logging.warning(f"Attachment file not found: {attachment_path}")
+                    continue
+                    
+                part = MIMEBase('application', 'octet-stream')
+                with open(attachment_path, 'rb') as file:
+                    part.set_payload(file.read())
+                encoders.encode_base64(part)
+                part.add_header(
+                    'Content-Disposition',
+                    'attachment',
+                    filename=path.basename(attachment_path)
+                )
+                message.attach(part)
+        
+        # Prepare recipient list (including CC and BCC for actual sending)
+        all_recipients = to_emails.copy()
+        if cc_emails:
+            all_recipients.extend(cc_emails)
+        if bcc_emails:
+            all_recipients.extend(bcc_emails)
+        
+        # Send email
+        smtp_server = EMAIL_DEFAULTS["smtp_server"]
+        smtp_port = EMAIL_DEFAULTS["smtp_port"]
+        timeout = EMAIL_DEFAULTS["timeout_seconds"]
+        
+        with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=timeout) as server:
+            server.login(gmail_user, gmail_password)
+            server.send_message(message, to_addrs=all_recipients)
+            
+        logging.info('Email sent successfully')
+        print('Email sent successfully')
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+        print(f"Failed to send email: {e}")
+        return False
+
+def send_simple_email(
+    subject: str, 
+    body: str, 
+    to_email: str, 
+    attachment_paths: Optional[List[str]] = None,
+    is_html: bool = False
+) -> bool:
+    """
+    Simplified function to send email to a single recipient.
+    
+    Args:
+        subject: Email subject line
+        body: Email body content
+        to_email: Recipient email address
+        attachment_paths: List of file paths to attach (optional)
+        is_html: Whether the body is HTML format (default: False)
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    return send_email(subject, body, [to_email], attachment_paths=attachment_paths, is_html=is_html)
+
+def send_notification_email(
+    title: str,
+    message: str,
+    recipient: str,
+    priority: str = "normal",
+    include_timestamp: bool = True
+) -> bool:
+    """
+    Send a formatted notification email.
+    
+    Args:
+        title: Notification title
+        message: Notification message
+        recipient: Email recipient
+        priority: Priority level ("low", "normal", "high")
+        include_timestamp: Whether to include timestamp
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    from datetime import datetime
+    
+    # Format subject based on priority
+    priority_prefix = {"low": "ℹ️", "normal": "📨", "high": "🚨"}.get(priority, "📨")
+    subject = f"{priority_prefix} {title}"
+    
+    # Format body
+    body_parts = []
+    if include_timestamp:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        body_parts.append(f"Time: {timestamp}")
+    
+    body_parts.append(f"Message: {message}")
+    
+    if priority == "high":
+        body_parts.append("\n⚠️ This is a high-priority notification.")
+    
+    body = "\n\n".join(body_parts)
+    
+    return send_simple_email(subject, body, recipient)
+
+def send_pipeline_completion_email(
+    project_name: str,
+    recipient: str,
+    success: bool,
+    details: Optional[Dict[str, Any]] = None
+) -> bool:
+    """
+    Send pipeline completion notification email.
+    
+    Args:
+        project_name: Name of the project/pipeline
+        recipient: Email recipient
+        success: Whether pipeline completed successfully
+        details: Optional details dictionary
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    status = "✅ Completed Successfully" if success else "❌ Failed"
+    subject = f"Pipeline {status}: {project_name}"
+    
+    body_parts = [
+        f"Project: {project_name}",
+        f"Status: {status}",
+    ]
+    
+    if details:
+        body_parts.append("\nDetails:")
+        for key, value in details.items():
+            body_parts.append(f"  {key}: {value}")
+    
+    body = "\n".join(body_parts)
+    
+    return send_simple_email(subject, body, recipient)
+
+def get_email_defaults() -> Dict[str, Any]:
+    """Get current email defaults."""
+    return EMAIL_DEFAULTS.copy()
+
+def update_email_defaults(**kwargs) -> None:
+    """Update email defaults globally."""
+    EMAIL_DEFAULTS.update(kwargs)
+    logging.info(f"Updated email defaults: {kwargs}")
+
+if __name__ == '__main__':
+    # This module is meant to be imported, not run directly
+    print("This is a utility module. Import it in your script to use the email functions.")
+    print("Example:")
+    print("from utilities.gmail_utils import send_email")
+    print("send_email('Subject', 'Body', ['recipient@example.com'])")
+
+================================================================================
+
 FILE: ./utilities/logging_utils.py
 --------------------------------------------------------------------------------
 """
@@ -8139,6 +8543,129 @@ let unreadMessages = 0;
 let chatInitialized = false;
 
 // =============================================================================
+// ERROR MONITORING SYSTEM
+// =============================================================================
+
+// Track when game gets stuck
+let lastUpdateTime = Date.now();
+let stuckCheckInterval = null;
+
+// Monitor for hanging/stuck game
+function startHangDetection() {
+    if (stuckCheckInterval) return; // Already running
+
+    stuckCheckInterval = setInterval(() => {
+        const now = Date.now();
+        const timeSinceUpdate = now - lastUpdateTime;
+
+        // If no update for 30 seconds and game isn't over, might be stuck
+        if (timeSinceUpdate > 30000 && gameState && !gameState.game_over) {
+            reportClientError('Game Possibly Stuck', {
+                timeSinceLastUpdate: timeSinceUpdate,
+                gamePhase: gameState.phase,
+                handNumber: gameState.hand_number,
+                tricksComplete: gameState.current_trick ? gameState.current_trick.length : 0,
+                handOver: gameState.hand_over,
+                trickCompleted: gameState.trick_completed,
+                message: gameState.message,
+                turn: gameState.turn,
+                playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
+                computerHandCount: gameState.computer_hand_count || 0
+            });
+
+            console.error('HANG DETECTION: Game appears stuck!', {
+                timeSinceUpdate: timeSinceUpdate,
+                phase: gameState.phase,
+                turn: gameState.turn
+            });
+
+            // Stop checking to avoid spam
+            clearInterval(stuckCheckInterval);
+            stuckCheckInterval = null;
+        }
+    }, 10000); // Check every 10 seconds
+}
+
+// Global error handler for JavaScript errors
+window.addEventListener('error', function (event) {
+    reportClientError('JavaScript Error', {
+        message: event.message,
+        filename: event.filename,
+        line: event.lineno,
+        column: event.colno,
+        stack: event.error ? event.error.stack : 'No stack trace',
+        gamePhase: gameState ? gameState.phase : 'no-game',
+        url: window.location.href,
+        userAgent: navigator.userAgent
+    });
+});
+
+// Handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', function (event) {
+    reportClientError('Unhandled Promise Rejection', {
+        reason: event.reason,
+        gamePhase: gameState ? gameState.phase : 'no-game',
+        url: window.location.href
+    });
+});
+
+// Enhanced fetch wrapper to catch API errors
+const originalFetch = window.fetch;
+window.fetch = function (...args) {
+    return originalFetch.apply(this, args)
+        .then(response => {
+            if (!response.ok) {
+                reportClientError('API Error', {
+                    url: args[0],
+                    status: response.status,
+                    statusText: response.statusText,
+                    gamePhase: gameState ? gameState.phase : 'no-game'
+                });
+            }
+            return response;
+        })
+        .catch(error => {
+            reportClientError('Network Error', {
+                url: args[0],
+                error: error.message,
+                gamePhase: gameState ? gameState.phase : 'no-game'
+            });
+            throw error; // Re-throw to maintain original behavior
+        });
+};
+
+// Report errors to server
+function reportClientError(errorType, errorData) {
+    try {
+        fetch('/report_client_error', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                errorType: errorType,
+                errorData: errorData,
+                gameState: gameState ? {
+                    phase: gameState.phase,
+                    hand_number: gameState.hand_number,
+                    hand_over: gameState.hand_over,
+                    game_over: gameState.game_over,
+                    turn: gameState.turn,
+                    message: gameState.message,
+                    trick_completed: gameState.trick_completed,
+                    player_score: gameState.player_score,
+                    computer_score: gameState.computer_score
+                } : null
+            })
+        }).catch(() => {
+            // Ignore email failures - don't want error reporting to crash the game
+        });
+
+        console.error('ERROR REPORTED:', errorType, errorData);
+    } catch (e) {
+        console.error('Failed to report error:', e);
+    }
+}
+
+// =============================================================================
 // USER-ONLY CLAUDE CHAT SYSTEM
 // =============================================================================
 
@@ -8307,7 +8834,7 @@ function updateChatBadge() {
 }
 
 // =============================================================================
-// MAIN GAME FUNCTIONS (unchanged core logic)
+// MAIN GAME FUNCTIONS
 // =============================================================================
 
 async function loadGameState() {
@@ -8318,11 +8845,21 @@ async function loadGameState() {
     } catch (error) {
         console.error('Error loading game state:', error);
         showMessage('Error loading game', 'error');
+
+        // Report this as it might be the hanging bug
+        reportClientError('Game State Load Error', {
+            error: error.message,
+            stack: error.stack
+        });
     }
 }
 
+// Enhanced updateUI function with activity tracking
 function updateUI() {
     if (!gameState) return;
+
+    // Track that game is updating (for hang detection)
+    lastUpdateTime = Date.now();
 
     preserveTrickHistoryScroll();
     updateFloatingScores();
@@ -8344,6 +8881,9 @@ function updateUI() {
     // Track hand changes but don't auto-call Claude
     lastHandNumber = gameState.hand_number;
     restoreTrickHistoryScroll();
+
+    // Start hang detection after first update
+    startHangDetection();
 }
 
 // =============================================================================
@@ -8771,6 +9311,12 @@ function handleTrickCompletion() {
             } catch (error) {
                 console.error('Error clearing trick:', error);
                 trickDisplayTimeout = null;
+
+                // Report this error as it might cause hanging
+                reportClientError('Trick Clear Error', {
+                    error: error.message,
+                    gamePhase: gameState ? gameState.phase : 'unknown'
+                });
             }
         }, 1500);
     }
@@ -9204,6 +9750,13 @@ async function startNewGame() {
 
         // Reset chat state for new game
         chatInitialized = false;
+
+        // Reset error monitoring
+        lastUpdateTime = Date.now();
+        if (stuckCheckInterval) {
+            clearInterval(stuckCheckInterval);
+            stuckCheckInterval = null;
+        }
 
         await loadGameState();
     } catch (error) {

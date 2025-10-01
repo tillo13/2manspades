@@ -130,12 +130,12 @@
         .stats-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .stats-table th,
         .stats-table td {
-            padding: 8px 6px;
+            padding: 8px 4px;
             text-align: center;
             border-bottom: 1px solid #e9ecef;
         }
@@ -146,7 +146,7 @@
             font-weight: 600;
             position: sticky;
             top: 0;
-            font-size: 11px;
+            font-size: 10px;
         }
 
         .stats-table tr:hover {
@@ -542,6 +542,10 @@
                             <span class="legend-description">Times you attempted 0-trick bids</span>
                         </div>
                         <div class="legend-item">
+                            <span class="legend-label">Nil Success:</span>
+                            <span class="legend-description">Successful nils out of total attempts (e.g., 5/11)</span>
+                        </div>
+                        <div class="legend-item">
                             <span class="legend-label">Total Bags:</span>
                             <span class="legend-description">Cumulative penalty points from overtricks</span>
                         </div>
@@ -558,7 +562,8 @@
                 </div>
             </div>
         </div>
-        <!-- Competitive Leaderboard Section - UPDATED to remove games_started -->
+
+        <!-- Competitive Leaderboard Section -->
         <div class="stats-section">
             <div class="section-title">Competitive Rankings</div>
             {% if competitive_leaders %}
@@ -652,6 +657,7 @@
             <div class="no-stats">No competitive data available</div>
             {% endif %}
         </div>
+
         <!-- Detailed Performance Section -->
         <div class="stats-section">
             <div class="section-title">Detailed Hand Performance</div>
@@ -666,12 +672,13 @@
                             <th>Player</th>
                             <th>Hands</th>
                             <th>Avg Bid</th>
-                            <th>Computer Bid</th>
+                            <th>Comp Bid</th>
                             <th>Nil Bids</th>
+                            <th>Nil Success</th>
                             <th>Player Bags</th>
-                            <th>Computer Bags</th>
-                            <th>Avg Player Bags</th>
-                            <th>Avg Computer Bags</th>
+                            <th>Comp Bags</th>
+                            <th>Avg P Bags</th>
+                            <th>Avg C Bags</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -684,6 +691,8 @@
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }}</td>
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }}</td>
                             <td class="nil-stat">{{ player.total_player_nil_bids|default(0) }}</td>
+                            <td class="nil-stat">{{ player.total_player_nils_successful|default(0) }}/{{
+                                player.total_player_nil_bids|default(0) }}</td>
                             <td class="bags-stat">{{ player.total_player_bags|default(0) }}</td>
                             <td class="bags-stat">{{ player.total_computer_bags|default(0) }}</td>
                             <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }}</td>
@@ -722,6 +731,18 @@
                             </div>
                         </div>
                         <div class="stat-item">
+                            <div class="stat-label">Nil Success Rate</div>
+                            <div class="stat-value nil-stat">
+                                {% if player.total_player_nil_bids and player.total_player_nil_bids > 0 %}
+                                {{ player.total_player_nils_successful|default(0) }}/{{ player.total_player_nil_bids }}
+                                ({{ "%.0f"|format((player.total_player_nils_successful|default(0) /
+                                player.total_player_nil_bids) * 100) }}%)
+                                {% else %}
+                                No nils
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="stat-item">
                             <div class="stat-label">Total Player Bags</div>
                             <div class="stat-value bags-stat">{{ player.total_player_bags|default(0) }} bags</div>
                         </div>
@@ -756,12 +777,13 @@
                             <th>Player</th>
                             <th>Hands</th>
                             <th>Avg Bid</th>
-                            <th>Computer Bid</th>
+                            <th>Comp Bid</th>
                             <th>Nil Bids</th>
+                            <th>Nil Success</th>
                             <th>Player Bags</th>
-                            <th>Computer Bags</th>
-                            <th>Avg Player Bags</th>
-                            <th>Avg Computer Bags</th>
+                            <th>Comp Bags</th>
+                            <th>Avg P Bags</th>
+                            <th>Avg C Bags</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -776,6 +798,7 @@
                             <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) if
                                 player.avg_computer_bid else 'N/A' }}</td>
                             <td class="nil-stat">{{ player.total_player_nil_bids|default('N/A') }}</td>
+                            <td class="nil-stat">N/A</td>
                             <td class="bags-stat">{{ player.total_player_bags|default('N/A') }}</td>
                             <td class="bags-stat">{{ player.total_computer_bags|default('N/A') }}</td>
                             <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) if
@@ -814,6 +837,10 @@
                             <div class="stat-label">Total Nil Bids</div>
                             <div class="stat-value nil-stat">{{ player.total_player_nil_bids|default('N/A') }} attempts
                             </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Nil Success Rate</div>
+                            <div class="stat-value nil-stat">N/A</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Total Player Bags</div>
