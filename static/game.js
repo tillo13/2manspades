@@ -22,17 +22,37 @@ let chatInitialized = false;
 // Track when game gets stuck
 let lastUpdateTime = Date.now();
 let stuckCheckInterval = null;
+let hangReportSent = false; // Only report once per game session
 
 // Monitor for hanging/stuck game
 function startHangDetection() {
-    if (stuckCheckInterval) return; // Already running
+    if (stuckCheckInterval) return;
 
     stuckCheckInterval = setInterval(() => {
         const now = Date.now();
         const timeSinceUpdate = now - lastUpdateTime;
 
-        // If no update for 30 seconds and game isn't over, might be stuck
-        if (timeSinceUpdate > 30000 && gameState && !gameState.game_over) {
+        // Only check if game exists and isn't over
+        if (!gameState || gameState.game_over) {
+            return;
+        }
+
+        // Don't report during user decision phases - they can take as long as they want
+        const userDecisionPhases = ['discard', 'bidding', 'blind_decision', 'blind_bidding'];
+        const waitingForUser = userDecisionPhases.includes(gameState.phase) && gameState.turn === 'player';
+
+        if (waitingForUser) {
+            return; // Player can think forever, not a bug
+        }
+
+        // Only report if game should be auto-advancing but isn't
+        const shouldAutoAdvance = (
+            gameState.trick_completed === true ||
+            (gameState.phase === 'playing' && gameState.turn === 'computer')
+        );
+
+        // Report once if stuck for 10+ seconds in auto-advance phase
+        if (timeSinceUpdate > 10000 && shouldAutoAdvance && !hangReportSent) {
             reportClientError('Game Possibly Stuck', {
                 timeSinceLastUpdate: timeSinceUpdate,
                 gamePhase: gameState.phase,
@@ -46,17 +66,15 @@ function startHangDetection() {
                 computerHandCount: gameState.computer_hand_count || 0
             });
 
+            hangReportSent = true; // Only send ONE email per session
+
             console.error('HANG DETECTION: Game appears stuck!', {
                 timeSinceUpdate: timeSinceUpdate,
                 phase: gameState.phase,
                 turn: gameState.turn
             });
-
-            // Stop checking to avoid spam
-            clearInterval(stuckCheckInterval);
-            stuckCheckInterval = null;
         }
-    }, 10000); // Check every 10 seconds
+    }, 5000); // Check every 5 seconds
 }
 
 // Global error handler for JavaScript errors
@@ -333,6 +351,7 @@ function updateUI() {
 
     // Track that game is updating (for hang detection)
     lastUpdateTime = Date.now();
+    hangReportSent = false; // Reset flag when game updates successfully
 
     preserveTrickHistoryScroll();
     updateFloatingScores();
@@ -1226,6 +1245,7 @@ async function startNewGame() {
 
         // Reset error monitoring
         lastUpdateTime = Date.now();
+        hangReportSent = false; // Reset for new game
         if (stuckCheckInterval) {
             clearInterval(stuckCheckInterval);
             stuckCheckInterval = null;
