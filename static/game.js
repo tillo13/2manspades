@@ -16,66 +16,71 @@ let unreadMessages = 0;
 let chatInitialized = false;
 
 // =============================================================================
-// ERROR MONITORING SYSTEM
+// MARTA-SPECIFIC HANG DETECTION
 // =============================================================================
 
-// Track when game gets stuck
-let lastUpdateTime = Date.now();
-let stuckCheckInterval = null;
-let hangReportSent = false; // Only report once per game session
+let martaTurnStartTime = null;
+let martaHangReported = false;
+let martaHangCheckInterval = null;
 
-// Monitor for hanging/stuck game
-function startHangDetection() {
-    if (stuckCheckInterval) return;
+function startMartaHangDetection() {
+    if (martaHangCheckInterval) return;
 
-    stuckCheckInterval = setInterval(() => {
-        const now = Date.now();
-        const timeSinceUpdate = now - lastUpdateTime;
-
-        // Only check if game exists and isn't over
+    martaHangCheckInterval = setInterval(() => {
         if (!gameState || gameState.game_over) {
+            martaTurnStartTime = null;
             return;
         }
 
-        // Don't report during user decision phases - they can take as long as they want
-        const userDecisionPhases = ['discard', 'bidding', 'blind_decision', 'blind_bidding'];
-        const waitingForUser = userDecisionPhases.includes(gameState.phase) && gameState.turn === 'player';
-
-        if (waitingForUser) {
-            return; // Player can think forever, not a bug
-        }
-
-        // Only report if game should be auto-advancing but isn't
-        const shouldAutoAdvance = (
-            gameState.trick_completed === true ||
-            (gameState.phase === 'playing' && gameState.turn === 'computer')
+        // Check if it's Marta's turn to act
+        const martaShouldAct = (
+            gameState.phase === 'playing' && gameState.turn === 'computer'
         );
 
-        // Report once if stuck for 10+ seconds in auto-advance phase
-        if (timeSinceUpdate > 10000 && shouldAutoAdvance && !hangReportSent) {
-            reportClientError('Game Possibly Stuck', {
-                timeSinceLastUpdate: timeSinceUpdate,
-                gamePhase: gameState.phase,
-                handNumber: gameState.hand_number,
-                tricksComplete: gameState.current_trick ? gameState.current_trick.length : 0,
-                handOver: gameState.hand_over,
-                trickCompleted: gameState.trick_completed,
-                message: gameState.message,
-                turn: gameState.turn,
-                playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
-                computerHandCount: gameState.computer_hand_count || 0
-            });
+        if (martaShouldAct) {
+            // Start tracking if we haven't already
+            if (!martaTurnStartTime) {
+                martaTurnStartTime = Date.now();
+                martaHangReported = false;
+            }
 
-            hangReportSent = true; // Only send ONE email per session
+            const martaThinkingTime = Date.now() - martaTurnStartTime;
 
-            console.error('HANG DETECTION: Game appears stuck!', {
-                timeSinceUpdate: timeSinceUpdate,
-                phase: gameState.phase,
-                turn: gameState.turn
-            });
+            // Marta should NEVER take more than 5 seconds
+            if (martaThinkingTime > 5000 && !martaHangReported) {
+                reportClientError('Marta Turn Hung', {
+                    thinkingTime: martaThinkingTime,
+                    phase: gameState.phase,
+                    handNumber: gameState.hand_number,
+                    currentTrick: gameState.current_trick,
+                    martaHandCount: gameState.computer_hand_count,
+                    playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
+                    message: gameState.message,
+                    spadesBroken: gameState.spades_broken
+                });
+                martaHangReported = true;
+                console.error('MARTA HANG: Computer turn stuck for', martaThinkingTime, 'ms');
+            }
+        } else {
+            // Reset when it's not Marta's turn
+            martaTurnStartTime = null;
+            martaHangReported = false;
         }
-    }, 5000); // Check every 5 seconds
+    }, 1000); // Check every second
 }
+
+function stopMartaHangDetection() {
+    if (martaHangCheckInterval) {
+        clearInterval(martaHangCheckInterval);
+        martaHangCheckInterval = null;
+    }
+    martaTurnStartTime = null;
+    martaHangReported = false;
+}
+
+// =============================================================================
+// ERROR MONITORING SYSTEM
+// =============================================================================
 
 // Global error handler for JavaScript errors
 window.addEventListener('error', function (event) {
@@ -121,7 +126,7 @@ window.fetch = function (...args) {
                 error: error.message,
                 gamePhase: gameState ? gameState.phase : 'no-game'
             });
-            throw error; // Re-throw to maintain original behavior
+            throw error;
         });
 };
 
@@ -147,7 +152,7 @@ function reportClientError(errorType, errorData) {
                 } : null
             })
         }).catch(() => {
-            // Ignore email failures - don't want error reporting to crash the game
+            // Ignore email failures
         });
 
         console.error('ERROR REPORTED:', errorType, errorData);
@@ -170,13 +175,11 @@ function toggleChat() {
         chatWindow.classList.add('open');
         chatIcon.style.display = 'none';
 
-        // Show static welcome message only when chat first opens
         if (!chatInitialized) {
             addMessage("Ready when you are.", 'marta');
             chatInitialized = true;
         }
 
-        // Clear unread messages when chat is opened
         unreadMessages = 0;
         updateChatBadge();
     } else {
@@ -191,14 +194,11 @@ function sendMessage() {
 
     if (!message) return;
 
-    // Add player message
     addMessage(message, 'player');
     input.value = '';
 
-    // Show Marta typing indicator
     showMartaTyping();
 
-    // Get smart response from Marta with enhanced context - ONLY user-initiated
     fetch('/chat_response', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,7 +207,6 @@ function sendMessage() {
         .then(response => response.json())
         .then(data => {
             if (data.response) {
-                // Simulate realistic typing time based on response length
                 const typingDelay = Math.min(Math.max(data.response.length * 50, 800), 3000);
 
                 setTimeout(() => {
@@ -216,13 +215,12 @@ function sendMessage() {
                 }, typingDelay);
             } else {
                 hideMartaTyping();
-                addMessage("...", 'marta'); // Mysterious fallback
+                addMessage("...", 'marta');
             }
         })
         .catch(error => {
             console.error('Chat error:', error);
             hideMartaTyping();
-            // Snarky fallback responses
             const fallbacks = [
                 "Interesting move...",
                 "We'll see about that.",
@@ -240,13 +238,11 @@ function sendMessage() {
 function showMartaTyping() {
     const messagesDiv = document.getElementById('chatMessages');
 
-    // Remove any existing typing indicator
     const existingIndicator = document.getElementById('martaTypingIndicator');
     if (existingIndicator) {
         existingIndicator.remove();
     }
 
-    // Create typing indicator
     const typingDiv = document.createElement('div');
     typingDiv.id = 'martaTypingIndicator';
     typingDiv.className = 'marta-message typing-indicator';
@@ -276,11 +272,9 @@ function addMessage(text, sender) {
     const messageDiv = document.createElement('div');
     messageDiv.className = sender === 'marta' ? 'marta-message' : 'player-message';
 
-    // Create timestamp
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Create message structure with timestamp
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     messageContent.textContent = text;
@@ -295,7 +289,6 @@ function addMessage(text, sender) {
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-    // If it's a Marta message and chat is closed, increment unread count
     if (sender === 'marta' && !chatOpen) {
         unreadMessages++;
         updateChatBadge();
@@ -307,7 +300,6 @@ function updateChatBadge() {
     let badge = document.getElementById('chatBadge');
 
     if (unreadMessages > 0 && !chatOpen) {
-        // Create badge if it doesn't exist
         if (!badge) {
             badge = document.createElement('div');
             badge.id = 'chatBadge';
@@ -317,7 +309,6 @@ function updateChatBadge() {
         badge.textContent = unreadMessages > 9 ? '9+' : unreadMessages;
         badge.style.display = 'block';
     } else {
-        // Hide badge when no unread messages or chat is open
         if (badge) {
             badge.style.display = 'none';
         }
@@ -337,7 +328,6 @@ async function loadGameState() {
         console.error('Error loading game state:', error);
         showMessage('Error loading game', 'error');
 
-        // Report this as it might be the hanging bug
         reportClientError('Game State Load Error', {
             error: error.message,
             stack: error.stack
@@ -345,13 +335,8 @@ async function loadGameState() {
     }
 }
 
-// Enhanced updateUI function with activity tracking
 function updateUI() {
     if (!gameState) return;
-
-    // Track that game is updating (for hang detection)
-    lastUpdateTime = Date.now();
-    hangReportSent = false; // Reset flag when game updates successfully
 
     preserveTrickHistoryScroll();
     updateFloatingScores();
@@ -370,16 +355,12 @@ function updateUI() {
     handleResultsDisplay();
     handleTrickCompletion();
 
-    // Track hand changes but don't auto-call Claude
     lastHandNumber = gameState.hand_number;
     restoreTrickHistoryScroll();
-
-    // Start hang detection after first update
-    startHangDetection();
 }
 
 // =============================================================================
-// UI UPDATE FUNCTIONS (unchanged from original)
+// UI UPDATE FUNCTIONS
 // =============================================================================
 
 function updateFloatingScores() {
@@ -397,7 +378,6 @@ function updateFloatingScores() {
 
     const handScoreEl = document.getElementById('floatingHandScore');
     if (handScoreEl) {
-        // Player side
         document.getElementById('floatingPlayerTricks').textContent = gameState.player_tricks;
         const playerBid = gameState.player_bid !== null ? gameState.player_bid : '-';
         const playerBlindText = gameState.blind_bid === gameState.player_bid ? 'B' : '';
@@ -414,7 +394,6 @@ function updateFloatingScores() {
 
         document.getElementById('floatingPlayerBags').textContent = gameState.player_bags || 0;
 
-        // Computer side
         document.getElementById('floatingComputerTricks').textContent = gameState.computer_tricks;
         const computerBid = gameState.computer_bid !== null ? gameState.computer_bid : '-';
         const computerBlindText = gameState.computer_blind_bid === gameState.computer_bid ? 'B' : '';
@@ -457,7 +436,6 @@ function updatePlayAreaVisibility() {
     const playArea = document.getElementById('playArea');
     if (!playArea) return;
 
-    // Hide play area during these phases to save screen space
     const hiddenPhases = ['discard', 'bidding', 'blind_decision', 'blind_bidding'];
 
     if (hiddenPhases.includes(gameState.phase)) {
@@ -483,7 +461,6 @@ function updateGameOverState() {
         winnerTextEl.textContent = gameState.message;
         hideInteractiveSections();
 
-        // Show results for blind nil games
         if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
             handleResultsDisplay();
         } else {
@@ -511,7 +488,6 @@ function updatePhaseVisibility() {
     const blindDecisionSection = document.getElementById('blindDecisionSection');
     const discardBlindSection = document.getElementById('discardBlindBiddingSection');
 
-    // Hide all sections first
     biddingSection.style.display = 'none';
     if (blindDecisionSection) blindDecisionSection.style.display = 'none';
     discardBlindSection.style.display = 'none';
@@ -539,7 +515,6 @@ function updateMessages() {
 
     let messageToShow = gameState.message;
 
-    // Avoid showing detailed results if structured results are shown
     if (gameState.hand_over && gameState.hand_results) {
         messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue, or scroll for hand stats!`;
     }
@@ -558,7 +533,6 @@ function updatePlayArea() {
         const playerCard = gameState.current_trick.find(play => play.player === 'player');
         const computerCard = gameState.current_trick.find(play => play.player === 'computer');
 
-        // Always show side by side - You left, Marta right
         if (playerCard) {
             const card = playerCard.card;
             const suitClass = getSuitClass(card.suit);
@@ -594,7 +568,6 @@ function updatePlayerHand() {
     const handEl = document.getElementById('playerHand');
     const playerHandSection = document.getElementById('playerHandSection');
 
-    // Hide entire hand section when hand is complete
     if (gameState.hand_over && gameState.player_hand.length === 0) {
         playerHandSection.style.display = 'none';
         return;
@@ -604,7 +577,6 @@ function updatePlayerHand() {
 
     handEl.innerHTML = '';
 
-    // Hide cards during blind decision or blind bidding phases
     if (gameState.phase === 'blind_decision' || gameState.phase === 'blind_bidding') {
         handEl.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">Cards hidden during blind bidding decision!</div>';
         return;
@@ -637,7 +609,6 @@ function updateComputerHand() {
     const handEl = document.getElementById('computerHand');
     const computerHandSection = handEl.closest('.hand-section');
 
-    // Hide entire computer hand section if debug mode is off
     if (!gameState.debug_mode) {
         computerHandSection.style.display = 'none';
         return;
@@ -646,7 +617,6 @@ function updateComputerHand() {
     computerHandSection.style.display = 'block';
     handEl.innerHTML = '';
 
-    // Only show cards if debug mode is on AND show_computer_hand is true
     if (gameState.debug_mode && gameState.show_computer_hand && gameState.computer_hand) {
         gameState.computer_hand.forEach((card, index) => {
             const cardEl = document.createElement('div');
@@ -793,7 +763,6 @@ function handleResultsDisplay() {
 }
 
 function handleTrickCompletion() {
-    // Check for completed trick that needs to be displayed
     if (gameState.current_trick && gameState.current_trick.length === 2 && !trickDisplayTimeout) {
         trickDisplayTimeout = setTimeout(async () => {
             try {
@@ -804,7 +773,6 @@ function handleTrickCompletion() {
                 console.error('Error clearing trick:', error);
                 trickDisplayTimeout = null;
 
-                // Report this error as it might cause hanging
                 reportClientError('Trick Clear Error', {
                     error: error.message,
                     gamePhase: gameState ? gameState.phase : 'unknown'
@@ -815,7 +783,7 @@ function handleTrickCompletion() {
 }
 
 // =============================================================================
-// HELPER FUNCTIONS (unchanged from original)
+// HELPER FUNCTIONS
 // =============================================================================
 
 function getSuitClass(suit) {
@@ -882,7 +850,7 @@ function isSpecialCard(card) {
 }
 
 // =============================================================================
-// BIDDING FUNCTIONS (unchanged from original)
+// BIDDING FUNCTIONS
 // =============================================================================
 
 function selectBid(bidAmount) {
@@ -925,13 +893,12 @@ function resetBiddingState() {
 }
 
 // =============================================================================
-// RESULTS FORMATTING (unchanged from original)
+// RESULTS FORMATTING
 // =============================================================================
 
 function formatCleanResults(results) {
     let html = '';
 
-    // Parity Assignment
     html += `
         <div class="result-section">
             <div class="result-header">Players</div>
@@ -939,7 +906,6 @@ function formatCleanResults(results) {
         </div>
     `;
 
-    // Discard Information
     if (results.discard_info && results.discard_info !== 'No discards to score') {
         html += `
             <div class="result-section">
@@ -949,7 +915,6 @@ function formatCleanResults(results) {
         `;
     }
 
-    // Scoring Breakdown
     html += `
         <div class="result-section">
             <div class="result-header">Scoring</div>
@@ -957,7 +922,6 @@ function formatCleanResults(results) {
         </div>
     `;
 
-    // Trick History
     if (results.trick_history && results.trick_history.length > 0) {
         html += `
             <div class="result-section">
@@ -981,7 +945,6 @@ function formatCleanResults(results) {
         `;
     }
 
-    // Game Totals
     html += `
         <div class="result-section">
             <div class="result-header">Game Totals</div>
@@ -1015,7 +978,7 @@ function formatScoring(scoringText) {
 }
 
 // =============================================================================
-// SCROLL PRESERVATION (unchanged from original)
+// SCROLL PRESERVATION
 // =============================================================================
 
 function preserveTrickHistoryScroll() {
@@ -1039,7 +1002,7 @@ function resetTrickHistoryScroll() {
 }
 
 // =============================================================================
-// API FUNCTIONS (unchanged from original)
+// API FUNCTIONS
 // =============================================================================
 
 async function chooseBlindNil() {
@@ -1240,16 +1203,10 @@ async function startNewGame() {
         resetBiddingState();
         resetTrickHistoryScroll();
 
-        // Reset chat state for new game
         chatInitialized = false;
 
-        // Reset error monitoring
-        lastUpdateTime = Date.now();
-        hangReportSent = false; // Reset for new game
-        if (stuckCheckInterval) {
-            clearInterval(stuckCheckInterval);
-            stuckCheckInterval = null;
-        }
+        // Reset Marta hang detection
+        stopMartaHangDetection();
 
         await loadGameState();
     } catch (error) {
@@ -1265,7 +1222,9 @@ async function startNewGame() {
 document.addEventListener('DOMContentLoaded', function () {
     loadGameState();
 
-    // Handle Enter key in chat input
+    // Start Marta-specific hang detection
+    startMartaHangDetection();
+
     const chatInput = document.getElementById('chatInput');
     if (chatInput) {
         chatInput.addEventListener('keypress', function (e) {
@@ -1275,7 +1234,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Prevent zoom on double-tap for mobile
     let lastTouchEnd = 0;
     document.addEventListener('touchend', function (event) {
         const now = (new Date()).getTime();
@@ -1286,14 +1244,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }, false);
 });
 
-// Auto-refresh with mobile-friendly timing
+// Auto-refresh
 setInterval(() => {
     if (gameState && !gameState.game_over && !trickDisplayTimeout) {
         loadGameState();
     }
 }, 2500);
 
-// Handle orientation changes on mobile
+// Handle orientation changes
 window.addEventListener('orientationchange', function () {
     setTimeout(() => {
         updatePlayArea();
