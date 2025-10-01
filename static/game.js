@@ -16,47 +16,43 @@ let unreadMessages = 0;
 let chatInitialized = false;
 
 // =============================================================================
-// MARTA-SPECIFIC HANG DETECTION - NEVER FIRES ON PLAYER TURN
+// MARTA-ONLY HANG DETECTION - ONLY TRIGGERS WHEN COMPUTER IS STUCK
 // =============================================================================
 
 let martaTurnStartTime = null;
 let martaHangReported = false;
 let martaHangCheckInterval = null;
-let lastGameStateUpdate = Date.now();
 
 function startMartaHangDetection() {
     if (martaHangCheckInterval) return;
 
     martaHangCheckInterval = setInterval(() => {
-        // Bail if no game or game over
+        // Only check if we have a valid game state
         if (!gameState || gameState.game_over) {
-            martaTurnStartTime = null;
+            resetMartaHangTracking();
             return;
         }
 
-        // CRITICAL: Only check on fresh game state (updated in last 10 seconds)
-        const timeSinceStateUpdate = Date.now() - lastGameStateUpdate;
-        if (timeSinceStateUpdate > 10000) {
-            // Game state is stale - player might be thinking
-            martaTurnStartTime = null;
-            return;
-        }
-
-        // DOUBLE CHECK: Absolutely never fire if turn is player
+        // ABSOLUTE RULE: Never check anything if it's player's turn
         if (gameState.turn === 'player') {
-            martaTurnStartTime = null;
-            martaHangReported = false;
+            resetMartaHangTracking();
             return;
         }
 
-        // TRIPLE CHECK: Only check during playing phase when it's computer's turn
-        const martaShouldAct = (
+        // ABSOLUTE RULE: Never check during player decision phases
+        const playerDecisionPhases = ['bidding', 'blind_decision', 'blind_bidding', 'discard'];
+        if (playerDecisionPhases.includes(gameState.phase)) {
+            resetMartaHangTracking();
+            return;
+        }
+
+        // Only monitor when computer should be actively playing
+        const computerShouldAct = (
             gameState.phase === 'playing' &&
             gameState.turn === 'computer'
         );
 
-        if (martaShouldAct) {
-            // Start tracking if we haven't already
+        if (computerShouldAct) {
             if (!martaTurnStartTime) {
                 martaTurnStartTime = Date.now();
                 martaHangReported = false;
@@ -64,29 +60,20 @@ function startMartaHangDetection() {
 
             const martaThinkingTime = Date.now() - martaTurnStartTime;
 
-            // Marta should NEVER take more than 5 seconds
-            if (martaThinkingTime > 5000 && !martaHangReported) {
-                reportClientError('Marta Turn Hung', {
-                    thinkingTime: martaThinkingTime,
-                    phase: gameState.phase,
-                    turn: gameState.turn,
-                    handNumber: gameState.hand_number,
-                    currentTrick: gameState.current_trick,
-                    martaHandCount: gameState.computer_hand_count,
-                    playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
-                    message: gameState.message,
-                    spadesBroken: gameState.spades_broken,
-                    timeSinceStateUpdate: timeSinceStateUpdate
-                });
+            // Computer should never take more than 8 seconds to play
+            if (martaThinkingTime > 8000 && !martaHangReported) {
+                reportComputerHang(martaThinkingTime);
                 martaHangReported = true;
-                console.error('MARTA HANG: Computer turn stuck for', martaThinkingTime, 'ms');
             }
         } else {
-            // Reset when it's not Marta's turn
-            martaTurnStartTime = null;
-            martaHangReported = false;
+            resetMartaHangTracking();
         }
-    }, 1000); // Check every second
+    }, 2000); // Check every 2 seconds
+}
+
+function resetMartaHangTracking() {
+    martaTurnStartTime = null;
+    martaHangReported = false;
 }
 
 function stopMartaHangDetection() {
@@ -94,72 +81,28 @@ function stopMartaHangDetection() {
         clearInterval(martaHangCheckInterval);
         martaHangCheckInterval = null;
     }
-    martaTurnStartTime = null;
-    martaHangReported = false;
+    resetMartaHangTracking();
 }
 
-// =============================================================================
-// ERROR MONITORING SYSTEM
-// =============================================================================
-
-// Global error handler for JavaScript errors
-window.addEventListener('error', function (event) {
-    reportClientError('JavaScript Error', {
-        message: event.message,
-        filename: event.filename,
-        line: event.lineno,
-        column: event.colno,
-        stack: event.error ? event.error.stack : 'No stack trace',
-        gamePhase: gameState ? gameState.phase : 'no-game',
-        url: window.location.href,
-        userAgent: navigator.userAgent
-    });
-});
-
-// Handler for unhandled promise rejections
-window.addEventListener('unhandledrejection', function (event) {
-    reportClientError('Unhandled Promise Rejection', {
-        reason: event.reason,
-        gamePhase: gameState ? gameState.phase : 'no-game',
-        url: window.location.href
-    });
-});
-
-// Enhanced fetch wrapper to catch API errors
-const originalFetch = window.fetch;
-window.fetch = function (...args) {
-    return originalFetch.apply(this, args)
-        .then(response => {
-            if (!response.ok) {
-                reportClientError('API Error', {
-                    url: args[0],
-                    status: response.status,
-                    statusText: response.statusText,
-                    gamePhase: gameState ? gameState.phase : 'no-game'
-                });
-            }
-            return response;
-        })
-        .catch(error => {
-            reportClientError('Network Error', {
-                url: args[0],
-                error: error.message,
-                gamePhase: gameState ? gameState.phase : 'no-game'
-            });
-            throw error;
-        });
-};
-
-// Report errors to server
-function reportClientError(errorType, errorData) {
+function reportComputerHang(thinkingTime) {
     try {
         fetch('/report_client_error', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                errorType: errorType,
-                errorData: errorData,
-                gameState: gameState ? {
+                errorType: 'Computer Turn Hung',
+                errorData: {
+                    thinkingTime: thinkingTime,
+                    phase: gameState.phase,
+                    turn: gameState.turn,
+                    handNumber: gameState.hand_number,
+                    currentTrick: gameState.current_trick,
+                    computerHandCount: gameState.computer_hand_count,
+                    playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
+                    message: gameState.message,
+                    spadesBroken: gameState.spades_broken
+                },
+                gameState: {
                     phase: gameState.phase,
                     hand_number: gameState.hand_number,
                     hand_over: gameState.hand_over,
@@ -169,17 +112,42 @@ function reportClientError(errorType, errorData) {
                     trick_completed: gameState.trick_completed,
                     player_score: gameState.player_score,
                     computer_score: gameState.computer_score
-                } : null
+                }
             })
         }).catch(() => {
-            // Ignore email failures
+            // Silently fail - don't spam console
         });
 
-        console.error('ERROR REPORTED:', errorType, errorData);
+        console.error('COMPUTER HANG DETECTED: Marta stuck for', thinkingTime, 'ms');
     } catch (e) {
-        console.error('Failed to report error:', e);
+        // Silently fail
     }
 }
+
+// =============================================================================
+// MINIMAL ERROR REPORTING - ONLY FOR CRITICAL ERRORS
+// =============================================================================
+
+// Only report JavaScript errors and network failures - nothing game-state related
+window.addEventListener('error', function (event) {
+    try {
+        fetch('/report_client_error', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                errorType: 'JavaScript Error',
+                errorData: {
+                    message: event.message,
+                    filename: event.filename,
+                    line: event.lineno,
+                    column: event.colno
+                }
+            })
+        }).catch(() => { });
+    } catch (e) {
+        // Silently fail
+    }
+});
 
 // =============================================================================
 // USER-ONLY CLAUDE CHAT SYSTEM
@@ -347,19 +315,11 @@ async function loadGameState() {
     } catch (error) {
         console.error('Error loading game state:', error);
         showMessage('Error loading game', 'error');
-
-        reportClientError('Game State Load Error', {
-            error: error.message,
-            stack: error.stack
-        });
     }
 }
 
 function updateUI() {
     if (!gameState) return;
-
-    // CRITICAL: Mark that we got fresh game state
-    lastGameStateUpdate = Date.now();
 
     preserveTrickHistoryScroll();
     updateFloatingScores();
@@ -795,11 +755,6 @@ function handleTrickCompletion() {
             } catch (error) {
                 console.error('Error clearing trick:', error);
                 trickDisplayTimeout = null;
-
-                reportClientError('Trick Clear Error', {
-                    error: error.message,
-                    gamePhase: gameState ? gameState.phase : 'unknown'
-                });
             }
         }, 1500);
     }
@@ -1243,7 +1198,6 @@ async function startNewGame() {
 
 document.addEventListener('DOMContentLoaded', function () {
     loadGameState();
-
     startMartaHangDetection();
 
     const chatInput = document.getElementById('chatInput');
@@ -1265,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, false);
 });
 
-// Auto-refresh
+// Auto-refresh every 2.5 seconds - no hang detection here
 setInterval(() => {
     if (gameState && !gameState.game_over && !trickDisplayTimeout) {
         loadGameState();
