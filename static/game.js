@@ -16,25 +16,43 @@ let unreadMessages = 0;
 let chatInitialized = false;
 
 // =============================================================================
-// MARTA-SPECIFIC HANG DETECTION
+// MARTA-SPECIFIC HANG DETECTION - NEVER FIRES ON PLAYER TURN
 // =============================================================================
 
 let martaTurnStartTime = null;
 let martaHangReported = false;
 let martaHangCheckInterval = null;
+let lastGameStateUpdate = Date.now();
 
 function startMartaHangDetection() {
     if (martaHangCheckInterval) return;
 
     martaHangCheckInterval = setInterval(() => {
+        // Bail if no game or game over
         if (!gameState || gameState.game_over) {
             martaTurnStartTime = null;
             return;
         }
 
-        // Check if it's Marta's turn to act
+        // CRITICAL: Only check on fresh game state (updated in last 10 seconds)
+        const timeSinceStateUpdate = Date.now() - lastGameStateUpdate;
+        if (timeSinceStateUpdate > 10000) {
+            // Game state is stale - player might be thinking
+            martaTurnStartTime = null;
+            return;
+        }
+
+        // DOUBLE CHECK: Absolutely never fire if turn is player
+        if (gameState.turn === 'player') {
+            martaTurnStartTime = null;
+            martaHangReported = false;
+            return;
+        }
+
+        // TRIPLE CHECK: Only check during playing phase when it's computer's turn
         const martaShouldAct = (
-            gameState.phase === 'playing' && gameState.turn === 'computer'
+            gameState.phase === 'playing' &&
+            gameState.turn === 'computer'
         );
 
         if (martaShouldAct) {
@@ -51,12 +69,14 @@ function startMartaHangDetection() {
                 reportClientError('Marta Turn Hung', {
                     thinkingTime: martaThinkingTime,
                     phase: gameState.phase,
+                    turn: gameState.turn,
                     handNumber: gameState.hand_number,
                     currentTrick: gameState.current_trick,
                     martaHandCount: gameState.computer_hand_count,
                     playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
                     message: gameState.message,
-                    spadesBroken: gameState.spades_broken
+                    spadesBroken: gameState.spades_broken,
+                    timeSinceStateUpdate: timeSinceStateUpdate
                 });
                 martaHangReported = true;
                 console.error('MARTA HANG: Computer turn stuck for', martaThinkingTime, 'ms');
@@ -337,6 +357,9 @@ async function loadGameState() {
 
 function updateUI() {
     if (!gameState) return;
+
+    // CRITICAL: Mark that we got fresh game state
+    lastGameStateUpdate = Date.now();
 
     preserveTrickHistoryScroll();
     updateFloatingScores();
@@ -1205,7 +1228,6 @@ async function startNewGame() {
 
         chatInitialized = false;
 
-        // Reset Marta hang detection
         stopMartaHangDetection();
 
         await loadGameState();
@@ -1222,7 +1244,6 @@ async function startNewGame() {
 document.addEventListener('DOMContentLoaded', function () {
     loadGameState();
 
-    // Start Marta-specific hang detection
     startMartaHangDetection();
 
     const chatInput = document.getElementById('chatInput');
