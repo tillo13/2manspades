@@ -481,6 +481,7 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
         cur.execute("""
             SELECT family_member, total_hands_with_bids, total_hands_with_scoring,
                    avg_player_bid, avg_computer_bid, total_player_nil_bids,
+                   total_player_nils_successful,  -- ADD THIS LINE
                    total_player_bags, total_computer_bags, 
                    avg_player_bags, avg_computer_bags
             FROM twomanspades.vw_city_leaders_totals 
