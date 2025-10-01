@@ -16,6 +16,129 @@ let unreadMessages = 0;
 let chatInitialized = false;
 
 // =============================================================================
+// ERROR MONITORING SYSTEM
+// =============================================================================
+
+// Track when game gets stuck
+let lastUpdateTime = Date.now();
+let stuckCheckInterval = null;
+
+// Monitor for hanging/stuck game
+function startHangDetection() {
+    if (stuckCheckInterval) return; // Already running
+
+    stuckCheckInterval = setInterval(() => {
+        const now = Date.now();
+        const timeSinceUpdate = now - lastUpdateTime;
+
+        // If no update for 30 seconds and game isn't over, might be stuck
+        if (timeSinceUpdate > 30000 && gameState && !gameState.game_over) {
+            reportClientError('Game Possibly Stuck', {
+                timeSinceLastUpdate: timeSinceUpdate,
+                gamePhase: gameState.phase,
+                handNumber: gameState.hand_number,
+                tricksComplete: gameState.current_trick ? gameState.current_trick.length : 0,
+                handOver: gameState.hand_over,
+                trickCompleted: gameState.trick_completed,
+                message: gameState.message,
+                turn: gameState.turn,
+                playerHandSize: gameState.player_hand ? gameState.player_hand.length : 0,
+                computerHandCount: gameState.computer_hand_count || 0
+            });
+
+            console.error('HANG DETECTION: Game appears stuck!', {
+                timeSinceUpdate: timeSinceUpdate,
+                phase: gameState.phase,
+                turn: gameState.turn
+            });
+
+            // Stop checking to avoid spam
+            clearInterval(stuckCheckInterval);
+            stuckCheckInterval = null;
+        }
+    }, 10000); // Check every 10 seconds
+}
+
+// Global error handler for JavaScript errors
+window.addEventListener('error', function (event) {
+    reportClientError('JavaScript Error', {
+        message: event.message,
+        filename: event.filename,
+        line: event.lineno,
+        column: event.colno,
+        stack: event.error ? event.error.stack : 'No stack trace',
+        gamePhase: gameState ? gameState.phase : 'no-game',
+        url: window.location.href,
+        userAgent: navigator.userAgent
+    });
+});
+
+// Handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', function (event) {
+    reportClientError('Unhandled Promise Rejection', {
+        reason: event.reason,
+        gamePhase: gameState ? gameState.phase : 'no-game',
+        url: window.location.href
+    });
+});
+
+// Enhanced fetch wrapper to catch API errors
+const originalFetch = window.fetch;
+window.fetch = function (...args) {
+    return originalFetch.apply(this, args)
+        .then(response => {
+            if (!response.ok) {
+                reportClientError('API Error', {
+                    url: args[0],
+                    status: response.status,
+                    statusText: response.statusText,
+                    gamePhase: gameState ? gameState.phase : 'no-game'
+                });
+            }
+            return response;
+        })
+        .catch(error => {
+            reportClientError('Network Error', {
+                url: args[0],
+                error: error.message,
+                gamePhase: gameState ? gameState.phase : 'no-game'
+            });
+            throw error; // Re-throw to maintain original behavior
+        });
+};
+
+// Report errors to server
+function reportClientError(errorType, errorData) {
+    try {
+        fetch('/report_client_error', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                errorType: errorType,
+                errorData: errorData,
+                gameState: gameState ? {
+                    phase: gameState.phase,
+                    hand_number: gameState.hand_number,
+                    hand_over: gameState.hand_over,
+                    game_over: gameState.game_over,
+                    turn: gameState.turn,
+                    message: gameState.message,
+                    trick_completed: gameState.trick_completed,
+                    player_score: gameState.player_score,
+                    computer_score: gameState.computer_score
+                } : null
+            })
+        }).catch(() => {
+            // Ignore email failures - don't want error reporting to crash the game
+        });
+
+        console.error('ERROR REPORTED:', errorType, errorData);
+    } catch (e) {
+        console.error('Failed to report error:', e);
+    }
+}
+
+// =============================================================================
 // USER-ONLY CLAUDE CHAT SYSTEM
 // =============================================================================
 
@@ -184,7 +307,7 @@ function updateChatBadge() {
 }
 
 // =============================================================================
-// MAIN GAME FUNCTIONS (unchanged core logic)
+// MAIN GAME FUNCTIONS
 // =============================================================================
 
 async function loadGameState() {
@@ -195,11 +318,21 @@ async function loadGameState() {
     } catch (error) {
         console.error('Error loading game state:', error);
         showMessage('Error loading game', 'error');
+
+        // Report this as it might be the hanging bug
+        reportClientError('Game State Load Error', {
+            error: error.message,
+            stack: error.stack
+        });
     }
 }
 
+// Enhanced updateUI function with activity tracking
 function updateUI() {
     if (!gameState) return;
+
+    // Track that game is updating (for hang detection)
+    lastUpdateTime = Date.now();
 
     preserveTrickHistoryScroll();
     updateFloatingScores();
@@ -221,6 +354,9 @@ function updateUI() {
     // Track hand changes but don't auto-call Claude
     lastHandNumber = gameState.hand_number;
     restoreTrickHistoryScroll();
+
+    // Start hang detection after first update
+    startHangDetection();
 }
 
 // =============================================================================
@@ -648,6 +784,12 @@ function handleTrickCompletion() {
             } catch (error) {
                 console.error('Error clearing trick:', error);
                 trickDisplayTimeout = null;
+
+                // Report this error as it might cause hanging
+                reportClientError('Trick Clear Error', {
+                    error: error.message,
+                    gamePhase: gameState ? gameState.phase : 'unknown'
+                });
             }
         }, 1500);
     }
@@ -1081,6 +1223,13 @@ async function startNewGame() {
 
         // Reset chat state for new game
         chatInitialized = false;
+
+        // Reset error monitoring
+        lastUpdateTime = Date.now();
+        if (stuckCheckInterval) {
+            clearInterval(stuckCheckInterval);
+            stuckCheckInterval = null;
+        }
 
         await loadGameState();
     } catch (error) {

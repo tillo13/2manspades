@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, session, jsonify
 import sys
 import os
 import time
+import traceback
+from datetime import datetime
 
 # Add utilities directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,14 +20,14 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-
 from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats
-
-
+from utilities.gmail_utils import send_notification_email
 
 app = Flask(__name__)
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
+# Error monitoring configuration
+ADMIN_EMAIL = "andy.tillo@gmail.com"
 
 # Initialize async logging for production immediately when module loads
 if IS_PRODUCTION:
@@ -35,6 +37,143 @@ if IS_PRODUCTION:
 DEBUG_MODE = False
 session_tracker = {}
 
+# =============================================================================
+# ERROR HANDLERS
+# =============================================================================
+
+@app.errorhandler(500)
+def handle_internal_error(error):
+    """Handle 500 errors and send email notification"""
+    try:
+        # Get error details
+        error_info = {
+            'time': datetime.now().isoformat(),
+            'error': str(error),
+            'traceback': traceback.format_exc(),
+            'url': request.url if request else 'Unknown',
+            'method': request.method if request else 'Unknown',
+            'client_ip': get_client_ip(request) if request else 'Unknown',
+            'user_agent': request.headers.get('User-Agent', 'Unknown') if request else 'Unknown'
+        }
+        
+        # Send email (non-blocking)
+        try:
+            email_body = f"""
+GAME SERVER ERROR DETECTED
+
+Time: {error_info['time']}
+Error: {error_info['error']}
+URL: {error_info['url']}
+Method: {error_info['method']}
+Client: {error_info['client_ip']}
+User Agent: {error_info['user_agent']}
+
+Full Traceback:
+{error_info['traceback']}
+
+This error caused the game to fail for a user.
+They likely had to refresh to continue playing.
+"""
+            send_notification_email(
+                title="Two-Man Spades Server Error",
+                message=email_body,
+                recipient=ADMIN_EMAIL,
+                priority="high"
+            )
+            print(f"[ERROR] Sent error notification email for: {error_info['error']}")
+        except Exception as email_error:
+            print(f"[ERROR] Failed to send error notification: {email_error}")
+        
+        print(f"[ERROR] Server error: {error_info['error']}")
+        
+    except Exception as handler_error:
+        print(f"[ERROR] Error in error handler: {handler_error}")
+    
+    # Return user-friendly page
+    return '''
+    <html><head><title>Game Error</title></head>
+    <body style="font-family: Arial; text-align: center; padding: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div style="background: white; color: #333; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto;">
+            <h2>Oops! Game Error</h2>
+            <p>Something went wrong with the game. This has been automatically reported.</p>
+            <button onclick="window.location.reload()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin: 10px;">Refresh Game</button>
+            <br><br>
+            <a href="/" style="color: #667eea; text-decoration: none;">Start New Game</a>
+        </div>
+    </body></html>
+    ''', 500
+
+@app.route('/report_client_error', methods=['POST'])
+def report_client_error():
+    """Handle client-side error reports"""
+    try:
+        data = request.get_json()
+        error_type = data.get('errorType', 'Unknown')
+        error_data = data.get('errorData', {})
+        game_state = data.get('gameState', {})
+        
+        client_ip = get_client_ip(request)
+        
+        # Log the error
+        print(f"[CLIENT ERROR] {error_type} from {client_ip}")
+        print(f"[CLIENT ERROR] Details: {error_data}")
+        
+        # Email for critical errors (especially hanging/stuck issues)
+        should_email = (
+            'stuck' in error_type.lower() or
+            'hang' in error_type.lower() or
+            'timeout' in str(error_data).lower() or
+            'freeze' in str(error_data).lower() or
+            'network' in error_type.lower() or
+            error_type == 'JavaScript Error'
+        )
+        
+        if should_email:
+            try:
+                email_body = f"""
+CLIENT-SIDE ERROR DETECTED
+
+Time: {datetime.now().isoformat()}
+Error Type: {error_type}
+Client IP: {client_ip}
+User Agent: {request.headers.get('User-Agent', 'Unknown')}
+
+Game State at Error:
+  Phase: {game_state.get('phase', 'Unknown')}
+  Hand: {game_state.get('hand_number', 'Unknown')}
+  Hand Over: {game_state.get('hand_over', 'Unknown')}
+  Game Over: {game_state.get('game_over', 'Unknown')}
+  Turn: {game_state.get('turn', 'Unknown')}
+  Message: {game_state.get('message', 'Unknown')}
+
+Error Details:
+{str(error_data)}
+
+{('*** This might be the hanging bug users report! ***' if 'stuck' in error_type.lower() else '')}
+"""
+                
+                priority = "high" if 'stuck' in error_type.lower() else "normal"
+                title = "HANGING BUG DETECTED" if 'stuck' in error_type.lower() else "Client Error"
+                
+                send_notification_email(
+                    title=title,
+                    message=email_body,
+                    recipient=ADMIN_EMAIL,
+                    priority=priority
+                )
+                print(f"[CLIENT ERROR] Sent email notification for: {error_type}")
+            except Exception as email_error:
+                print(f"[CLIENT ERROR] Failed to send email: {email_error}")
+        
+        return jsonify({'status': 'reported'}), 200
+        
+    except Exception as e:
+        print(f"[CLIENT ERROR] Error handling client error report: {e}")
+        return jsonify({'status': 'failed'}), 500
+
+# =============================================================================
+# EXISTING ROUTES (unchanged)
+# =============================================================================
 
 @app.route('/debug_async_logging')
 def debug_async_logging():
@@ -456,7 +595,6 @@ def next_hand():
 @app.route('/instructions')
 def instructions():
     return render_template('instructions.html')
-
 
 @app.route('/stats')
 def stats():
