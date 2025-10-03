@@ -8,7 +8,7 @@ FILE_EXTENSIONS = [
     '.html',  # HTML files
     '.js',    # JavaScript files
     #'.css',   # CSS files
-    '.json',  # JSON configuration files
+    #'.json',  # JSON configuration files
 ]
 
 # Flag to control directory depth

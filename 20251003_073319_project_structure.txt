@@ -1,4 +1,4 @@
-Number of files: 22
+Number of files: 23
 Number of directories: 5
 
 Directory structure:
@@ -18,16 +18,15 @@ HTML Files (3):
 JS Files (1):
   ./static/game.js
 
-JSON Files (1):
-  ./static/manifest.json
-
-PY Files (17):
+PY Files (19):
   ./app.py
   ./gather_pythons.py
   ./gcloud_deploy.py
+  ./jobs.py
   ./test_ip.py
   ./test_ip2.py
   ./test_ip3.py
+  ./test_minimal.py
   ./test_postg.py
   ./test_save_ip.py
   ./test_stats.py
@@ -869,6 +868,62 @@ else:
 
 ================================================================================
 
+FILE: ./jobs.py
+--------------------------------------------------------------------------------
+import requests
+from bs4 import BeautifulSoup
+import re
+
+def scrape_mudbay_jobs():
+    url = "https://www.indeed.com/cmp/Mud-Bay/jobs"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        jobs = []
+        job_cards = soup.find_all('div', class_='jobsearch-JobCard')
+        
+        for card in job_cards:
+            title = card.find('h2', class_='jobsearch-JobInfoHeader-title').text.strip() if card.find('h2', class_='jobsearch-JobInfoHeader-title') else "N/A"
+            location = card.find('div', class_='jobsearch-JobMetadataHeader-location').text.strip() if card.find('div', class_='jobsearch-JobMetadataHeader-location') else "N/A"
+            salary = card.find('div', class_='jobsearch-JobMetadataHeader-salary').text.strip() if card.find('div', class_='jobsearch-JobMetadataHeader-salary') else "N/A"
+            job_type = card.find('div', class_='jobsearch-JobMetadataHeader-jobType').text.strip() if card.find('div', class_='jobsearch-JobMetadataHeader-jobType') else "N/A"
+            
+            jobs.append({
+                'title': title,
+                'location': location,
+                'salary': salary,
+                'job_type': job_type
+            })
+        
+        return jobs
+    
+    except requests.RequestException as e:
+        print(f"Error fetching page: {e}")
+        return []
+
+def main():
+    jobs = scrape_mudbay_jobs()
+    if jobs:
+        for job in jobs:
+            print(f"Title: {job['title']}")
+            print(f"Location: {job['location']}")
+            print(f"Salary: {job['salary']}")
+            print(f"Job Type: {job['job_type']}")
+            print("-" * 40)
+    else:
+        print("No jobs found or an error occurred.")
+
+if __name__ == "__main__":
+    main()
+
+================================================================================
+
 FILE: ./test_ip.py
 --------------------------------------------------------------------------------
 #!/usr/bin/env python3
@@ -1144,6 +1199,18 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+================================================================================
+
+FILE: ./test_minimal.py
+--------------------------------------------------------------------------------
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return 'Minimal test works'
+
 
 ================================================================================
 
@@ -2145,7 +2212,7 @@ FILE_EXTENSIONS = [
     '.html',  # HTML files
     '.js',    # JavaScript files
     #'.css',   # CSS files
-    '.json',  # JSON configuration files
+    #'.json',  # JSON configuration files
 ]
 
 # Flag to control directory depth
@@ -4135,6 +4202,23 @@ def process_ip_geolocation(client_ip: str):
     
     return None
 
+
+def _finalize_game_async(hand_id, game):
+    try:
+        from .postgres_utils import finalize_hand  # CHANGED from finalize_game
+        success = finalize_hand(hand_id, game)
+        if success:
+            print(f"[DB] Hand {hand_id} finalized in database")
+        else:
+            print(f"[DB] Hand {hand_id} failed to finalize in database")
+        return success
+    except Exception as e:
+        print(f"[DB] Database hand finalization failed: {e}")
+        import traceback
+        traceback.print_exc()  # This will show you the import error
+        return False
+    
+
 def _check_and_perform_ip_geolocation(ip_address: str):
     """Check if IP exists in database, only call API if missing"""
     try:
@@ -5099,6 +5183,10 @@ def process_hand_completion(game, session):
         session=session
     )
     
+    # CRITICAL FIX: Actually finalize the hand in the database
+    from .logging_utils import finalize_game_logging
+    finalize_game_logging(game)
+    
     # Set appropriate message based on game state
     if blind_nil_ending:
         # Keep the blind nil message - it's already set in calculate_hand_scores_with_bags
@@ -5129,7 +5217,6 @@ def process_hand_completion(game, session):
                 },
                 session=session
             )
-
 def process_auto_resolution(game, session):
     """Process auto-resolution of remaining cards"""
     auto_resolved, explanation = autoplay_remaining_cards(game, session)
@@ -9520,32 +9607,6 @@ window.addEventListener('orientationchange', function () {
         updatePlayArea();
     }, 100);
 });
-
-================================================================================
-
-FILE: ./static/manifest.json
---------------------------------------------------------------------------------
-{
-  "name": "Two-Man Spades",
-  "short_name": "2ManSpades",
-  "description": "Custom spades card game for two players",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#667eea",
-  "theme_color": "#667eea",
-  "icons": [
-    {
-      "src": "/static/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icon-512.png", 
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
 
 ================================================================================
 

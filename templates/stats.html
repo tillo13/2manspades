@@ -353,7 +353,7 @@
         }
 
         .legend-section.expanded .legend-content {
-            max-height: 500px;
+            max-height: 800px;
         }
 
         .legend-columns {
@@ -376,6 +376,85 @@
             margin-bottom: 12px;
             padding-bottom: 8px;
             border-bottom: 2px solid #e9ecef;
+        }
+
+        .legend-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .legend-item:hover {
+            background: #e3f2fd;
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: #667eea;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .legend-description {
+            color: #666;
+            font-size: 13px;
+            display: block;
+        }
+
+        .legend-note {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+
+        /* Win/Loss Explanation Box */
+        .winloss-explanation {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .winloss-explanation h3 {
+            color: #2e7d32;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .winloss-explanation p {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .winloss-explanation ul {
+            margin: 10px 0 10px 20px;
+        }
+
+        .winloss-explanation li {
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        .winloss-explanation strong {
+            color: #2e7d32;
+        }
+
+        .counts-section {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 4px;
+        }
+
+        .counts-section strong {
+            color: #856404;
         }
 
         /* Competitive stats styling */
@@ -467,6 +546,14 @@
             .stat-value {
                 font-size: 12px;
             }
+
+            .winloss-explanation {
+                padding: 15px;
+            }
+
+            .winloss-explanation h3 {
+                font-size: 16px;
+            }
         }
 
         .table-note {
@@ -486,6 +573,33 @@
         <div class="header">
             <h1>Player Statistics</h1>
             <div class="subtitle">Competitive leaderboard and performance metrics</div>
+        </div>
+
+        <!-- Win/Loss Explanation Box -->
+        <div class="winloss-explanation">
+            <h3>How Wins and Losses Work</h3>
+            <p>You get a <strong>loss</strong> only when you finish a complete game and Marta beats you. That's it.</p>
+
+            <p><strong>You lose when:</strong></p>
+            <ul>
+                <li>Someone reaches 300 points (or gets a 300+ point lead), AND Marta's score is higher than yours at
+                    that moment</li>
+                <li>OR you attempt Blind Nil and fail (instant loss)</li>
+            </ul>
+
+            <p><strong>What DOESN'T count as a loss:</strong></p>
+            <ul>
+                <li>Quitting or abandoning a game mid-play</li>
+                <li>Losing individual hands during a game</li>
+                <li>Going negative in score</li>
+                <li>Failing your bids</li>
+            </ul>
+
+            <div class="counts-section">
+                <strong>The key point:</strong> Only completed games count toward wins and losses. If you start a game
+                but don't finish it, that's tracked separately as "abandoned" - it doesn't count as either a win or a
+                loss in your competitive stats.
+            </div>
         </div>
 
         <!-- Collapsible Legend Section -->
@@ -524,7 +638,8 @@
                         </div>
                         <div class="legend-item">
                             <span class="legend-label">Games Abandoned:</span>
-                            <span class="legend-description">Games started but not completed</span>
+                            <span class="legend-description">Games started but not completed (not counted as wins or
+                                losses)</span>
                         </div>
                     </div>
                     <div class="legend-column">
