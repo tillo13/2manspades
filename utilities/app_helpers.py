@@ -55,7 +55,7 @@ def _finalize_game_async(hand_id, game):
         traceback.print_exc()  # This will show you the import error
         return False
     
-    
+
 def _check_and_perform_ip_geolocation(ip_address: str):
     """Check if IP exists in database, only call API if missing"""
     try:
@@ -1020,6 +1020,10 @@ def process_hand_completion(game, session):
         session=session
     )
     
+    # CRITICAL FIX: Actually finalize the hand in the database
+    from .logging_utils import finalize_game_logging
+    finalize_game_logging(game)
+    
     # Set appropriate message based on game state
     if blind_nil_ending:
         # Keep the blind nil message - it's already set in calculate_hand_scores_with_bags
@@ -1050,7 +1054,6 @@ def process_hand_completion(game, session):
                 },
                 session=session
             )
-
 def process_auto_resolution(game, session):
     """Process auto-resolution of remaining cards"""
     auto_resolved, explanation = autoplay_remaining_cards(game, session)
