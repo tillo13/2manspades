@@ -39,6 +39,23 @@ def process_ip_geolocation(client_ip: str):
     
     return None
 
+
+def _finalize_game_async(hand_id, game):
+    try:
+        from .postgres_utils import finalize_hand  # CHANGED from finalize_game
+        success = finalize_hand(hand_id, game)
+        if success:
+            print(f"[DB] Hand {hand_id} finalized in database")
+        else:
+            print(f"[DB] Hand {hand_id} failed to finalize in database")
+        return success
+    except Exception as e:
+        print(f"[DB] Database hand finalization failed: {e}")
+        import traceback
+        traceback.print_exc()  # This will show you the import error
+        return False
+    
+    
 def _check_and_perform_ip_geolocation(ip_address: str):
     """Check if IP exists in database, only call API if missing"""
     try:
