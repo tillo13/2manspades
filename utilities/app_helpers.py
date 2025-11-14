@@ -589,8 +589,46 @@ def process_discard_phase(game, session, card_index, request):
         # Bids already set, go to playing
         transition_to_playing_phase(game, session)
     else:
-        # Check blind eligibility or go to bidding
-        transition_to_bidding_phase(game, session)
+        # CRITICAL FIX: Check if blind decision was already made
+        if not game.get('blind_decision_made', False):
+            # First time - check blind eligibility or go to bidding
+            transition_to_bidding_phase(game, session)
+        else:
+            # Already made blind decision (chose "Bid Normal"), proceed directly to bidding
+            game['phase'] = 'bidding'
+            first_leader = game.get('first_leader', 'player')
+            
+            if first_leader == 'computer':
+                # Computer bids first
+                computer_bid, computer_is_blind = computer_bidding_brain(
+                    game['computer_hand'], 
+                    None,
+                    game
+                )
+                game['computer_bid'] = computer_bid
+                
+                if computer_is_blind:
+                    game['computer_blind_bid'] = computer_bid
+                    computer_blind_text = " (BLIND)"
+                    log_action(
+                        action_type='blind_bid',
+                        player='computer',
+                        action_data={'bid_amount': computer_bid, 'bid_first': True},
+                        session=session
+                    )
+                else:
+                    computer_blind_text = ""
+                    log_action(
+                        action_type='regular_bid',
+                        player='computer',
+                        action_data={'bid_amount': computer_bid, 'bid_first': True},
+                        session=session
+                    )
+                
+                game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+            else:
+                # Player bids first
+                game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
 
 def transition_to_playing_phase(game, session):
     """Transition from discard to playing phase"""
