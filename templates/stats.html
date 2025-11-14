@@ -956,7 +956,7 @@
         <div class="stats-section">
             <div class="section-title">Monthly Performance History</div>
             {% if monthly_stats %}
-            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.hands_played',
+            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.total_hands',
             reverse=True) %}
             {% for family_member, data in sorted_members %}
             <div class="player-card" style="margin-bottom: 20px;">
@@ -975,38 +975,27 @@
                             {% endif %}
                         </div>
                         <div class="month-stats">
-                            <!-- Add these two NEW stat items at the top -->
-                            <div class="stat-item">
-                                <div class="stat-label">Games Won</div>
-                                <div class="stat-value win-stat">{{ month_stat.games_won }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Games Lost</div>
-                                <div class="stat-value loss-stat">{{ month_stat.games_lost }}</div>
-                            </div>
-
-                            <!-- Existing stats continue below -->
                             <div class="stat-item">
                                 <div class="stat-label">Hands Played</div>
-                                <div class="stat-value">{{ month_stat.hands_played }}</div>
+                                <div class="stat-value">{{ month_stat.total_hands }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Hands Won</div>
                                 <div class="stat-value win-stat">{{ month_stat.hands_won }}</div>
                             </div>
                             <div class="stat-item">
+                                <div class="stat-label">Hands Lost</div>
+                                <div class="stat-value loss-stat">{{ month_stat.hands_lost }}</div>
+                            </div>
+                            <div class="stat-item">
                                 <div class="stat-label">Win Rate</div>
                                 <div class="stat-value">
-                                    {% if month_stat.hands_played > 0 %}
-                                    {{ "%.1f"|format((month_stat.hands_won / month_stat.hands_played) * 100) }}%
+                                    {% if month_stat.total_hands > 0 %}
+                                    {{ "%.1f"|format((month_stat.hands_won / month_stat.total_hands) * 100) }}%
                                     {% else %}
                                     0%
                                     {% endif %}
                                 </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Hands Lost</div>
-                                <div class="stat-value loss-stat">{{ month_stat.hands_lost }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Avg Player Score</div>
@@ -1023,65 +1012,69 @@
                             <div class="stat-item">
                                 <div class="stat-label">Avg Bags/Hand</div>
                                 <div class="stat-value bags-stat">
-                                    {% if month_stat.hands_played > 0 %}
-                                    {{ "%.2f"|format(month_stat.total_bags / month_stat.hands_played) }}
+                                    {% if month_stat.total_hands > 0 %}
+                                    {{ "%.2f"|format(month_stat.total_bags / month_stat.total_hands) }}
                                     {% else %}
                                     0.00
                                     {% endif %}
                                 </div>
                             </div>
                         </div>
-                        {% else %}
-                        <div class="no-stats">No monthly data available</div>
-                        {% endif %}
                     </div>
                     {% endfor %}
-                    {% else %}
-                    <div class="no-stats">No monthly statistics available</div>
-                    {% endif %}
                 </div>
+                {% else %}
+                <div class="no-stats">No monthly statistics available</div>
+                {% endif %}
             </div>
+            {% endfor %}
+            {% else %}
+            <div class="no-stats">No monthly data available</div>
+            {% endif %}
+        </div>
 
-            <script>
-                function toggleSection(sectionId) {
-                    const section = document.getElementById(sectionId);
-                    const chevronId = sectionId.replace('Section', 'Chevron');
-                    const chevron = document.getElementById(chevronId);
+    </div>
 
-                    section.classList.toggle('expanded');
+    <script>
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const chevronId = sectionId.replace('Section', 'Chevron');
+            const chevron = document.getElementById(chevronId);
 
-                    if (section.classList.contains('expanded')) {
-                        chevron.textContent = '▲';
-                    } else {
-                        chevron.textContent = '▼';
-                    }
-                }
+            section.classList.toggle('expanded');
 
-                // Add smooth scrolling for mobile and touch interactions
-                document.addEventListener('DOMContentLoaded', function () {
-                    // Add click handlers for cards on mobile for better interaction
-                    if (window.innerWidth <= 767) {
-                        document.querySelectorAll('.player-card').forEach(card => {
-                            card.addEventListener('click', function () {
-                                this.style.transform = 'scale(0.98)';
-                                setTimeout(() => {
-                                    this.style.transform = '';
-                                }, 150);
-                            });
-                        });
-                    }
+            if (section.classList.contains('expanded')) {
+                chevron.textContent = '▲';
+            } else {
+                chevron.textContent = '▼';
+            }
+        }
 
-                    // Add hover effects for legend items on desktop
-                    document.querySelectorAll('.legend-item').forEach(item => {
-                        item.addEventListener('mouseenter', function () {
-                            this.style.backgroundColor = '#e3f2fd';
-                        });
-                        item.addEventListener('mouseleave', function () {
-                            this.style.backgroundColor = 'white';
-                        });
+        // Add smooth scrolling for mobile and touch interactions
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add click handlers for cards on mobile for better interaction
+            if (window.innerWidth <= 767) {
+                document.querySelectorAll('.player-card').forEach(card => {
+                    card.addEventListener('click', function () {
+                        this.style.transform = 'scale(0.98)';
+                        setTimeout(() => {
+                            this.style.transform = '';
+                        }, 150);
                     });
                 });
-            </script>
+            }
+
+            // Add hover effects for legend items on desktop
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.addEventListener('mouseenter', function () {
+                    this.style.backgroundColor = '#e3f2fd';
+                });
+                item.addEventListener('mouseleave', function () {
+                    this.style.backgroundColor = 'white';
+                });
+            });
+        });
+    </script>
 </body>
 
 </html>
