@@ -93,7 +93,7 @@ STACK TRACE:
             send_simple_email(
                 subject=f"[2MANSPADES BUG] {error_type} in {endpoint}",
                 body=email_body,
-                to_email="kumori.llc@gmail.com"  # YOUR EMAIL HERE
+                to_email="andy.tillo@gmail.com"  # YOUR EMAIL HERE
             )
             print(f"[ERROR EMAIL] Sent notification about {error_type} in {endpoint}")
         except Exception as email_error:

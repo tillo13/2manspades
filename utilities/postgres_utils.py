@@ -554,7 +554,7 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
         query = """
         WITH hand_bidding_data AS (
             SELECT 
-                ge.game_id as hand_id,
+                ge.hand_id,
                 ge.client_ip,
                 MAX(CASE WHEN ge.player = 'player' THEN (ge.event_data->>'bid')::INTEGER END) as player_bid,
                 MAX(CASE WHEN ge.player = 'computer' THEN (ge.event_data->>'bid')::INTEGER END) as computer_bid,
@@ -563,7 +563,7 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
             FROM twomanspades.game_events ge
             WHERE ge.event_type IN ('action_regular_bid', 'action_blind_bid')
               AND ge.event_data->>'bid' IS NOT NULL
-            GROUP BY ge.game_id, ge.client_ip
+            GROUP BY ge.hand_id, ge.client_ip
         ),
         completed_hands_with_bids AS (
             SELECT 
