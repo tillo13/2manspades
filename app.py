@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, session, jsonify
 import sys
 import os
 import time
+import traceback
 
 # Add utilities directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,9 +19,8 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-
-from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats
-
+from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location
+from utilities.gmail_utils import send_simple_email
 
 
 app = Flask(__name__)
@@ -34,6 +34,73 @@ if IS_PRODUCTION:
 
 DEBUG_MODE = False
 session_tracker = {}
+
+# Error notification system
+LAST_ERROR_EMAIL_TIME = {}  # Track when we last emailed about each error type
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    """Catch all errors and email notifications"""
+    error_type = type(error).__name__
+    error_message = str(error)
+    error_key = f"{error_type}_{error_message[:50]}"  # Unique key for this error
+    
+    # Rate limiting: only email once per hour per error type
+    current_time = time.time()
+    last_email_time = LAST_ERROR_EMAIL_TIME.get(error_key, 0)
+    
+    if current_time - last_email_time > 3600:  # 3600 seconds = 1 hour
+        LAST_ERROR_EMAIL_TIME[error_key] = current_time
+        
+        # Get request context
+        endpoint = request.endpoint or 'unknown'
+        client_ip = get_client_ip(request)
+        
+        # Get game state if available
+        game_state = "No game in session"
+        if 'game' in session:
+            game = session['game']
+            game_state = f"""
+Hand #{game.get('hand_number', '?')}
+Phase: {game.get('phase', '?')}
+Player Score: {game.get('player_score', '?')}
+Computer Score: {game.get('computer_score', '?')}
+Player Bid: {game.get('player_bid', '?')}
+Computer Bid: {game.get('computer_bid', '?')}
+pending_discard_result: {game.get('pending_discard_result', 'NOT SET')}
+blind_decision_made: {game.get('blind_decision_made', 'NOT SET')}
+"""
+        
+        # Build email body
+        email_body = f"""
+2MANSPADES ERROR DETECTED
+
+Error Type: {error_type}
+Error Message: {error_message}
+Endpoint: {endpoint}
+Player IP: {client_ip}
+Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}
+
+GAME STATE:
+{game_state}
+
+STACK TRACE:
+{traceback.format_exc()}
+"""
+        
+        # Send email (non-blocking, won't slow down response)
+        try:
+            send_simple_email(
+                subject=f"[2MANSPADES BUG] {error_type} in {endpoint}",
+                body=email_body,
+                to_email="kumori.llc@gmail.com"  # YOUR EMAIL HERE
+            )
+            print(f"[ERROR EMAIL] Sent notification about {error_type} in {endpoint}")
+        except Exception as email_error:
+            print(f"[ERROR EMAIL] Failed to send: {email_error}")
+    
+    # Re-raise the error so normal logging still works
+    raise error
 
 
 @app.route('/debug_async_logging')
@@ -425,25 +492,23 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
-
 @app.route('/stats')
 def stats():
-    """Show game statistics for the current player"""
-    client_ip = get_client_ip(request)
+    client_ip = get_client_ip()
     
-    # Get competitive stats (win/loss records)
+    # Get existing stats
     competitive_leaders = get_competitive_leaders_stats()
-    
-    # Get detailed hand performance stats  
     detailed_leaders = get_city_leaders_stats()
-    
-    # Get stats for this specific IP (if needed for individual player view)
     player_stats = get_ip_address_game_stats(client_ip)
+    
+    # Get monthly stats - NEW!
+    monthly_stats = get_monthly_stats_by_location()
     
     return render_template('stats.html', 
                         competitive_leaders=competitive_leaders,
                         detailed_leaders=detailed_leaders,
                         player_stats=player_stats[0] if player_stats else None,
+                        monthly_stats=monthly_stats,  # NEW!
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')
