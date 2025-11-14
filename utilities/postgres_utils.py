@@ -10,93 +10,55 @@ from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
 
 def get_monthly_stats_by_location():
-    """Get monthly statistics grouped by family member location - INCLUDING game wins/losses"""
+    """Get monthly statistics grouped by family member location"""
     query = """
-        WITH monthly_hands AS (
-            SELECT 
-                DATE_TRUNC('month', h.started_at) as month,
-                CASE
-                    WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
-                    WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
-                    WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
-                    WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
-                    WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
-                    ELSE 'Other'
-                END as family_member,
-                COUNT(*) as hands_played,
-                SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as hands_won,
-                SUM(CASE WHEN h.hand_player_score < h.hand_computer_score THEN 1 ELSE 0 END) as hands_lost,
-                ROUND(AVG(h.hand_player_score), 2) as avg_player_score,
-                ROUND(AVG(h.hand_computer_score), 2) as avg_computer_score,
-                SUM(h.player_bags) as total_bags
-            FROM twomanspades.hands h
-            JOIN twomanspades.players p ON h.player_id = p.player_id
-            LEFT JOIN twomanspades.ip_location_data loc ON p.ip_address = loc.ip_address
-            WHERE h.completed_at IS NOT NULL
-            GROUP BY DATE_TRUNC('month', h.started_at), 
-                CASE
-                    WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
-                    WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
-                    WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
-                    WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
-                    WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
-                    ELSE 'Other'
-                END
-        ),
-        monthly_games AS (
-            SELECT
-                DATE_TRUNC('month', g.game_completed_at) as month,
-                CASE
-                    WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
-                    WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
-                    WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
-                    WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
-                    WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
-                    ELSE 'Other'
-                END as family_member,
-                COUNT(*) as games_played,
-                SUM(CASE WHEN g.player_won THEN 1 ELSE 0 END) as games_won,
-                SUM(CASE WHEN NOT g.player_won THEN 1 ELSE 0 END) as games_lost
-            FROM twomanspades.games g
-            JOIN twomanspades.players p ON g.player_id = p.player_id
-            LEFT JOIN twomanspades.ip_location_data loc ON p.ip_address = loc.ip_address
-            WHERE g.game_completed_at IS NOT NULL
-            GROUP BY DATE_TRUNC('month', g.game_completed_at),
-                CASE
-                    WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
-                    WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
-                    WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
-                    WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Washington' THEN 'Bothell'
-                    WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
-                    WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
-                    ELSE 'Other'
-                END
-        )
         SELECT 
-            COALESCE(mh.month, mg.month) as month,
-            COALESCE(mh.family_member, mg.family_member) as family_member,
-            COALESCE(mh.hands_played, 0) as hands_played,
-            COALESCE(mh.hands_won, 0) as hands_won,
-            COALESCE(mh.hands_lost, 0) as hands_lost,
-            COALESCE(mh.avg_player_score, 0) as avg_player_score,
-            COALESCE(mh.avg_computer_score, 0) as avg_computer_score,
-            COALESCE(mh.total_bags, 0) as total_bags,
-            COALESCE(mg.games_played, 0) as games_played,
-            COALESCE(mg.games_won, 0) as games_won,
-            COALESCE(mg.games_lost, 0) as games_lost
-        FROM monthly_hands mh
-        FULL OUTER JOIN monthly_games mg 
-            ON mh.month = mg.month AND mh.family_member = mg.family_member
-        WHERE COALESCE(mh.family_member, mg.family_member) != 'Other'
-        ORDER BY COALESCE(mh.family_member, mg.family_member), 
-                 COALESCE(mh.month, mg.month) DESC;
+            DATE_TRUNC('month', h.started_at) as month,
+            CASE
+                WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+                WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+                WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+                WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+                WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+                ELSE 'Other'
+            END as family_member,
+            COUNT(DISTINCT h.game_id) as total_games,
+            COUNT(DISTINCT CASE WHEN h.player_won = true THEN h.game_id END) as total_wins,
+            COUNT(DISTINCT CASE WHEN h.player_won = false THEN h.game_id END) as total_losses,
+            COUNT(*) as hands_played,
+            SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as hands_won,
+            SUM(CASE WHEN h.hand_player_score < h.hand_computer_score THEN 1 ELSE 0 END) as hands_lost,
+            ROUND(AVG(h.hand_player_score), 2) as avg_player_score,
+            ROUND(AVG(h.hand_computer_score), 2) as avg_computer_score,
+            SUM(h.player_bags) as total_bags
+        FROM twomanspades.hands h
+        JOIN twomanspades.players p ON h.player_id = p.player_id
+        LEFT JOIN twomanspades.ip_location_data loc ON p.ip_address = loc.ip_address
+        WHERE h.completed_at IS NOT NULL
+        GROUP BY DATE_TRUNC('month', h.started_at), 
+            CASE
+                WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+                WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+                WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+                WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+                WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+                ELSE 'Other'
+            END
+        HAVING CASE
+            WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+            WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+            WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+            WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+            WHEN loc.region = 'Washington' THEN 'Bothell'
+            WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+            WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+            ELSE 'Other'
+        END != 'Other'
+        ORDER BY family_member, month DESC;
     """
     
     conn = get_db_connection()
