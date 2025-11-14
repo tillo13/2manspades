@@ -956,7 +956,9 @@
         <div class="stats-section">
             <div class="section-title">Monthly Performance History</div>
             {% if monthly_stats %}
-            {% for family_member, data in monthly_stats.items() %}
+            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.hands_played',
+            reverse=True) %}
+            {% for family_member, data in sorted_members %}
             <div class="player-card" style="margin-bottom: 20px;">
                 <div class="player-header">
                     <div class="player-name">{{ family_member }}</div>
