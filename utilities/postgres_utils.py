@@ -539,22 +539,83 @@ def get_competitive_leaders_stats() -> List[Dict[str, Any]]:
         print(f"Failed to get competitive leaders stats: {e}")
         return []
 
+
+# Replace your existing get_city_leaders_stats() function in postgres_utils.py with this:
+
 def get_city_leaders_stats() -> List[Dict[str, Any]]:
-    """Get detailed hand performance stats from vw_city_leaders_totals view"""
+    """
+    Get detailed hand performance statistics by family member location.
+    Now counts from the hands table to match monthly stats (completed hands only).
+    """
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        cur.execute("""
-            SELECT family_member, total_hands_with_bids, total_hands_with_scoring,
-                   avg_player_bid, avg_computer_bid, total_player_nil_bids,
-                   total_player_nils_successful,  -- ADD THIS LINE
-                   total_player_bags, total_computer_bags, 
-                   avg_player_bags, avg_computer_bags
-            FROM twomanspades.vw_city_leaders_totals 
-            ORDER BY total_hands_with_bids DESC
-        """)
+        query = """
+        WITH hand_bidding_data AS (
+            SELECT 
+                ge.game_id as hand_id,
+                ge.client_ip,
+                MAX(CASE WHEN ge.player = 'player' THEN (ge.event_data->>'bid')::INTEGER END) as player_bid,
+                MAX(CASE WHEN ge.player = 'computer' THEN (ge.event_data->>'bid')::INTEGER END) as computer_bid,
+                MAX(CASE WHEN ge.player = 'player' AND (ge.event_data->>'bid')::INTEGER = 0 THEN 1 ELSE 0 END) as player_nil_bid,
+                MAX(CASE WHEN ge.player = 'player' AND ge.event_data->>'bid_successful' = 'true' THEN 1 ELSE 0 END) as player_nil_successful
+            FROM twomanspades.game_events ge
+            WHERE ge.event_type IN ('action_regular_bid', 'action_blind_bid')
+              AND ge.event_data->>'bid' IS NOT NULL
+            GROUP BY ge.game_id, ge.client_ip
+        ),
+        completed_hands_with_bids AS (
+            SELECT 
+                h.hand_id,
+                h.client_ip,
+                h.player_bags,
+                h.computer_bags,
+                hbd.player_bid,
+                hbd.computer_bid,
+                hbd.player_nil_bid,
+                hbd.player_nil_successful
+            FROM twomanspades.hands h
+            INNER JOIN hand_bidding_data hbd ON h.hand_id = hbd.hand_id AND h.client_ip = hbd.client_ip
+            WHERE h.completed_at IS NOT NULL
+        )
+        SELECT 
+            CASE
+                WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+                WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+                WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+                WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+                WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+                ELSE 'Other'
+            END as family_member,
+            
+            -- Hand counts
+            COUNT(*) as total_hands_with_bids,
+            
+            -- Bidding averages
+            ROUND(AVG(ch.player_bid), 2) as avg_player_bid,
+            ROUND(AVG(ch.computer_bid), 2) as avg_computer_bid,
+            
+            -- Nil bidding stats
+            SUM(ch.player_nil_bid) as total_player_nil_bids,
+            SUM(CASE WHEN ch.player_nil_bid = 1 THEN ch.player_nil_successful ELSE 0 END) as total_player_nils_successful,
+            
+            -- Bag statistics
+            SUM(ch.player_bags) as total_player_bags,
+            SUM(ch.computer_bags) as total_computer_bags,
+            ROUND(AVG(ch.player_bags), 2) as avg_player_bags,
+            ROUND(AVG(ch.computer_bags), 2) as avg_computer_bags
+            
+        FROM completed_hands_with_bids ch
+        LEFT JOIN twomanspades.ip_location_data loc ON ch.client_ip = loc.ip_address
+        GROUP BY family_member
+        HAVING family_member != 'Other'
+        ORDER BY total_hands_with_bids DESC;
+        """
         
+        cur.execute(query)
         results = cur.fetchall()
         cur.close()
         conn.close()
@@ -563,4 +624,6 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
         
     except Exception as e:
         print(f"Failed to get city leaders stats: {e}")
+        import traceback
+        traceback.print_exc()
         return []
