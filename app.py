@@ -41,6 +41,14 @@ LAST_ERROR_EMAIL_TIME = {}  # Track when we last emailed about each error type
 @app.errorhandler(Exception)
 def handle_error(error):
     """Catch all errors and email notifications"""
+    from werkzeug.exceptions import HTTPException
+    
+    # Ignore HTTP exceptions (404s, 301s, etc.) - these are just bots/scanners
+    # Just pass them through without sending error emails
+    if isinstance(error, HTTPException):
+        return error
+    
+    # Only process actual application errors below this point
     error_type = type(error).__name__
     error_message = str(error)
     error_key = f"{error_type}_{error_message[:50]}"  # Unique key for this error
