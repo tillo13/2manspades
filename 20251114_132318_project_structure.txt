@@ -1,4 +1,4 @@
-Number of files: 23
+Number of files: 24
 Number of directories: 5
 
 Directory structure:
@@ -18,7 +18,7 @@ HTML Files (3):
 JS Files (1):
   ./static/game.js
 
-PY Files (19):
+PY Files (20):
   ./app.py
   ./gather_pythons.py
   ./gcloud_deploy.py
@@ -27,6 +27,7 @@ PY Files (19):
   ./test_ip2.py
   ./test_ip3.py
   ./test_minimal.py
+  ./test_monthly.py
   ./test_postg.py
   ./test_save_ip.py
   ./test_stats.py
@@ -1220,6 +1221,7 @@ from flask import Flask, render_template, request, session, jsonify
 import sys
 import os
 import time
+import traceback
 
 # Add utilities directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -1236,9 +1238,8 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-
-from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats
-
+from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location
+from utilities.gmail_utils import send_simple_email
 
 
 app = Flask(__name__)
@@ -1252,6 +1253,73 @@ if IS_PRODUCTION:
 
 DEBUG_MODE = False
 session_tracker = {}
+
+# Error notification system
+LAST_ERROR_EMAIL_TIME = {}  # Track when we last emailed about each error type
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    """Catch all errors and email notifications"""
+    error_type = type(error).__name__
+    error_message = str(error)
+    error_key = f"{error_type}_{error_message[:50]}"  # Unique key for this error
+    
+    # Rate limiting: only email once per hour per error type
+    current_time = time.time()
+    last_email_time = LAST_ERROR_EMAIL_TIME.get(error_key, 0)
+    
+    if current_time - last_email_time > 3600:  # 3600 seconds = 1 hour
+        LAST_ERROR_EMAIL_TIME[error_key] = current_time
+        
+        # Get request context
+        endpoint = request.endpoint or 'unknown'
+        client_ip = get_client_ip(request)
+        
+        # Get game state if available
+        game_state = "No game in session"
+        if 'game' in session:
+            game = session['game']
+            game_state = f"""
+Hand #{game.get('hand_number', '?')}
+Phase: {game.get('phase', '?')}
+Player Score: {game.get('player_score', '?')}
+Computer Score: {game.get('computer_score', '?')}
+Player Bid: {game.get('player_bid', '?')}
+Computer Bid: {game.get('computer_bid', '?')}
+pending_discard_result: {game.get('pending_discard_result', 'NOT SET')}
+blind_decision_made: {game.get('blind_decision_made', 'NOT SET')}
+"""
+        
+        # Build email body
+        email_body = f"""
+2MANSPADES ERROR DETECTED
+
+Error Type: {error_type}
+Error Message: {error_message}
+Endpoint: {endpoint}
+Player IP: {client_ip}
+Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}
+
+GAME STATE:
+{game_state}
+
+STACK TRACE:
+{traceback.format_exc()}
+"""
+        
+        # Send email (non-blocking, won't slow down response)
+        try:
+            send_simple_email(
+                subject=f"[2MANSPADES BUG] {error_type} in {endpoint}",
+                body=email_body,
+                to_email="andy.tillo@gmail.com"  # YOUR EMAIL HERE
+            )
+            print(f"[ERROR EMAIL] Sent notification about {error_type} in {endpoint}")
+        except Exception as email_error:
+            print(f"[ERROR EMAIL] Failed to send: {email_error}")
+    
+    # Re-raise the error so normal logging still works
+    raise error
 
 
 @app.route('/debug_async_logging')
@@ -1420,43 +1488,11 @@ def choose_normal_bidding():
         request=request
     )
     
-    # CRITICAL FIXES:
-    game['phase'] = 'bidding'  # Changed from 'discard' to 'bidding'
+    # CRITICAL FIX: Go to discard phase, not bidding phase
+    # Player must discard before bidding
+    game['phase'] = 'discard'
     game['blind_decision_made'] = True  # Mark decision as made
-    
-    # Handle computer bidding if computer goes first
-    first_leader = game.get('first_leader', 'player')
-    
-    if first_leader == 'computer':
-        from utilities.computer_logic import computer_bidding_brain
-        computer_bid, computer_is_blind = computer_bidding_brain(
-            game['computer_hand'], 
-            None,
-            game
-        )
-        game['computer_bid'] = computer_bid
-        
-        if computer_is_blind:
-            game['computer_blind_bid'] = computer_bid
-            computer_blind_text = " (BLIND)"
-            log_action(
-                action_type='blind_bid',
-                player='computer',
-                action_data={'bid_amount': computer_bid, 'bid_first': True},
-                session=session
-            )
-        else:
-            computer_blind_text = ""
-            log_action(
-                action_type='regular_bid',
-                player='computer',
-                action_data={'bid_amount': computer_bid, 'bid_first': True},
-                session=session
-            )
-        
-        game['message'] = f'You chose normal bidding. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
-    else:
-        game['message'] = 'You chose normal bidding. Make your bid: How many tricks will you take? (0-10)'
+    game['message'] = 'You chose normal bidding. Select a card to discard.'
     
     session.modified = True
     return jsonify({'success': True})
@@ -1675,25 +1711,23 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
-
 @app.route('/stats')
 def stats():
-    """Show game statistics for the current player"""
-    client_ip = get_client_ip(request)
+    client_ip = get_client_ip(request)  # Add 'request' parameter here!
     
-    # Get competitive stats (win/loss records)
+    # Get existing stats
     competitive_leaders = get_competitive_leaders_stats()
-    
-    # Get detailed hand performance stats  
     detailed_leaders = get_city_leaders_stats()
-    
-    # Get stats for this specific IP (if needed for individual player view)
     player_stats = get_ip_address_game_stats(client_ip)
+    
+    # Get monthly stats
+    monthly_stats = get_monthly_stats_by_location()
     
     return render_template('stats.html', 
                         competitive_leaders=competitive_leaders,
                         detailed_leaders=detailed_leaders,
                         player_stats=player_stats[0] if player_stats else None,
+                        monthly_stats=monthly_stats,
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')
@@ -2413,6 +2447,93 @@ def scan_project_structure():
 
 if __name__ == "__main__":
     scan_project_structure()
+
+================================================================================
+
+FILE: ./test_monthly.py
+--------------------------------------------------------------------------------
+"""
+Test script for monthly stats functionality
+Run this locally to verify the get_monthly_stats_by_location() function works
+"""
+
+import os
+import sys
+from pprint import pprint
+
+# Add the parent directory to the path so we can import utilities
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from utilities.postgres_utils import get_monthly_stats_by_location
+
+def test_monthly_stats():
+    print("=" * 80)
+    print("Testing get_monthly_stats_by_location()")
+    print("=" * 80)
+    
+    try:
+        results = get_monthly_stats_by_location()
+        
+        print("\n📊 Results structure:")
+        print(f"   Number of family members: {len(results)}")
+        print(f"   Family members: {list(results.keys())}")
+        
+        print("\n" + "=" * 80)
+        print("DETAILED RESULTS BY FAMILY MEMBER")
+        print("=" * 80)
+        
+        for family_member, data in results.items():
+            print(f"\n🏠 {family_member.upper()}")
+            print("-" * 80)
+            
+            monthly_data = data['monthly']
+            print(f"   Total months with data: {len(monthly_data)}")
+            
+            if monthly_data:
+                print("\n   Monthly breakdown:")
+                for month_stat in monthly_data:
+                    month = month_stat['month'].strftime('%B %Y')
+                    print(f"\n   📅 {month}")
+                    print(f"      Hands Played:     {month_stat['hands_played']}")
+                    print(f"      Hands Won:        {month_stat['hands_won']}")
+                    print(f"      Hands Lost:       {month_stat['hands_lost']}")
+                    print(f"      Avg Player Score: {month_stat['avg_player_score']}")
+                    print(f"      Avg CPU Score:    {month_stat['avg_computer_score']}")
+                    print(f"      Total Bags:       {month_stat['total_bags']}")
+                    
+                    if month_stat['hands_played'] > 0:
+                        win_rate = (month_stat['hands_won'] / month_stat['hands_played']) * 100
+                        print(f"      Win Rate:         {win_rate:.1f}%")
+        
+        print("\n" + "=" * 80)
+        print("✅ TEST COMPLETED SUCCESSFULLY!")
+        print("=" * 80)
+        
+    except Exception as e:
+        print("\n" + "=" * 80)
+        print("❌ ERROR OCCURRED")
+        print("=" * 80)
+        print(f"\nError type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        
+        import traceback
+        print("\nFull traceback:")
+        traceback.print_exc()
+        
+        return False
+    
+    return True
+
+if __name__ == "__main__":
+    print("\n🧪 Starting monthly stats test...\n")
+    success = test_monthly_stats()
+    
+    if success:
+        print("\n✨ All tests passed! Function is working correctly.\n")
+        sys.exit(0)
+    else:
+        print("\n💥 Tests failed. Check the error messages above.\n")
+        sys.exit(1)
 
 ================================================================================
 
@@ -3148,6 +3269,73 @@ from datetime import datetime
 from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
 
+
+def get_monthly_stats_by_location():
+    """Get monthly statistics grouped by family member location"""
+    query = """
+        SELECT 
+            DATE_TRUNC('month', h.started_at) as month,
+            CASE
+                WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+                WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+                WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+                WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+                WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+                ELSE 'Other'
+            END as family_member,
+            COUNT(*) as hands_played,
+            SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as hands_won,
+            SUM(CASE WHEN h.hand_player_score < h.hand_computer_score THEN 1 ELSE 0 END) as hands_lost,
+            ROUND(AVG(h.hand_player_score), 2) as avg_player_score,
+            ROUND(AVG(h.hand_computer_score), 2) as avg_computer_score,
+            SUM(h.player_bags) as total_bags
+        FROM twomanspades.hands h
+        JOIN twomanspades.players p ON h.player_id = p.player_id
+        LEFT JOIN twomanspades.ip_location_data loc ON p.ip_address = loc.ip_address
+        WHERE h.completed_at IS NOT NULL
+        GROUP BY DATE_TRUNC('month', h.started_at), 
+            CASE
+                WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+                WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+                WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+                WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Washington' THEN 'Bothell'
+                WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+                WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+                ELSE 'Other'
+            END
+        HAVING CASE
+            WHEN loc.city = 'Helena' AND loc.region = 'Montana' THEN 'Helena'
+            WHEN loc.city IN ('Missoula', 'Blackfoot') AND loc.region = 'Montana' THEN 'Elliston'
+            WHEN loc.city IN ('Rocklin', 'Sacramento') AND loc.region = 'California' THEN 'Rocklin'
+            WHEN loc.city IN ('Bellevue', 'Seattle', 'Bothell', 'Redmond') AND loc.region = 'Washington' THEN 'Bothell'
+            WHEN loc.region = 'Washington' THEN 'Bothell'
+            WHEN loc.region = 'Montana' AND loc.city IS NOT NULL THEN 'Helena'
+            WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
+            ELSE 'Other'
+        END != 'Other'
+        ORDER BY family_member, month DESC;
+    """
+    
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(query)
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    # Organize by family member with current month first
+    organized = {}
+    for row in results:
+        member = row['family_member']
+        if member not in organized:
+            organized[member] = {'monthly': [], 'lifetime': None}
+        organized[member]['monthly'].append(row)
+    
+    return organized
+
 def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
     """Get secret from Google Secret Manager"""
     client = secretmanager.SecretManagerServiceClient()
@@ -3611,6 +3799,7 @@ def get_competitive_leaders_stats() -> List[Dict[str, Any]]:
         print(f"Failed to get competitive leaders stats: {e}")
         return []
 
+
 def get_city_leaders_stats() -> List[Dict[str, Any]]:
     """Get detailed hand performance stats from vw_city_leaders_totals view"""
     try:
@@ -3620,7 +3809,7 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
         cur.execute("""
             SELECT family_member, total_hands_with_bids, total_hands_with_scoring,
                    avg_player_bid, avg_computer_bid, total_player_nil_bids,
-                   total_player_nils_successful,  -- ADD THIS LINE
+                   total_player_nils_successful,
                    total_player_bags, total_computer_bags, 
                    avg_player_bags, avg_computer_bags
             FROM twomanspades.vw_city_leaders_totals 
@@ -4752,8 +4941,46 @@ def process_discard_phase(game, session, card_index, request):
         # Bids already set, go to playing
         transition_to_playing_phase(game, session)
     else:
-        # Check blind eligibility or go to bidding
-        transition_to_bidding_phase(game, session)
+        # CRITICAL FIX: Check if blind decision was already made
+        if not game.get('blind_decision_made', False):
+            # First time - check blind eligibility or go to bidding
+            transition_to_bidding_phase(game, session)
+        else:
+            # Already made blind decision (chose "Bid Normal"), proceed directly to bidding
+            game['phase'] = 'bidding'
+            first_leader = game.get('first_leader', 'player')
+            
+            if first_leader == 'computer':
+                # Computer bids first
+                computer_bid, computer_is_blind = computer_bidding_brain(
+                    game['computer_hand'], 
+                    None,
+                    game
+                )
+                game['computer_bid'] = computer_bid
+                
+                if computer_is_blind:
+                    game['computer_blind_bid'] = computer_bid
+                    computer_blind_text = " (BLIND)"
+                    log_action(
+                        action_type='blind_bid',
+                        player='computer',
+                        action_data={'bid_amount': computer_bid, 'bid_first': True},
+                        session=session
+                    )
+                else:
+                    computer_blind_text = ""
+                    log_action(
+                        action_type='regular_bid',
+                        player='computer',
+                        action_data={'bid_amount': computer_bid, 'bid_first': True},
+                        session=session
+                    )
+                
+                game['message'] = f'Cards discarded. Marta bid {computer_bid}{computer_blind_text}. Your turn to bid.'
+            else:
+                # Player bids first
+                game['message'] = f'Cards discarded. Now make your bid: How many tricks will you take? (0-10)'
 
 def transition_to_playing_phase(game, session):
     """Transition from discard to playing phase"""
@@ -9723,6 +9950,159 @@ FILE: ./templates/stats.html
             border: 2px dashed #dee2e6;
         }
 
+        /* Collapsible Sections */
+        .collapsible-section {
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+            overflow: hidden;
+        }
+
+        .collapsible-toggle {
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #667eea;
+            color: white;
+            user-select: none;
+            transition: background 0.3s ease;
+        }
+
+        .collapsible-toggle:hover {
+            background: #5a67d8;
+        }
+
+        .collapsible-toggle-text {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .collapsible-chevron {
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible-section.expanded .collapsible-chevron {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .collapsible-section.expanded .collapsible-content {
+            max-height: 1200px;
+        }
+
+        .collapsible-inner {
+            padding: 20px;
+        }
+
+        /* Win/Loss Explanation */
+        .winloss-explanation {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .winloss-explanation h3 {
+            color: #2e7d32;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .winloss-explanation p {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .winloss-explanation ul {
+            margin: 10px 0 10px 20px;
+        }
+
+        .winloss-explanation li {
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        .winloss-explanation strong {
+            color: #2e7d32;
+        }
+
+        .counts-section {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 4px;
+        }
+
+        .counts-section strong {
+            color: #856404;
+        }
+
+        /* Legend Section */
+        .legend-columns {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .legend-column {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .legend-category {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .legend-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .legend-item:hover {
+            background: #e3f2fd;
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: #667eea;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .legend-description {
+            color: #666;
+            font-size: 13px;
+            display: block;
+        }
+
+        .legend-note {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+
         /* Responsive display logic */
         .desktop-table {
             display: none;
@@ -9868,210 +10248,6 @@ FILE: ./templates/stats.html
             color: #fd7e14;
         }
 
-        /* Desktop layout */
-        @media (min-width: 768px) {
-            .container {
-                padding: 25px;
-                max-width: 900px;
-            }
-
-            /* Show table on desktop, hide mobile cards */
-            .desktop-table {
-                display: block;
-            }
-
-            .mobile-cards {
-                display: none;
-            }
-
-            .player-stats {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 10px;
-            }
-
-            .stat-item {
-                padding: 10px;
-            }
-
-            .player-card {
-                padding: 20px;
-            }
-
-            .player-header {
-                margin-bottom: 15px;
-            }
-
-            .player-name {
-                font-size: 18px;
-            }
-
-            .legend-columns {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .competitive-stats {
-                flex-direction: row;
-                gap: 15px;
-            }
-
-            .stat-group {
-                flex: 1;
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-        }
-
-        /* Legend Section */
-        .legend-section {
-            margin-bottom: 25px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 1px solid #dee2e6;
-            overflow: hidden;
-        }
-
-        .legend-toggle {
-            padding: 15px 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #667eea;
-            color: white;
-            user-select: none;
-            transition: background 0.3s ease;
-        }
-
-        .legend-toggle:hover {
-            background: #5a67d8;
-        }
-
-        .legend-toggle-text {
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .legend-chevron {
-            font-size: 14px;
-            transition: transform 0.3s ease;
-        }
-
-        .legend-section.expanded .legend-chevron {
-            transform: rotate(180deg);
-        }
-
-        .legend-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-
-        .legend-section.expanded .legend-content {
-            max-height: 800px;
-        }
-
-        .legend-columns {
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        .legend-column {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-        }
-
-        .legend-category {
-            font-weight: bold;
-            font-size: 14px;
-            color: #333;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e9ecef;
-        }
-
-        .legend-item {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 4px;
-            transition: background 0.2s ease;
-        }
-
-        .legend-item:hover {
-            background: #e3f2fd;
-        }
-
-        .legend-label {
-            font-weight: 600;
-            color: #667eea;
-            display: block;
-            margin-bottom: 3px;
-        }
-
-        .legend-description {
-            color: #666;
-            font-size: 13px;
-            display: block;
-        }
-
-        .legend-note {
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 13px;
-            color: #666;
-            border-left: 4px solid #667eea;
-        }
-
-        /* Win/Loss Explanation Box */
-        .winloss-explanation {
-            background: #e8f5e9;
-            border: 2px solid #4caf50;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-
-        .winloss-explanation h3 {
-            color: #2e7d32;
-            margin-bottom: 12px;
-            font-size: 18px;
-        }
-
-        .winloss-explanation p {
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .winloss-explanation ul {
-            margin: 10px 0 10px 20px;
-        }
-
-        .winloss-explanation li {
-            margin-bottom: 6px;
-            color: #333;
-        }
-
-        .winloss-explanation strong {
-            color: #2e7d32;
-        }
-
-        .counts-section {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 4px;
-        }
-
-        .counts-section strong {
-            color: #856404;
-        }
-
-        /* Competitive stats styling */
         .competitive-card {
             background: white;
             border-radius: 8px;
@@ -10127,6 +10303,118 @@ FILE: ./templates/stats.html
             font-weight: 600;
         }
 
+        /* Monthly Stats Styling */
+        .monthly-container {
+            margin-top: 15px;
+        }
+
+        .month-card {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #dee2e6;
+        }
+
+        .month-card.current-month {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%);
+            border: 2px solid #4caf50;
+        }
+
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .month-title {
+            font-weight: bold;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .current-badge {
+            background: #4caf50;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .month-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .table-note {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* Desktop layout */
+        @media (min-width: 768px) {
+            .container {
+                padding: 25px;
+                max-width: 900px;
+            }
+
+            .desktop-table {
+                display: block;
+            }
+
+            .mobile-cards {
+                display: none;
+            }
+
+            .player-stats {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+
+            .stat-item {
+                padding: 10px;
+            }
+
+            .player-card {
+                padding: 20px;
+            }
+
+            .player-header {
+                margin-bottom: 15px;
+            }
+
+            .player-name {
+                font-size: 18px;
+            }
+
+            .legend-columns {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .competitive-stats {
+                flex-direction: row;
+                gap: 15px;
+            }
+
+            .stat-group {
+                flex: 1;
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .month-stats {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 15px;
@@ -10169,14 +10457,6 @@ FILE: ./templates/stats.html
                 font-size: 16px;
             }
         }
-
-        .table-note {
-            font-size: 11px;
-            color: #666;
-            text-align: center;
-            margin-top: 8px;
-            font-style: italic;
-        }
     </style>
 </head>
 
@@ -10189,105 +10469,119 @@ FILE: ./templates/stats.html
             <div class="subtitle">Competitive leaderboard and performance metrics</div>
         </div>
 
-        <!-- Win/Loss Explanation Box -->
-        <div class="winloss-explanation">
-            <h3>How Wins and Losses Work</h3>
-            <p>You get a <strong>loss</strong> only when you finish a complete game and Marta beats you. That's it.</p>
+        <!-- Collapsible Win/Loss Explanation -->
+        <div class="collapsible-section collapsed" id="winlossSection">
+            <div class="collapsible-toggle" onclick="toggleSection('winlossSection')">
+                <span class="collapsible-toggle-text">How Wins and Losses Work</span>
+                <span class="collapsible-chevron" id="winlossChevron">▼</span>
+            </div>
+            <div class="collapsible-content" id="winlossContent">
+                <div class="collapsible-inner">
+                    <div class="winloss-explanation">
+                        <h3>How Wins and Losses Work</h3>
+                        <p>You get a <strong>loss</strong> only when you finish a complete game and Marta beats you.
+                            That's it.</p>
 
-            <p><strong>You lose when:</strong></p>
-            <ul>
-                <li>Someone reaches 300 points (or gets a 300+ point lead), AND Marta's score is higher than yours at
-                    that moment</li>
-                <li>OR you attempt Blind Nil and fail (instant loss)</li>
-            </ul>
+                        <p><strong>You lose when:</strong></p>
+                        <ul>
+                            <li>Someone reaches 300 points (or gets a 300+ point lead), AND Marta's score is higher than
+                                yours at that moment</li>
+                            <li>OR you attempt Blind Nil and fail (instant loss)</li>
+                        </ul>
 
-            <p><strong>What DOESN'T count as a loss:</strong></p>
-            <ul>
-                <li>Quitting or abandoning a game mid-play</li>
-                <li>Losing individual hands during a game</li>
-                <li>Going negative in score</li>
-                <li>Failing your bids</li>
-            </ul>
+                        <p><strong>What DOESN'T count as a loss:</strong></p>
+                        <ul>
+                            <li>Quitting or abandoning a game mid-play</li>
+                            <li>Losing individual hands during a game</li>
+                            <li>Going negative in score</li>
+                            <li>Failing your bids</li>
+                        </ul>
 
-            <div class="counts-section">
-                <strong>The key point:</strong> Only completed games count toward wins and losses. If you start a game
-                but don't finish it, that's tracked separately as "abandoned" - it doesn't count as either a win or a
-                loss in your competitive stats.
+                        <div class="counts-section">
+                            <strong>The key point:</strong> Only completed games count toward wins and losses. If you
+                            start a game but don't finish it, that's tracked separately as "abandoned" - it doesn't
+                            count as either a win or a loss in your competitive stats.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Collapsible Legend Section -->
-        <div class="legend-section collapsed" id="legendSection">
-            <div class="legend-toggle" onclick="toggleLegend()">
-                <span class="legend-toggle-text">Statistics Guide</span>
-                <span class="legend-chevron" id="legendChevron">▼</span>
+        <div class="collapsible-section collapsed" id="legendSection">
+            <div class="collapsible-toggle" onclick="toggleSection('legendSection')">
+                <span class="collapsible-toggle-text">Statistics Guide</span>
+                <span class="collapsible-chevron" id="legendChevron">▼</span>
             </div>
-            <div class="legend-content" id="legendContent">
-                <div class="legend-columns">
-                    <div class="legend-column">
-                        <div class="legend-category">Competitive Stats</div>
-                        <div class="legend-item">
-                            <span class="legend-label">Games Started:</span>
-                            <span class="legend-description">Total games initiated (including abandoned)</span>
+            <div class="collapsible-content" id="legendContent">
+                <div class="collapsible-inner">
+                    <div class="legend-columns">
+                        <div class="legend-column">
+                            <div class="legend-category">Competitive Stats</div>
+                            <div class="legend-item">
+                                <span class="legend-label">Games Started:</span>
+                                <span class="legend-description">Total games initiated (including abandoned)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Total Games:</span>
+                                <span class="legend-description">Completed games only (excludes abandoned)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Win Rate:</span>
+                                <span class="legend-description">Percentage of completed games won</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Avg Winning Score:</span>
+                                <span class="legend-description">Average final score when you win</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Avg Losing Score:</span>
+                                <span class="legend-description">Average final score when you lose</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Avg Losing Margin:</span>
+                                <span class="legend-description">Average points behind when losing</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Games Abandoned:</span>
+                                <span class="legend-description">Games started but not completed (not counted as wins or
+                                    losses)</span>
+                            </div>
                         </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Total Games:</span>
-                            <span class="legend-description">Completed games only (excludes abandoned)</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Win Rate:</span>
-                            <span class="legend-description">Percentage of completed games won</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Avg Winning Score:</span>
-                            <span class="legend-description">Average final score when you win</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Avg Losing Score:</span>
-                            <span class="legend-description">Average final score when you lose</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Avg Losing Margin:</span>
-                            <span class="legend-description">Average points behind when losing</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Games Abandoned:</span>
-                            <span class="legend-description">Games started but not completed (not counted as wins or
-                                losses)</span>
+                        <div class="legend-column">
+                            <div class="legend-category">Detailed Hand Performance</div>
+                            <div class="legend-item">
+                                <span class="legend-label">Hands Played:</span>
+                                <span class="legend-description">Individual hands with successful bids</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Average Bids:</span>
+                                <span class="legend-description">Mean tricks bid per hand by you and Marta</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Nil Attempts:</span>
+                                <span class="legend-description">Times you attempted 0-trick bids</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Nil Success:</span>
+                                <span class="legend-description">Successful nils out of total attempts (e.g.,
+                                    5/11)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Total Bags:</span>
+                                <span class="legend-description">Cumulative penalty points from overtricks</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-label">Average Bags:</span>
+                                <span class="legend-description">Mean bags per hand (overtricks beyond bid)</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="legend-column">
-                        <div class="legend-category">Detailed Hand Performance</div>
-                        <div class="legend-item">
-                            <span class="legend-label">Hands Played:</span>
-                            <span class="legend-description">Individual hands with successful bids</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Average Bids:</span>
-                            <span class="legend-description">Mean tricks bid per hand by you and Marta</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Nil Attempts:</span>
-                            <span class="legend-description">Times you attempted 0-trick bids</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Nil Success:</span>
-                            <span class="legend-description">Successful nils out of total attempts (e.g., 5/11)</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Total Bags:</span>
-                            <span class="legend-description">Cumulative penalty points from overtricks</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-label">Average Bags:</span>
-                            <span class="legend-description">Mean bags per hand (overtricks beyond bid)</span>
-                        </div>
+                    <div class="legend-note">
+                        <strong>Note:</strong> Rankings are determined by sports-style competitive performance (win
+                        rate, then total wins) rather than hand-level statistics. Competitive stats show game outcomes,
+                        while detailed stats show bidding patterns and bag management across individual hands.
                     </div>
-                </div>
-                <div class="legend-note">
-                    <strong>Note:</strong> Rankings are determined by sports-style competitive performance (win rate,
-                    then total wins) rather than hand-level statistics. Competitive stats show game outcomes, while
-                    detailed stats show bidding patterns and bag management across individual hands.
                 </div>
             </div>
         </div>
@@ -10350,15 +10644,14 @@ FILE: ./templates/stats.html
                     </div>
 
                     <div class="competitive-stats">
-
                         <div class="stat-group winning-stats">
                             <div class="stat-item">
-                                <div class="stat-label">Average Winning Score</div>
+                                <div class="stat-label">Avg Winning Score</div>
                                 <div class="stat-value win-stat">{{ "%.0f"|format(player.avg_winning_score) if
                                     player.avg_winning_score else 'No wins yet' }}</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-label">Average Winning Margin</div>
+                                <div class="stat-label">Avg Winning Margin</div>
                                 <div class="stat-value win-stat">+{{ "%.0f"|format(player.avg_winning_margin) if
                                     player.avg_winning_margin else 'No wins yet' }}</div>
                             </div>
@@ -10367,11 +10660,11 @@ FILE: ./templates/stats.html
                         {% if player.avg_losing_score %}
                         <div class="stat-group losing-stats">
                             <div class="stat-item">
-                                <div class="stat-label">Average Losing Score</div>
+                                <div class="stat-label">Avg Losing Score</div>
                                 <div class="stat-value loss-stat">{{ "%.0f"|format(player.avg_losing_score) }}</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-label">Average Losing Margin</div>
+                                <div class="stat-label">Avg Losing Margin</div>
                                 <div class="stat-value loss-stat">-{{ "%.0f"|format(player.avg_losing_margin) }}</div>
                             </div>
                         </div>
@@ -10445,12 +10738,12 @@ FILE: ./templates/stats.html
 
                     <div class="player-stats">
                         <div class="stat-item">
-                            <div class="stat-label">Average Player Bid</div>
+                            <div class="stat-label">Avg Player Bid</div>
                             <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }} tricks
                             </div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">Average Computer Bid</div>
+                            <div class="stat-label">Avg Computer Bid</div>
                             <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }} tricks
                             </div>
                         </div>
@@ -10480,12 +10773,12 @@ FILE: ./templates/stats.html
                             <div class="stat-value bags-stat">{{ player.total_computer_bags|default(0) }} bags</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">Average Player Bags</div>
+                            <div class="stat-label">Avg Player Bags</div>
                             <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }} per hand
                             </div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">Average Computer Bags</div>
+                            <div class="stat-label">Avg Computer Bags</div>
                             <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) }} per
                                 hand</div>
                         </div>
@@ -10495,120 +10788,103 @@ FILE: ./templates/stats.html
             </div>
 
             <div class="table-note">Hand-level bidding and bag statistics</div>
-
-            {% elif competitive_leaders and competitive_leaders|length > 0 %}
-            <!-- Fallback: Show competitive data in detailed section if detailed_leaders is empty -->
-            <div class="table-container desktop-table">
-                <table class="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Hands</th>
-                            <th>Avg Bid</th>
-                            <th>Comp Bid</th>
-                            <th>Nil Bids</th>
-                            <th>Nil Success</th>
-                            <th>Player Bags</th>
-                            <th>Comp Bags</th>
-                            <th>Avg P Bags</th>
-                            <th>Avg C Bags</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for player in competitive_leaders %}
-                        <tr
-                            class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ player.family_member }}</strong></td>
-                            <td>{{ player.total_hands_with_bids|default('N/A') }}</td>
-                            <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) if player.avg_player_bid
-                                else 'N/A' }}</td>
-                            <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) if
-                                player.avg_computer_bid else 'N/A' }}</td>
-                            <td class="nil-stat">{{ player.total_player_nil_bids|default('N/A') }}</td>
-                            <td class="nil-stat">N/A</td>
-                            <td class="bags-stat">{{ player.total_player_bags|default('N/A') }}</td>
-                            <td class="bags-stat">{{ player.total_computer_bags|default('N/A') }}</td>
-                            <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) if
-                                player.avg_player_bags else 'N/A' }}</td>
-                            <td class="bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) if
-                                player.avg_computer_bags else 'N/A' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Card View (Mobile) -->
-            <div class="player-cards mobile-cards">
-                {% for player in competitive_leaders %}
-                <div
-                    class="player-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                    <div class="player-header">
-                        <div class="player-rank">#{{ loop.index }}</div>
-                        <div class="player-name">{{ player.family_member }}</div>
-                        <div class="player-hands">{{ player.total_hands_with_bids|default('N/A') }} hands played</div>
-                    </div>
-
-                    <div class="player-stats">
-                        <div class="stat-item">
-                            <div class="stat-label">Average Player Bid</div>
-                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) if
-                                player.avg_player_bid else 'N/A' }} tricks</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Average Computer Bid</div>
-                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) if
-                                player.avg_computer_bid else 'N/A' }} tricks</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Nil Bids</div>
-                            <div class="stat-value nil-stat">{{ player.total_player_nil_bids|default('N/A') }} attempts
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Nil Success Rate</div>
-                            <div class="stat-value nil-stat">N/A</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Player Bags</div>
-                            <div class="stat-value bags-stat">{{ player.total_player_bags|default('N/A') }} bags</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Computer Bags</div>
-                            <div class="stat-value bags-stat">{{ player.total_computer_bags|default('N/A') }} bags</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Average Player Bags</div>
-                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) if
-                                player.avg_player_bags else 'N/A' }} per hand</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Average Computer Bags</div>
-                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) if
-                                player.avg_computer_bags else 'N/A' }} per hand</div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            <div class="table-note">Using competitive data (detailed hand stats not available)</div>
-
             {% else %}
             <div class="no-stats">No detailed performance data available</div>
+            {% endif %}
+        </div>
+
+        <!-- Monthly Performance History Section -->
+        <div class="stats-section">
+            <div class="section-title">Monthly Performance History</div>
+            {% if monthly_stats %}
+            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.hands_played',
+            reverse=True) %}
+            {% for family_member, data in sorted_members %}
+            <div class="player-card" style="margin-bottom: 20px;">
+                <div class="player-header">
+                    <div class="player-name">{{ family_member }}</div>
+                </div>
+
+                {% if data.monthly %}
+                <div class="monthly-container">
+                    {% for month_stat in data.monthly %}
+                    <div class="month-card {% if loop.index == 1 %}current-month{% endif %}">
+                        <div class="month-header">
+                            <div class="month-title">{{ month_stat.month.strftime('%B %Y') }}</div>
+                            {% if loop.index == 1 %}
+                            <span class="current-badge">CURRENT</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="month-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Hands Played</div>
+                                <div class="stat-value">{{ month_stat.hands_played }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Hands Won</div>
+                                <div class="stat-value win-stat">{{ month_stat.hands_won }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Win Rate</div>
+                                <div class="stat-value">
+                                    {% if month_stat.hands_played > 0 %}
+                                    {{ "%.1f"|format((month_stat.hands_won / month_stat.hands_played) * 100) }}%
+                                    {% else %}
+                                    0%
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Hands Lost</div>
+                                <div class="stat-value loss-stat">{{ month_stat.hands_lost }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Player Score</div>
+                                <div class="stat-value">{{ "%.0f"|format(month_stat.avg_player_score) }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Computer Score</div>
+                                <div class="stat-value">{{ "%.0f"|format(month_stat.avg_computer_score) }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Total Bags</div>
+                                <div class="stat-value bags-stat">{{ month_stat.total_bags }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Bags/Hand</div>
+                                <div class="stat-value bags-stat">
+                                    {% if month_stat.hands_played > 0 %}
+                                    {{ "%.2f"|format(month_stat.total_bags / month_stat.hands_played) }}
+                                    {% else %}
+                                    0.00
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-stats">No monthly data available</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="no-stats">No monthly statistics available</div>
             {% endif %}
         </div>
     </div>
 
     <script>
-        function toggleLegend() {
-            const legendSection = document.getElementById('legendSection');
-            const chevron = document.getElementById('legendChevron');
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const chevronId = sectionId.replace('Section', 'Chevron');
+            const chevron = document.getElementById(chevronId);
 
-            legendSection.classList.toggle('expanded');
+            section.classList.toggle('expanded');
 
-            if (legendSection.classList.contains('expanded')) {
+            if (section.classList.contains('expanded')) {
                 chevron.textContent = '▲';
             } else {
                 chevron.textContent = '▼';
@@ -10621,7 +10897,6 @@ FILE: ./templates/stats.html
             if (window.innerWidth <= 767) {
                 document.querySelectorAll('.player-card').forEach(card => {
                     card.addEventListener('click', function () {
-                        // Highlight clicked card temporarily
                         this.style.transform = 'scale(0.98)';
                         setTimeout(() => {
                             this.style.transform = '';

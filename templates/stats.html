@@ -974,8 +974,18 @@
                             <span class="current-badge">CURRENT</span>
                             {% endif %}
                         </div>
-
                         <div class="month-stats">
+                            <!-- Add these two NEW stat items at the top -->
+                            <div class="stat-item">
+                                <div class="stat-label">Games Won</div>
+                                <div class="stat-value win-stat">{{ month_stat.games_won }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Games Lost</div>
+                                <div class="stat-value loss-stat">{{ month_stat.games_lost }}</div>
+                            </div>
+
+                            <!-- Existing stats continue below -->
                             <div class="stat-item">
                                 <div class="stat-label">Hands Played</div>
                                 <div class="stat-value">{{ month_stat.hands_played }}</div>
@@ -1021,60 +1031,57 @@
                                 </div>
                             </div>
                         </div>
+                        {% else %}
+                        <div class="no-stats">No monthly data available</div>
+                        {% endif %}
                     </div>
                     {% endfor %}
+                    {% else %}
+                    <div class="no-stats">No monthly statistics available</div>
+                    {% endif %}
                 </div>
-                {% else %}
-                <div class="no-stats">No monthly data available</div>
-                {% endif %}
             </div>
-            {% endfor %}
-            {% else %}
-            <div class="no-stats">No monthly statistics available</div>
-            {% endif %}
-        </div>
-    </div>
 
-    <script>
-        function toggleSection(sectionId) {
-            const section = document.getElementById(sectionId);
-            const chevronId = sectionId.replace('Section', 'Chevron');
-            const chevron = document.getElementById(chevronId);
+            <script>
+                function toggleSection(sectionId) {
+                    const section = document.getElementById(sectionId);
+                    const chevronId = sectionId.replace('Section', 'Chevron');
+                    const chevron = document.getElementById(chevronId);
 
-            section.classList.toggle('expanded');
+                    section.classList.toggle('expanded');
 
-            if (section.classList.contains('expanded')) {
-                chevron.textContent = '▲';
-            } else {
-                chevron.textContent = '▼';
-            }
-        }
+                    if (section.classList.contains('expanded')) {
+                        chevron.textContent = '▲';
+                    } else {
+                        chevron.textContent = '▼';
+                    }
+                }
 
-        // Add smooth scrolling for mobile and touch interactions
-        document.addEventListener('DOMContentLoaded', function () {
-            // Add click handlers for cards on mobile for better interaction
-            if (window.innerWidth <= 767) {
-                document.querySelectorAll('.player-card').forEach(card => {
-                    card.addEventListener('click', function () {
-                        this.style.transform = 'scale(0.98)';
-                        setTimeout(() => {
-                            this.style.transform = '';
-                        }, 150);
+                // Add smooth scrolling for mobile and touch interactions
+                document.addEventListener('DOMContentLoaded', function () {
+                    // Add click handlers for cards on mobile for better interaction
+                    if (window.innerWidth <= 767) {
+                        document.querySelectorAll('.player-card').forEach(card => {
+                            card.addEventListener('click', function () {
+                                this.style.transform = 'scale(0.98)';
+                                setTimeout(() => {
+                                    this.style.transform = '';
+                                }, 150);
+                            });
+                        });
+                    }
+
+                    // Add hover effects for legend items on desktop
+                    document.querySelectorAll('.legend-item').forEach(item => {
+                        item.addEventListener('mouseenter', function () {
+                            this.style.backgroundColor = '#e3f2fd';
+                        });
+                        item.addEventListener('mouseleave', function () {
+                            this.style.backgroundColor = 'white';
+                        });
                     });
                 });
-            }
-
-            // Add hover effects for legend items on desktop
-            document.querySelectorAll('.legend-item').forEach(item => {
-                item.addEventListener('mouseenter', function () {
-                    this.style.backgroundColor = '#e3f2fd';
-                });
-                item.addEventListener('mouseleave', function () {
-                    this.style.backgroundColor = 'white';
-                });
-            });
-        });
-    </script>
+            </script>
 </body>
 
 </html>
