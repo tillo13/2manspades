@@ -494,21 +494,21 @@ def instructions():
 
 @app.route('/stats')
 def stats():
-    client_ip = get_client_ip()
+    client_ip = get_client_ip(request)  # Add 'request' parameter here!
     
     # Get existing stats
     competitive_leaders = get_competitive_leaders_stats()
     detailed_leaders = get_city_leaders_stats()
     player_stats = get_ip_address_game_stats(client_ip)
     
-    # Get monthly stats - NEW!
+    # Get monthly stats
     monthly_stats = get_monthly_stats_by_location()
     
     return render_template('stats.html', 
                         competitive_leaders=competitive_leaders,
                         detailed_leaders=detailed_leaders,
                         player_stats=player_stats[0] if player_stats else None,
-                        monthly_stats=monthly_stats,  # NEW!
+                        monthly_stats=monthly_stats,
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')
