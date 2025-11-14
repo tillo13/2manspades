@@ -24,12 +24,10 @@ def get_monthly_stats_by_location():
                 WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
                 ELSE 'Other'
             END as family_member,
-            COUNT(DISTINCT h.game_id) as total_games,
-            COUNT(DISTINCT CASE WHEN h.player_won = true THEN h.game_id END) as total_wins,
-            COUNT(DISTINCT CASE WHEN h.player_won = false THEN h.game_id END) as total_losses,
-            COUNT(*) as hands_played,
-            SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as hands_won,
-            SUM(CASE WHEN h.hand_player_score < h.hand_computer_score THEN 1 ELSE 0 END) as hands_lost,
+            COUNT(DISTINCT h.hand_id) as total_hands,
+            COUNT(DISTINCT CASE WHEN h.hand_player_score > h.hand_computer_score THEN h.hand_id END) as hands_won,
+            COUNT(DISTINCT CASE WHEN h.hand_player_score < h.hand_computer_score THEN h.hand_id END) as hands_lost,
+            COUNT(*) as total_records,
             ROUND(AVG(h.hand_player_score), 2) as avg_player_score,
             ROUND(AVG(h.hand_computer_score), 2) as avg_computer_score,
             SUM(h.player_bags) as total_bags
