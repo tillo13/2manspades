@@ -28,7 +28,9 @@ LOG_GAME_ACTIONS = True
 LOG_AI_DECISIONS = True
 LOG_AI_ANALYSIS = True
 LOG_GAME_EVENTS = True
+
 CONSOLE_LOG_LEVEL = 'ALL'  # 'ALL', 'ACTIONS_ONLY', 'AI_ONLY', 'EVENTS_ONLY', 'OFF'
+
 LOGS_DIRECTORY = 'logging' if IS_LOCAL_DEVELOPMENT else None
 CURRENT_LOG_FILE = None
 
@@ -49,7 +51,6 @@ _db_operations_failed = 0
 def start_async_db_logging():
     """Start background database logging thread"""
     global _db_worker_thread, _db_worker_running
-    
     if not IS_PRODUCTION or _db_worker_running:
         return
     
@@ -61,12 +62,10 @@ def start_async_db_logging():
 def _db_worker():
     """Background worker that processes database operations"""
     global _db_operations_completed, _db_operations_failed
-    
     while _db_worker_running:
         try:
             # Wait up to 1 second for an operation
             operation = _db_queue.get(timeout=1.0)
-            
             if operation is None:  # Shutdown signal
                 break
             
@@ -82,7 +81,6 @@ def _db_worker():
                 print(f"[DB] Async operation failed: {e}")
             finally:
                 _db_queue.task_done()
-                
         except queue.Empty:
             continue  # No operations pending, keep waiting
         except Exception as e:
@@ -117,10 +115,8 @@ def stop_async_db_logging():
     global _db_worker_running
     _db_worker_running = False
     _db_queue.put(None)  # Shutdown signal
-    
     if _db_worker_thread:
         _db_worker_thread.join(timeout=5.0)
-    
     print(f"[DB] Async logging stopped. Completed: {_db_operations_completed}, Failed: {_db_operations_failed}")
 
 def get_async_db_stats():
@@ -138,7 +134,6 @@ def get_async_db_stats():
 
 def get_client_ip(request):
     """Get the client's real IP address, preferring IPv4 when available from the same client."""
-    
     # Get all potential IPs from various headers
     potential_ips = []
     
@@ -182,7 +177,6 @@ def get_client_ip(request):
 def get_client_info(request):
     """Get comprehensive client information for logging."""
     client_ip = get_client_ip(request)
-    
     return {
         'ip_address': client_ip,
         'user_agent': request.headers.get('User-Agent', 'unknown'),
@@ -196,15 +190,22 @@ def track_session_client(session, request):
     """Track client info in session for persistent identification."""
     client_info = get_client_info(request)
     
+    # CRITICAL: Always refresh Google auth from session if available
+    from flask import session as flask_session
+    if 'user' in flask_session:
+        client_info['google_auth'] = flask_session['user']
+        print(f"[AUTH] Added Google auth to client_info: {flask_session['user'].get('email')}")
+    
     session_client = {
         'ip_address': client_info['ip_address'],
         'first_seen': session.get('client_first_seen', time.time()),
         'last_seen': time.time(),
-        'session_actions': session.get('client_actions', 0) + 1
+        'session_actions': session.get('client_actions', 0) + 1,
+        'google_auth': client_info.get('google_auth')  # Preserve Google auth
     }
     
     session['client_info'] = session_client
-    session['client_actions'] = session_client['session_actions'] 
+    session['client_actions'] = session_client['session_actions']
     session['client_first_seen'] = session_client['first_seen']
     session.modified = True
     
@@ -213,7 +214,6 @@ def track_session_client(session, request):
 def get_session_client_summary(session):
     """Get summary of client activity for this session."""
     client_info = session.get('client_info', {})
-    
     if client_info:
         session_duration = time.time() - session.get('client_first_seen', time.time())
         return {
@@ -222,7 +222,6 @@ def get_session_client_summary(session):
             'session_duration_minutes': round(session_duration / 60, 1),
             'first_seen': datetime.fromtimestamp(session.get('client_first_seen', 0)).strftime('%H:%M:%S')
         }
-    
     return None
 
 # =============================================================================
@@ -233,7 +232,6 @@ def _ensure_logs_directory():
     """Ensure the logging directory exists - only in local development, no scanning"""
     if not IS_LOCAL_DEVELOPMENT:
         return
-        
     if LOGS_DIRECTORY and not os.path.exists(LOGS_DIRECTORY):
         os.makedirs(LOGS_DIRECTORY)
 
@@ -241,7 +239,7 @@ def _generate_log_filename(game_id, timestamp=None):
     """Generate a unique log filename for a game - only used in local development"""
     if not IS_LOCAL_DEVELOPMENT:
         return None
-        
+    
     if timestamp is None:
         timestamp = datetime.now()
     
@@ -285,7 +283,6 @@ def _start_new_log_file(game_id):
         
         if LOG_TO_CONSOLE:
             print(f"Started new game log: {filename}")
-        
     except Exception as e:
         if LOG_TO_CONSOLE:
             print(f"Warning: Could not create new log file: {e}")
@@ -310,7 +307,6 @@ def _write_to_current_log_file(log_entry):
         
         with open(CURRENT_LOG_FILE, 'w') as f:
             json.dump(logs, f, indent=2, default=str)
-            
     except Exception as e:
         if LOG_TO_CONSOLE:
             print(f"Warning: Could not write to log file: {e}")
@@ -319,7 +315,7 @@ def _finalize_current_log_file(final_game_state):
     """Add final game metadata and close current log file"""
     if not IS_LOCAL_DEVELOPMENT or not CURRENT_LOG_FILE:
         return
-        
+    
     finalization_entry = {
         'log_type': 'game_finalization',
         'data': {
@@ -387,12 +383,12 @@ def initialize_game_logging_with_client(game, request=None):
     
     if request:
         from flask import session as flask_session
-        
         client_info = get_client_info(request)
         
-        # Add Google auth if available
+        # CRITICAL: Add Google auth if available
         if 'user' in flask_session:
             client_info['google_auth'] = flask_session['user']
+            print(f"[AUTH] Game initialized with Google auth: {flask_session['user'].get('email')}")
         
         game['client_info'] = client_info
         
@@ -400,9 +396,9 @@ def initialize_game_logging_with_client(game, request=None):
         if LOG_TO_CONSOLE:
             auth_status = f" (Logged in as {client_info['google_auth']['email']})" if 'google_auth' in client_info else " (Anonymous)"
             print(f"NEW GAME STARTED by {client_info['ip_address']}{auth_status}")
-    
-    if IS_PRODUCTION:
-        queue_db_operation(_create_game_with_player_async, game, game.get('client_info'))
+        
+        if IS_PRODUCTION:
+            queue_db_operation(_create_game_with_player_async, game, game.get('client_info'))
     
     return game
 
@@ -420,9 +416,10 @@ def _create_game_with_player_async(game, client_info):
         if client_info and isinstance(client_info, dict):
             print(f"[DB] client_info keys: {list(client_info.keys())}")
             print(f"[DB] ip_address: {repr(client_info.get('ip_address'))}")
+            if 'google_auth' in client_info:
+                print(f"[DB] google_auth present: {client_info['google_auth'].get('email')}")
         
         from .postgres_utils import create_game_with_player
-        
         success = create_game_with_player(game, client_info)
         print(f"[DB] Database operation returned: {success}")
         print(f"[DB] === END ASYNC DEBUG ===")
@@ -442,7 +439,7 @@ def finalize_game_logging(game):
     if IS_PRODUCTION:
         queue_db_operation(
             _finalize_game_async,
-            game.get('current_hand_id'),  # Changed to current_hand_id
+            game.get('current_hand_id'),
             game
         )
 
@@ -475,6 +472,13 @@ def log_action(action_type, player, action_data, session=None, additional_contex
         return
     
     client_info = get_client_info(request) if request else None
+    
+    # CRITICAL: Refresh Google auth from session
+    if client_info and request:
+        from flask import session as flask_session
+        if 'user' in flask_session:
+            client_info['google_auth'] = flask_session['user']
+    
     action_record = _build_action_record(action_type, player, action_data, session, additional_context)
     
     if client_info:
@@ -489,16 +493,27 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
-        # Get client IP from multiple sources
+        
+        # Get client IP and Google email from multiple sources
         client_ip = None
+        google_email = None
+        
         if client_info:
             client_ip = client_info.get('ip_address')
+            # Get Google email from client_info
+            if client_info.get('google_auth'):
+                google_email = client_info['google_auth'].get('email')
+                print(f"[AUTH] Logging action with email: {google_email}")
         elif game.get('client_info'):
             client_ip = game['client_info'].get('ip_address')
+            # Fallback to game's client_info
+            if game['client_info'].get('google_auth'):
+                google_email = game['client_info']['google_auth'].get('email')
+                print(f"[AUTH] Logging action with email from game: {google_email}")
         
         queue_db_operation(
             _log_game_event_to_db_async,
-            game.get('current_hand_id'),  # CHANGED: now current_hand_id
+            game.get('current_hand_id'),
             f"action_{action_type}",
             {
                 'player': player,
@@ -509,14 +524,13 @@ def log_action(action_type, player, action_data, session=None, additional_contex
             session_sequence=game.get('action_sequence'),
             player=player,
             action_type=action_type,
-            client_ip=client_ip
+            client_ip=client_ip,
+            google_email=google_email
         )
     
     # Console logging - synchronous, fast
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
-
-
 
 def log_game_event(event_type, event_data, session=None):
     """Central logging function for major game events with ASYNC database integration"""
@@ -534,14 +548,17 @@ def log_game_event(event_type, event_data, session=None):
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
+        
         # Get client IP and Google email from game state
         client_ip = None
         google_email = None
+        
         if game.get('client_info'):
             client_ip = game['client_info'].get('ip_address')
             # Get Google email if available
             if game['client_info'].get('google_auth'):
                 google_email = game['client_info']['google_auth'].get('email')
+                print(f"[AUTH] Logging event with email: {google_email}")
         
         hand_id = game.get('current_hand_id')
         if hand_id:
@@ -555,7 +572,7 @@ def log_game_event(event_type, event_data, session=None):
                 player=event_data.get('player') if isinstance(event_data, dict) else None,
                 action_type=event_type,
                 client_ip=client_ip,
-                google_email=google_email  # Add this
+                google_email=google_email
             )
         else:
             print(f"[DB] Skipping event {event_type} - no hand_id available")
@@ -568,6 +585,11 @@ def _log_game_event_to_db_async(hand_id, event_type, event_data, **kwargs):
     """Async wrapper for database event logging"""
     try:
         print(f"[DB] Attempting to log event: {event_type} for hand {hand_id}")
+        
+        google_email = kwargs.get('google_email')
+        if google_email:
+            print(f"[DB] Event has google_email: {google_email}")
+        
         from .postgres_utils import log_game_event_to_db
         success = log_game_event_to_db(
             hand_id,
@@ -578,12 +600,14 @@ def _log_game_event_to_db_async(hand_id, event_type, event_data, **kwargs):
             player=kwargs.get('player'),
             action_type=kwargs.get('action_type'),
             client_ip=kwargs.get('client_ip'),
-            google_email=kwargs.get('google_email')  # Add this
+            google_email=google_email
         )
+        
         if success:
             print(f"[DB] Successfully logged event: {event_type}")
         else:
             print(f"[DB] Failed to log event: {event_type}")
+        
         return success
     except Exception as e:
         print(f"[DB] Exception logging event {event_type}: {e}")
@@ -673,7 +697,6 @@ def log_ai_evaluation(evaluation_type, candidates, chosen_candidate, session=Non
 def _build_action_record(action_type, player, action_data, session, additional_context):
     """Build standardized action record"""
     game = session['game'] if session and 'game' in session else {}
-    
     game['action_sequence'] = game.get('action_sequence', 0) + 1
     
     return {
@@ -734,7 +757,6 @@ def _calculate_confidence(decision_type, decision_data, analysis):
         bid_amount = decision_data.get('bid_amount', 0)
         diff = abs(expected_tricks - bid_amount)
         return max(0.0, min(1.0, 1.0 - (diff / 5.0)))
-    
     elif decision_type == 'discard_choice':
         chosen_score = decision_data.get('final_score', 0)
         if chosen_score >= 1000:
@@ -772,7 +794,6 @@ def _calculate_evaluation_confidence(candidates, chosen_candidate):
 def _print_action_log(action_record):
     """Print action log to console with formatting"""
     timestamp_str = datetime.fromtimestamp(action_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    
     print(f"=== ACTION #{action_record['sequence']}: {action_record['action_type'].upper()} by {action_record['player'].upper()} ===")
     print(f"Hand #{action_record['hand_number']} | Phase: {action_record['phase']} | Time: {timestamp_str}")
     print(f"Data: {action_record['action_data']}")
@@ -788,14 +809,12 @@ def _print_action_log(action_record):
 def _print_ai_decision_log(decision_record):
     """Print AI decision log to console with formatting"""
     timestamp_str = datetime.fromtimestamp(decision_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    
     print(f"AI DECISION: {decision_record['decision_type'].upper()}")
     print(f"Time: {timestamp_str} | Confidence: {decision_record['confidence']:.2f}")
     print(f"Decision: {decision_record['decision_data']}")
     
     if decision_record.get('analysis'):
         print(f"Analysis: {decision_record['analysis']}")
-    
     if decision_record.get('reasoning'):
         print(f"Reasoning: {decision_record['reasoning']}")
     
@@ -810,7 +829,6 @@ def _print_event_log(event_record):
 def _print_ai_analysis_log(analysis_record):
     """Print AI analysis log to console with formatting"""
     timestamp_str = datetime.fromtimestamp(analysis_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    
     print(f"AI ANALYSIS: {analysis_record['analysis_type'].upper()}")
     print(f"Time: {timestamp_str}")
     
@@ -825,7 +843,6 @@ def _print_ai_analysis_log(analysis_record):
 def _print_ai_strategy_log(strategy_record):
     """Print AI strategy log to console with formatting"""
     timestamp_str = datetime.fromtimestamp(strategy_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    
     print(f"AI STRATEGY: {strategy_record['strategy_type'].upper()}")
     print(f"Time: {timestamp_str}")
     print(f"Strategy: {strategy_record['strategy_data']}")
@@ -834,7 +851,6 @@ def _print_ai_strategy_log(strategy_record):
 def _print_ai_evaluation_log(evaluation_record):
     """Print AI evaluation log to console with formatting"""
     timestamp_str = datetime.fromtimestamp(evaluation_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    
     print(f"AI EVALUATION: {evaluation_record['evaluation_type'].upper()}")
     print(f"Time: {timestamp_str} | Confidence: {evaluation_record['confidence']:.2f}")
     print(f"Evaluated {evaluation_record['candidates_evaluated']} options")
@@ -932,7 +948,6 @@ def get_game_log_summary(filename):
             'log_type_counts': log_counts,
             'file_size_kb': round(os.path.getsize(filepath) / 1024, 2)
         }
-        
     except Exception as e:
         return {'error': f'Could not analyze log file: {e}'}
 
@@ -1004,7 +1019,7 @@ def _process_event_batch_async(hand_id, events):
     """Process event batch in background thread"""
     try:
         from .postgres_utils import batch_log_events
-        success = batch_log_events(hand_id, events) 
+        success = batch_log_events(hand_id, events)
         if success:
             print(f"[DB] Async batch: {len(events)} events logged")
         return success
@@ -1027,7 +1042,7 @@ def flush_hand_events(session):
         if events:
             queue_db_operation(
                 _process_event_batch_async,
-                game.get('current_hand_id'),  # CHANGED: now current_hand_id
+                game.get('current_hand_id'),
                 events.copy()  # Copy to avoid race conditions
             )
             # Clear immediately - don't wait for database

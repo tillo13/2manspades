@@ -293,10 +293,24 @@ def get_base_score_from_display(display_score, bags):
 # SESSION TRACKING
 # =============================================================================
 
+# In utilities/app_helpers.py
+
 def track_request_session(session, request):
-    """Track client session for this request"""
+    """Track client session for this request - ALWAYS refresh Google auth"""
     if 'game' in session:
-        return track_session_client(session, request)
+        client_info = track_session_client(session, request)
+        
+        # CRITICAL: Always update game's client_info with latest Google auth
+        if client_info and 'game' in session:
+            # Get fresh Google auth from session if available
+            from flask import session as flask_session
+            if 'user' in flask_session:
+                client_info['google_auth'] = flask_session['user']
+                # Update the game state with refreshed client_info
+                session['game']['client_info'] = client_info
+                session.modified = True
+            
+        return client_info
     return None
 
 # =============================================================================

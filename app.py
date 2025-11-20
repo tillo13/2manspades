@@ -52,11 +52,22 @@ def login():
     print("[AUTH] Login initiated")
     return google_auth.login()
 
+# In app.py
+
 @app.route('/auth/callback')
 def auth_callback():
     """Handle OAuth callback"""
     if google_auth.handle_callback():
         print(f"[AUTH] User logged in: {session.get('user')}")
+        
+        # CRITICAL: Update game client_info with Google auth
+        if 'game' in session:
+            if not session['game'].get('client_info'):
+                session['game']['client_info'] = {}
+            session['game']['client_info']['google_auth'] = session['user']
+            session.modified = True
+            print(f"[AUTH] Updated game client_info with Google auth")
+        
         return redirect('/')
     else:
         print(f"[AUTH] Login failed")
