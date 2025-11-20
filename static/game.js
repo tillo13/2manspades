@@ -187,20 +187,18 @@ function updateChatBadge() {
 // LOGIN/LOGOUT HANDLER
 // =============================================================================
 
+// ============================================================================= 
+// LOGIN HANDLER - DISPLAY ONLY
+// ============================================================================= 
 function handleLoginClick() {
     const loginButton = document.getElementById('loginButton');
     const buttonText = loginButton.textContent.trim();
 
-    // If button shows anything other than "Login", user is logged in
-    if (buttonText !== 'Login') {
-        // User is logged in, show logout confirmation
-        if (confirm('Logout from your account?')) {
-            window.location.href = '/logout';
-        }
-    } else {
-        // User not logged in, go to login page
+    // If button shows "Login", go to login page
+    if (buttonText === 'Login') {
         window.location.href = '/login';
     }
+    // Otherwise, button just shows name - do nothing on click
 }
 
 // =============================================================================
