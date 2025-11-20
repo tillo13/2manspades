@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, jsonify
+from flask import Flask, render_template, request, session, jsonify, redirect
 import sys
 import os
 import time
@@ -22,8 +22,13 @@ from utilities.logging_utils import log_action, log_game_event, get_client_ip, s
 from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location
 from utilities.gmail_utils import send_simple_email
 
+from utilities.google_auth_utils import SimpleGoogleAuth, login_required
+
+
 
 app = Flask(__name__)
+google_auth = SimpleGoogleAuth(app)
+
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
 
@@ -37,6 +42,37 @@ session_tracker = {}
 
 # Error notification system
 LAST_ERROR_EMAIL_TIME = {}  # Track when we last emailed about each error type
+
+
+
+
+@app.route('/login')
+def login():
+    """Start Google OAuth flow"""
+    print("[AUTH] Login initiated")
+    return google_auth.login()
+
+@app.route('/auth/callback')
+def auth_callback():
+    """Handle OAuth callback"""
+    if google_auth.handle_callback():
+        print(f"[AUTH] User logged in: {session.get('user')}")
+        return redirect('/')
+    else:
+        print(f"[AUTH] Login failed")
+        return redirect('/')
+
+@app.route('/logout')
+def logout():
+    """Logout user"""
+    user = session.get('user')
+    print(f"[AUTH] User logged out: {user}")
+    google_auth.logout()
+    return redirect('/')
+
+
+
+
 
 @app.errorhandler(Exception)
 def handle_error(error):

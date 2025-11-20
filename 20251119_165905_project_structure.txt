@@ -1260,6 +1260,14 @@ LAST_ERROR_EMAIL_TIME = {}  # Track when we last emailed about each error type
 @app.errorhandler(Exception)
 def handle_error(error):
     """Catch all errors and email notifications"""
+    from werkzeug.exceptions import HTTPException
+    
+    # Ignore HTTP exceptions (404s, 301s, etc.) - these are just bots/scanners
+    # Just pass them through without sending error emails
+    if isinstance(error, HTTPException):
+        return error
+    
+    # Only process actual application errors below this point
     error_type = type(error).__name__
     error_message = str(error)
     error_key = f"{error_type}_{error_message[:50]}"  # Unique key for this error
@@ -3269,7 +3277,6 @@ from datetime import datetime
 from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
 
-
 def get_monthly_stats_by_location():
     """Get monthly statistics grouped by family member location"""
     query = """
@@ -3285,9 +3292,10 @@ def get_monthly_stats_by_location():
                 WHEN loc.region = 'California' AND loc.city IS NOT NULL THEN 'Rocklin'
                 ELSE 'Other'
             END as family_member,
-            COUNT(*) as hands_played,
-            SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as hands_won,
-            SUM(CASE WHEN h.hand_player_score < h.hand_computer_score THEN 1 ELSE 0 END) as hands_lost,
+            COUNT(DISTINCT h.hand_id) as total_hands,
+            COUNT(DISTINCT CASE WHEN h.hand_player_score > h.hand_computer_score THEN h.hand_id END) as hands_won,
+            COUNT(DISTINCT CASE WHEN h.hand_player_score < h.hand_computer_score THEN h.hand_id END) as hands_lost,
+            COUNT(*) as total_records,
             ROUND(AVG(h.hand_player_score), 2) as avg_player_score,
             ROUND(AVG(h.hand_computer_score), 2) as avg_computer_score,
             SUM(h.player_bags) as total_bags
@@ -10797,7 +10805,7 @@ FILE: ./templates/stats.html
         <div class="stats-section">
             <div class="section-title">Monthly Performance History</div>
             {% if monthly_stats %}
-            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.hands_played',
+            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.total_hands',
             reverse=True) %}
             {% for family_member, data in sorted_members %}
             <div class="player-card" style="margin-bottom: 20px;">
@@ -10815,29 +10823,28 @@ FILE: ./templates/stats.html
                             <span class="current-badge">CURRENT</span>
                             {% endif %}
                         </div>
-
                         <div class="month-stats">
                             <div class="stat-item">
                                 <div class="stat-label">Hands Played</div>
-                                <div class="stat-value">{{ month_stat.hands_played }}</div>
+                                <div class="stat-value">{{ month_stat.total_hands }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Hands Won</div>
                                 <div class="stat-value win-stat">{{ month_stat.hands_won }}</div>
                             </div>
                             <div class="stat-item">
+                                <div class="stat-label">Hands Lost</div>
+                                <div class="stat-value loss-stat">{{ month_stat.hands_lost }}</div>
+                            </div>
+                            <div class="stat-item">
                                 <div class="stat-label">Win Rate</div>
                                 <div class="stat-value">
-                                    {% if month_stat.hands_played > 0 %}
-                                    {{ "%.1f"|format((month_stat.hands_won / month_stat.hands_played) * 100) }}%
+                                    {% if month_stat.total_hands > 0 %}
+                                    {{ "%.1f"|format((month_stat.hands_won / month_stat.total_hands) * 100) }}%
                                     {% else %}
                                     0%
                                     {% endif %}
                                 </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Hands Lost</div>
-                                <div class="stat-value loss-stat">{{ month_stat.hands_lost }}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Avg Player Score</div>
@@ -10854,8 +10861,8 @@ FILE: ./templates/stats.html
                             <div class="stat-item">
                                 <div class="stat-label">Avg Bags/Hand</div>
                                 <div class="stat-value bags-stat">
-                                    {% if month_stat.hands_played > 0 %}
-                                    {{ "%.2f"|format(month_stat.total_bags / month_stat.hands_played) }}
+                                    {% if month_stat.total_hands > 0 %}
+                                    {{ "%.2f"|format(month_stat.total_bags / month_stat.total_hands) }}
                                     {% else %}
                                     0.00
                                     {% endif %}
@@ -10866,14 +10873,15 @@ FILE: ./templates/stats.html
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="no-stats">No monthly data available</div>
+                <div class="no-stats">No monthly statistics available</div>
                 {% endif %}
             </div>
             {% endfor %}
             {% else %}
-            <div class="no-stats">No monthly statistics available</div>
+            <div class="no-stats">No monthly data available</div>
             {% endif %}
         </div>
+
     </div>
 
     <script>
