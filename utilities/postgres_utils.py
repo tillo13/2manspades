@@ -304,6 +304,8 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
         cur = conn.cursor()
         
         player_id = None
+        google_email = None
+        google_id = None
         
         if client_info:
             ip_address = client_info.get('ip_address')
@@ -311,9 +313,12 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             
             # Extract Google auth if available
             google_auth = client_info.get('google_auth')
-            
             if google_auth:
-                # User is logged in - update with Google info
+                google_email = google_auth.get('email')
+                google_id = google_auth.get('google_id')
+            
+            # Update player record with Google info
+            if google_auth:
                 cur.execute("""
                     INSERT INTO twomanspades.players 
                     (ip_address, user_agent_latest, total_hands, 
@@ -332,13 +337,13 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
                     RETURNING player_id
                 """, (
                     ip_address, user_agent,
-                    google_auth.get('email'),
+                    google_email,
                     google_auth.get('name'),
-                    google_auth.get('google_id'),
+                    google_id,
                     google_auth.get('picture')
                 ))
             else:
-                # Anonymous user - original logic
+                # Anonymous user
                 cur.execute("""
                     INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_hands)
                     VALUES (%s, %s, 1)
@@ -351,12 +356,12 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             
             player_id = cur.fetchone()[0]
         
-        # Insert hand record (unchanged - just uses player_id)
+        # Insert hand record WITH google_email and google_id
         cur.execute("""
             INSERT INTO twomanspades.hands 
             (hand_id, started_at, player_parity, computer_parity, first_leader, 
-             client_ip, user_agent, player_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+             client_ip, user_agent, player_id, google_email, google_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             hand_data['current_hand_id'],
             datetime.fromtimestamp(hand_data['game_started_at']),
@@ -365,7 +370,9 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             hand_data['first_leader'],
             client_info.get('ip_address') if client_info else None,
             client_info.get('user_agent') if client_info else None,
-            player_id
+            player_id,
+            google_email,  # Add this
+            google_id      # Add this
         ))
         
         conn.commit()
