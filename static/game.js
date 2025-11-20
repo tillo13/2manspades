@@ -203,9 +203,8 @@ function handleLoginClick() {
     }
 }
 
-
 // =============================================================================
-// MAIN GAME FUNCTIONS (unchanged core logic)
+// MAIN GAME FUNCTIONS
 // =============================================================================
 
 async function loadGameState() {
@@ -245,7 +244,7 @@ function updateUI() {
 }
 
 // =============================================================================
-// UI UPDATE FUNCTIONS (unchanged from original)
+// UI UPDATE FUNCTIONS
 // =============================================================================
 
 function updateFloatingScores() {
@@ -675,7 +674,7 @@ function handleTrickCompletion() {
 }
 
 // =============================================================================
-// HELPER FUNCTIONS (unchanged from original)
+// HELPER FUNCTIONS
 // =============================================================================
 
 function getSuitClass(suit) {
@@ -742,7 +741,7 @@ function isSpecialCard(card) {
 }
 
 // =============================================================================
-// BIDDING FUNCTIONS (unchanged from original)
+// BIDDING FUNCTIONS
 // =============================================================================
 
 function selectBid(bidAmount) {
@@ -785,7 +784,7 @@ function resetBiddingState() {
 }
 
 // =============================================================================
-// RESULTS FORMATTING (unchanged from original)
+// RESULTS FORMATTING
 // =============================================================================
 
 function formatCleanResults(results) {
@@ -875,7 +874,7 @@ function formatScoring(scoringText) {
 }
 
 // =============================================================================
-// SCROLL PRESERVATION (unchanged from original)
+// SCROLL PRESERVATION
 // =============================================================================
 
 function preserveTrickHistoryScroll() {
@@ -899,7 +898,7 @@ function resetTrickHistoryScroll() {
 }
 
 // =============================================================================
-// API FUNCTIONS (unchanged from original)
+// API FUNCTIONS
 // =============================================================================
 
 async function chooseBlindNil() {

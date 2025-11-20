@@ -221,7 +221,8 @@
             <button class="bottom-new-game-btn" onclick="startNewGame()">New Game</button>
             <button class="bottom-rules-btn" onclick="window.open('/instructions', '_blank')">How to Play</button>
             <button class="bottom-rules-btn" onclick="window.open('/stats', '_blank')">Stats</button>
-            <button class="bottom-rules-btn" id="loginButton" onclick="handleLoginClick()">
+            <button class="bottom-rules-btn" id="loginButton" onclick="handleLoginClick()"
+                style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; font-weight: bold;">
                 {% if session.get('user') %}
                 {{ session['user']['name'].split()[0] }}
                 {% else %}
