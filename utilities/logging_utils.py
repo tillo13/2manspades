@@ -516,6 +516,8 @@ def log_action(action_type, player, action_data, session=None, additional_contex
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'ACTIONS_ONLY']:
         _print_action_log(action_record)
 
+
+
 def log_game_event(event_type, event_data, session=None):
     """Central logging function for major game events with ASYNC database integration"""
     if not LOGGING_ENABLED or not LOG_GAME_EVENTS:
@@ -532,29 +534,33 @@ def log_game_event(event_type, event_data, session=None):
     # NEW: Async database logging (production) - non-blocking
     if IS_PRODUCTION and session and 'game' in session:
         game = session['game']
-        # Get client IP from game state if available
+        # Get client IP and Google email from game state
         client_ip = None
+        google_email = None
         if game.get('client_info'):
             client_ip = game['client_info'].get('ip_address')
+            # Get Google email if available
+            if game['client_info'].get('google_auth'):
+                google_email = game['client_info']['google_auth'].get('email')
         
-        # FIXED: Ensure we have a valid hand_id before logging
         hand_id = game.get('current_hand_id')
-        if hand_id:  # Only log if we have a valid hand_id
+        if hand_id:
             queue_db_operation(
                 _log_game_event_to_db_async,
-                hand_id,  # Now guaranteed to be non-null
+                hand_id,
                 event_type,
                 event_data,
                 hand_number=game.get('hand_number'),
                 session_sequence=game.get('action_sequence'),
                 player=event_data.get('player') if isinstance(event_data, dict) else None,
                 action_type=event_type,
-                client_ip=client_ip
+                client_ip=client_ip,
+                google_email=google_email  # Add this
             )
         else:
             print(f"[DB] Skipping event {event_type} - no hand_id available")
     
-    # Console logging - synchronous, fast
+    # Console logging
     if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'EVENTS_ONLY']:
         _print_event_log(event_record)
 
@@ -571,7 +577,8 @@ def _log_game_event_to_db_async(hand_id, event_type, event_data, **kwargs):
             session_sequence=kwargs.get('session_sequence'),
             player=kwargs.get('player'),
             action_type=kwargs.get('action_type'),
-            client_ip=kwargs.get('client_ip')
+            client_ip=kwargs.get('client_ip'),
+            google_email=kwargs.get('google_email')  # Add this
         )
         if success:
             print(f"[DB] Successfully logged event: {event_type}")

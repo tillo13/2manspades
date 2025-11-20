@@ -178,8 +178,9 @@ def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwar
         
         cur.execute("""
             INSERT INTO twomanspades.game_events 
-            (hand_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (hand_id, event_type, event_data, hand_number, session_sequence, 
+             player, action_type, client_ip, google_email)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             hand_id,
             event_type,
@@ -188,7 +189,8 @@ def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwar
             kwargs.get('session_sequence'),
             kwargs.get('player'),
             kwargs.get('action_type'),
-            kwargs.get('client_ip')
+            kwargs.get('client_ip'),
+            kwargs.get('google_email')  # Add this
         ))
         
         conn.commit()
@@ -254,6 +256,7 @@ def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
         print(f"Failed to upsert player: {e}")
         return None
 
+
 def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
     """Log multiple events in a single database transaction"""
     if not events:
@@ -273,13 +276,15 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
                 event.get('session_sequence'),
                 event.get('player'),
                 event.get('action_type'),
-                event.get('client_ip')
+                event.get('client_ip'),
+                event.get('google_email')  # Add this
             ))
         
         cur.executemany("""
             INSERT INTO twomanspades.game_events 
-            (hand_id, event_type, event_data, hand_number, session_sequence, player, action_type, client_ip)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (hand_id, event_type, event_data, hand_number, session_sequence, 
+             player, action_type, client_ip, google_email)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, events_data)
         
         conn.commit()
