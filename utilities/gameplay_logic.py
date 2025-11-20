@@ -109,6 +109,11 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
 
 def init_new_hand(game):
     """Start a new hand while preserving scores, bags, and parity assignments"""
+    
+    # Generate new hand ID for this hand
+    import uuid
+    game['current_hand_id'] = str(uuid.uuid4())
+    
     deck = create_deck()
     random.shuffle(deck)
     

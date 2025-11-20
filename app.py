@@ -506,6 +506,7 @@ def clear_trick():
     session.modified = True
     return jsonify({'success': True})
 
+
 @app.route('/next_hand', methods=['POST'])
 def next_hand():
     if 'game' not in session:
@@ -527,7 +528,20 @@ def next_hand():
     )
     
     game['hand_number'] += 1
-    init_new_hand(game)
+    init_new_hand(game)  # This now creates a new current_hand_id
+    
+    # CREATE DATABASE RECORD FOR NEW HAND with Google auth
+    if client_info and 'user' in session:
+        client_info['google_auth'] = session['user']
+    
+    from utilities.logging_utils import queue_db_operation
+    from utilities.postgres_utils import create_hand_with_player
+    
+    if IS_PRODUCTION:
+        queue_db_operation(create_hand_with_player, game, client_info)
+    else:
+        # Synchronous in development for easier debugging
+        create_hand_with_player(game, client_info)
     
     session.modified = True
     return jsonify({'success': True})
