@@ -381,28 +381,28 @@ def initialize_game_logging(game):
     return game
 
 def initialize_game_logging_with_client(game, request=None):
-    """Enhanced game initialization with client tracking and async database logging"""
+    """Enhanced game initialization with client tracking and Google auth"""
     game = initialize_game_logging(game)
-    
-    # Add batching system
     game = initialize_event_batching(game)
     
     if request:
+        from flask import session as flask_session
+        
         client_info = get_client_info(request)
+        
+        # Add Google auth if available
+        if 'user' in flask_session:
+            client_info['google_auth'] = flask_session['user']
+        
         game['client_info'] = client_info
         
-        # Console output only
+        # Console output
         if LOG_TO_CONSOLE:
-            print(f"NEW GAME STARTED by {client_info['ip_address']}")
-            print(f"   Game ID: {game.get('game_id', 'unknown')}")
+            auth_status = f" (Logged in as {client_info['google_auth']['email']})" if 'google_auth' in client_info else " (Anonymous)"
+            print(f"NEW GAME STARTED by {client_info['ip_address']}{auth_status}")
     
-    # NEW: Async database logging for production
     if IS_PRODUCTION:
-        queue_db_operation(
-            _create_game_with_player_async,
-            game,
-            game.get('client_info')
-        )
+        queue_db_operation(_create_game_with_player_async, game, game.get('client_info'))
     
     return game
 

@@ -296,6 +296,7 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
             pass
         return False
 
+
 def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, Any] = None) -> bool:
     """Create hand and update player in single transaction"""
     try:
@@ -303,31 +304,61 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
         cur = conn.cursor()
         
         player_id = None
+        
         if client_info:
             ip_address = client_info.get('ip_address')
             user_agent = client_info.get('user_agent')
             
-            # Update player stats - increment total_hands instead of total_games
-            cur.execute("""
-                INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_hands)
-                VALUES (%s, %s, 1)
-                ON CONFLICT (ip_address) DO UPDATE SET
-                    last_seen = NOW(),
-                    user_agent_latest = EXCLUDED.user_agent_latest,
-                    total_hands = players.total_hands + 1
-                RETURNING player_id
-            """, (ip_address, user_agent))
+            # Extract Google auth if available
+            google_auth = client_info.get('google_auth')
+            
+            if google_auth:
+                # User is logged in - update with Google info
+                cur.execute("""
+                    INSERT INTO twomanspades.players 
+                    (ip_address, user_agent_latest, total_hands, 
+                     google_email, google_name, google_id, google_picture_url,
+                     first_google_login, last_google_login)
+                    VALUES (%s, %s, 1, %s, %s, %s, %s, NOW(), NOW())
+                    ON CONFLICT (ip_address) DO UPDATE SET
+                        last_seen = NOW(),
+                        user_agent_latest = EXCLUDED.user_agent_latest,
+                        total_hands = players.total_hands + 1,
+                        google_email = COALESCE(EXCLUDED.google_email, players.google_email),
+                        google_name = COALESCE(EXCLUDED.google_name, players.google_name),
+                        google_id = COALESCE(EXCLUDED.google_id, players.google_id),
+                        google_picture_url = COALESCE(EXCLUDED.google_picture_url, players.google_picture_url),
+                        last_google_login = NOW()
+                    RETURNING player_id
+                """, (
+                    ip_address, user_agent,
+                    google_auth.get('email'),
+                    google_auth.get('name'),
+                    google_auth.get('google_id'),
+                    google_auth.get('picture')
+                ))
+            else:
+                # Anonymous user - original logic
+                cur.execute("""
+                    INSERT INTO twomanspades.players (ip_address, user_agent_latest, total_hands)
+                    VALUES (%s, %s, 1)
+                    ON CONFLICT (ip_address) DO UPDATE SET
+                        last_seen = NOW(),
+                        user_agent_latest = EXCLUDED.user_agent_latest,
+                        total_hands = players.total_hands + 1
+                    RETURNING player_id
+                """, (ip_address, user_agent))
             
             player_id = cur.fetchone()[0]
         
-        # Insert hand record using current_hand_id from game data
+        # Insert hand record (unchanged - just uses player_id)
         cur.execute("""
             INSERT INTO twomanspades.hands 
             (hand_id, started_at, player_parity, computer_parity, first_leader, 
              client_ip, user_agent, player_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            hand_data['current_hand_id'],  # Use current_hand_id instead of game_id
+            hand_data['current_hand_id'],
             datetime.fromtimestamp(hand_data['game_started_at']),
             hand_data['player_parity'],
             hand_data['computer_parity'], 
