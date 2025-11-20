@@ -184,6 +184,27 @@ function updateChatBadge() {
 }
 
 // =============================================================================
+// LOGIN/LOGOUT HANDLER
+// =============================================================================
+
+function handleLoginClick() {
+    const loginButton = document.getElementById('loginButton');
+    const buttonText = loginButton.textContent.trim();
+
+    // If button shows anything other than "Login", user is logged in
+    if (buttonText !== 'Login') {
+        // User is logged in, show logout confirmation
+        if (confirm('Logout from your account?')) {
+            window.location.href = '/logout';
+        }
+    } else {
+        // User not logged in, go to login page
+        window.location.href = '/login';
+    }
+}
+
+
+// =============================================================================
 // MAIN GAME FUNCTIONS (unchanged core logic)
 // =============================================================================
 

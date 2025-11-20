@@ -221,7 +221,13 @@
             <button class="bottom-new-game-btn" onclick="startNewGame()">New Game</button>
             <button class="bottom-rules-btn" onclick="window.open('/instructions', '_blank')">How to Play</button>
             <button class="bottom-rules-btn" onclick="window.open('/stats', '_blank')">Stats</button>
-            <button class="bottom-rules-btn" onclick="window.location.href='/login'">Login</button>
+            <button class="bottom-rules-btn" id="loginButton" onclick="handleLoginClick()">
+                {% if session.get('user') %}
+                {{ session['user']['name'].split()[0] }}
+                {% else %}
+                Login
+                {% endif %}
+            </button>
         </div>
     </div>
 
