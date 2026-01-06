@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Details - Two-Player Spades</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}">
+    <style>
+        .game-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 12px;
+        }
+        .game-result {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+        .game-result.won { color: #4ade80; }
+        .game-result.lost { color: #f87171; }
+        .game-meta {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .final-score {
+            font-size: 1.8rem;
+            margin: 1rem 0;
+        }
+        .final-score .player-score { color: #60a5fa; }
+        .final-score .computer-score { color: #f472b6; }
+
+        .hand-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3b82f6;
+        }
+        .hand-card.scoring-hand {
+            border-left-color: #22c55e;
+        }
+        .hand-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #334155;
+        }
+        .hand-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+        .hand-score {
+            font-size: 1.1rem;
+        }
+        .hand-score .player { color: #60a5fa; }
+        .hand-score .computer { color: #f472b6; }
+
+        .bids-section {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+        .bid-item {
+            padding: 0.5rem 1rem;
+            background: #0f172a;
+            border-radius: 8px;
+        }
+        .bid-item.blind {
+            background: #7c3aed;
+            color: white;
+        }
+        .bid-item.nil {
+            background: #dc2626;
+            color: white;
+        }
+        .bid-player {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .bid-amount {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .tricks-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .trick {
+            text-align: center;
+            padding: 0.4rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+        .trick.player-won {
+            background: rgba(96, 165, 250, 0.2);
+            border: 1px solid #60a5fa;
+        }
+        .trick.computer-won {
+            background: rgba(244, 114, 182, 0.2);
+            border: 1px solid #f472b6;
+        }
+        .trick-number {
+            font-weight: bold;
+        }
+
+        .trick-detail {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .trick-detail-item {
+            background: #0f172a;
+            padding: 0.75rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .trick-detail-item.winner {
+            border: 1px solid #22c55e;
+        }
+        .card-played {
+            font-size: 1.1rem;
+        }
+        .card-played .hearts, .card-played .diamonds { color: #ef4444; }
+        .card-played .spades, .card-played .clubs { color: #e2e8f0; }
+
+        .scoring-explanation {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .game-end-message {
+            text-align: center;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+            border-radius: 12px;
+            margin-top: 1.5rem;
+        }
+        .game-end-message.lost {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        }
+        .game-end-text {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .expand-tricks {
+            background: #334155;
+            border: none;
+            color: #94a3b8;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        .expand-tricks:hover {
+            background: #475569;
+        }
+        .trick-history {
+            display: none;
+            margin-top: 1rem;
+        }
+        .trick-history.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/stats" class="back-button">← Back to Stats</a>
+
+    <div class="container">
+        <!-- Game Header -->
+        <div class="game-header">
+            <div class="game-meta">
+                {% if game.summary.completed_at %}
+                {{ game.summary.completed_at.strftime('%B %d, %Y at %I:%M %p') }}
+                {% endif %}
+                {% if game.summary.player_name %}
+                · Played by {{ game.summary.player_name }}
+                {% endif %}
+            </div>
+            <div class="game-result {{ 'won' if game.summary.won else 'lost' }}">
+                {% if game.summary.won %}VICTORY{% else %}DEFEAT{% endif %}
+            </div>
+            <div class="final-score">
+                <span class="player-score">{{ game.summary.final_player_score }}</span>
+                <span style="color: #64748b;"> - </span>
+                <span class="computer-score">{{ game.summary.final_computer_score }}</span>
+            </div>
+            <div class="game-meta">
+                {{ game.summary.hands_played or game.hands|length }} hands played
+                {% if game.summary.player_bags is not none %}
+                · {{ game.summary.player_bags }} bags
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Hand by Hand Breakdown -->
+        <div class="section-title">Hand by Hand</div>
+
+        {% for hand in game.hands %}
+        {% if hand.hand_number > 0 %}
+        <div class="hand-card {% if hand.scoring %}scoring-hand{% endif %}">
+            <div class="hand-header">
+                <div class="hand-number">Hand {{ hand.hand_number }}</div>
+                {% if hand.scoring %}
+                <div class="hand-score">
+                    <span class="player">{{ hand.scoring.player_score }}</span>
+                    <span style="color: #64748b;"> - </span>
+                    <span class="computer">{{ hand.scoring.computer_score }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Bids -->
+            <div class="bids-section">
+                {% for bid in hand.bids %}
+                <div class="bid-item {% if bid.is_blind %}blind{% elif bid.is_nil %}nil{% endif %}">
+                    <div class="bid-player">{{ bid.player }}</div>
+                    <div class="bid-amount">
+                        {% if bid.is_blind %}BLIND {% endif %}
+                        {% if bid.is_nil %}NIL{% else %}{{ bid.amount }}{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Tricks Summary -->
+            {% if hand.tricks %}
+            <div class="tricks-grid">
+                {% for trick in hand.tricks %}
+                <div class="trick {{ 'player-won' if trick.winner == 'You' else 'computer-won' }}">
+                    <div class="trick-number">{{ trick.number }}</div>
+                    <div>{{ trick.winner }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Trick History (cards played) -->
+            {% if hand.trick_history %}
+            <button class="expand-tricks" onclick="toggleTricks({{ hand.hand_number }})">
+                Show Cards Played ▼
+            </button>
+            <div class="trick-history" id="tricks-{{ hand.hand_number }}">
+                <div class="trick-detail">
+                    {% for trick in hand.trick_history %}
+                    <div class="trick-detail-item {% if trick.winner == 'You' %}winner{% endif %}">
+                        <div>
+                            <strong>Trick {{ trick.number }}</strong><br>
+                            <span class="card-played">
+                                You: <span class="{{ trick.player_card[-1]|lower }}s">{{ trick.player_card }}</span>
+                            </span><br>
+                            <span class="card-played">
+                                Marta: <span class="{{ trick.computer_card[-1]|lower }}s">{{ trick.computer_card }}</span>
+                            </span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: {% if trick.winner == 'You' %}#4ade80{% else %}#f472b6{% endif %};">
+                            {{ trick.winner }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Scoring Explanation -->
+            {% if hand.scoring and hand.scoring.explanation %}
+            <div class="scoring-explanation">
+                {{ hand.scoring.explanation }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- Game End Message -->
+        {% if game.game_completed %}
+        <div class="game-end-message {% if not game.summary.won %}lost{% endif %}">
+            <div class="game-end-text">
+                {{ game.game_completed.final_message or game.summary.final_message }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function toggleTricks(handNumber) {
+            const el = document.getElementById('tricks-' + handNumber);
+            el.classList.toggle('show');
+            const btn = el.previousElementSibling;
+            if (el.classList.contains('show')) {
+                btn.textContent = 'Hide Cards Played ▲';
+            } else {
+                btn.textContent = 'Show Cards Played ▼';
+            }
+        }
+    </script>
+</body>
+</html>

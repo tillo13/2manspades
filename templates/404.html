@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Not Found - Two-Player Spades</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}">
+</head>
+<body>
+    <a href="/" class="back-button">← Back to Game</a>
+    <div class="container" style="text-align: center; padding: 3rem;">
+        <h1 style="font-size: 4rem; color: #64748b;">404</h1>
+        <p style="font-size: 1.2rem; color: #94a3b8;">{{ message or 'Page not found' }}</p>
+        <a href="/stats" style="color: #60a5fa;">← Back to Stats</a>
+    </div>
+</body>
+</html>

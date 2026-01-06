@@ -770,7 +770,7 @@ def get_player_achievements() -> Dict[str, Any]:
 
         # Closest wins (Nail-biters) - from vw_player_game_details with parsed scores
         cur.execute('''
-            SELECT v.player_name as player, v.final_player_score, v.final_computer_score,
+            SELECT v.player_name as player, v.hand_id, v.final_player_score, v.final_computer_score,
                    v.margin, v.player_bags, COALESCE(v.completed_at, gc.timestamp) as completed_at
             FROM twomanspades.vw_player_game_details v
             LEFT JOIN twomanspades.game_events gc ON v.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
@@ -782,7 +782,7 @@ def get_player_achievements() -> Dict[str, Any]:
 
         # Biggest blowouts - from vw_player_game_details with parsed scores
         cur.execute('''
-            SELECT v.player_name as player, v.final_player_score, v.final_computer_score,
+            SELECT v.player_name as player, v.hand_id, v.final_player_score, v.final_computer_score,
                    v.margin, v.player_bags, COALESCE(v.completed_at, gc.timestamp) as completed_at
             FROM twomanspades.vw_player_game_details v
             LEFT JOIN twomanspades.game_events gc ON v.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
@@ -868,7 +868,7 @@ def get_player_achievements() -> Dict[str, Any]:
 
         # Worst losses - from vw_player_game_details with parsed scores
         cur.execute('''
-            SELECT v.player_name as player, v.final_player_score, v.final_computer_score,
+            SELECT v.player_name as player, v.hand_id, v.final_player_score, v.final_computer_score,
                    v.final_computer_score - v.final_player_score as margin, v.player_bags,
                    COALESCE(v.completed_at, gc.timestamp) as completed_at
             FROM twomanspades.vw_player_game_details v
@@ -898,6 +898,7 @@ def get_player_achievements() -> Dict[str, Any]:
             )
             SELECT
                 v.player_name as player,
+                v.hand_id,
                 COALESCE(v.completed_at, gc.timestamp) as completed_at,
                 v.final_player_score,
                 v.final_computer_score,
@@ -1386,6 +1387,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
             )
             SELECT
                 b.player,
+                b.hand_id,
                 b.bid,
                 b.game_date as completed_at,
                 COALESCE(t.player_tricks, 0) as tricks_won,
@@ -1423,6 +1425,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
             )
             SELECT
                 b.player,
+                b.hand_id,
                 b.bid,
                 b.game_date as completed_at,
                 COALESCE(t.player_tricks, 0) as tricks_won,
@@ -1452,6 +1455,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
             )
             SELECT
                 v.player_name as player,
+                hs.hand_id,
                 hs.cumulative_score - hs.prev_score as points_scored,
                 hs.hand_number,
                 COALESCE(v.completed_at, gc.timestamp, hs.event_timestamp) as completed_at
@@ -1520,3 +1524,120 @@ def get_per_hand_stats() -> Dict[str, Any]:
     except Exception as e:
         print(f"Failed to get per-hand stats: {e}")
         return {}
+
+
+def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
+    """Get full game details for a specific hand_id including all events."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get game summary from vw_player_game_details
+        cur.execute("""
+            SELECT player_name, final_player_score, final_computer_score,
+                   player_bags, won, margin, hands_played, completed_at,
+                   game_end_reason, final_message
+            FROM twomanspades.vw_player_game_details
+            WHERE hand_id = %s
+        """, (hand_id,))
+        summary = cur.fetchone()
+
+        if not summary:
+            cur.close()
+            conn.close()
+            return None
+
+        # Get all events for this game
+        cur.execute("""
+            SELECT event_type, hand_number, player, timestamp, event_data
+            FROM twomanspades.game_events
+            WHERE hand_id = %s
+            ORDER BY timestamp
+        """, (hand_id,))
+        events = cur.fetchall()
+
+        # Organize events by hand
+        hands = {}
+        game_completed = None
+
+        for event in events:
+            hand_num = event['hand_number'] or 0
+            etype = event['event_type']
+            data = event['event_data']
+
+            if etype == 'game_completed':
+                game_completed = {
+                    'winner': data.get('winner'),
+                    'final_message': data.get('final_message'),
+                    'game_end_reason': data.get('game_end_reason'),
+                    'hands_played': data.get('hands_played')
+                }
+                continue
+
+            if hand_num not in hands:
+                hands[hand_num] = {
+                    'hand_number': hand_num,
+                    'bids': [],
+                    'tricks': [],
+                    'scoring': None,
+                    'trick_history': []
+                }
+
+            hand = hands[hand_num]
+
+            if etype == 'action_regular_bid':
+                player_name = 'You' if event['player'] == 'player' else 'Marta'
+                bid_amount = data['action_data']['bid_amount']
+                is_nil = data['action_data'].get('is_nil', False)
+                hand['bids'].append({
+                    'player': player_name,
+                    'amount': bid_amount,
+                    'is_nil': is_nil,
+                    'is_blind': False
+                })
+
+            elif etype == 'action_blind_bid':
+                player_name = 'You' if event['player'] == 'player' else 'Marta'
+                bid_amount = data['action_data']['bid_amount']
+                hand['bids'].append({
+                    'player': player_name,
+                    'amount': bid_amount,
+                    'is_nil': bid_amount == 0,
+                    'is_blind': True
+                })
+
+            elif etype == 'trick_completed':
+                winner = 'You' if data['winner'] == 'player' else 'Marta'
+                hand['tricks'].append({
+                    'number': data['trick_number'],
+                    'winner': winner
+                })
+
+            elif etype == 'hand_scoring':
+                scores = data.get('final_scores', {})
+                hand['scoring'] = {
+                    'player_score': scores.get('player_score'),
+                    'computer_score': scores.get('computer_score'),
+                    'explanation': data.get('scoring_explanation', '')
+                }
+                # Extract trick history if available
+                hand_results = data.get('hand_results', {})
+                if 'trick_history' in hand_results:
+                    hand['trick_history'] = hand_results['trick_history']
+
+        # Convert to sorted list
+        hands_list = sorted(hands.values(), key=lambda h: h['hand_number'])
+
+        cur.close()
+        conn.close()
+
+        return {
+            'hand_id': hand_id,
+            'summary': dict(summary),
+            'hands': hands_list,
+            'game_completed': game_completed
+        }
+
+    except Exception as e:
+        print(f"Failed to get game details: {e}")
+        return None

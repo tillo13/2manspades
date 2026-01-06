@@ -579,6 +579,17 @@ def stats():
                         overall_stats=overall_stats,
                         per_hand_stats=per_hand_stats)
 
+
+@app.route('/game/<hand_id>')
+def game_detail(hand_id):
+    """Show detailed breakdown of a specific game."""
+    from utilities.postgres_utils import get_game_details
+    game = get_game_details(hand_id)
+    if not game:
+        return render_template('404.html', message="Game not found"), 404
+    return render_template('game_detail.html', game=game)
+
+
 @app.route('/debug_game_creation')
 def debug_game_creation():
     """Debug game creation issues"""

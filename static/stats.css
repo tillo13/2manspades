@@ -1024,3 +1024,14 @@ body {
         font-size: 13px;
     }
 }
+
+/* Game detail links */
+.game-link {
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.game-link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}

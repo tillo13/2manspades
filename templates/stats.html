@@ -213,7 +213,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {% if g.hand_id %}<a href="/game/{{ g.hand_id }}" class="game-link">{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}</a>{% else %}{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -227,7 +227,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {% if g.hand_id %}<a href="/game/{{ g.hand_id }}" class="game-link">{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}</a>{% else %}{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -286,7 +286,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value loss-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">(-{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">(-{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {% if g.hand_id %}<a href="/game/{{ g.hand_id }}" class="game-link">{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}</a>{% else %}{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -300,7 +300,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value streak-value">Down {{ g.points_behind }}, won {{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">({{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">({% if g.hand_id %}<a href="/game/{{ g.hand_id }}" class="game-link">{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}</a>{% else %}{{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -313,8 +313,8 @@
                     {% for p in achievements.blind_stats %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ p.player }}</span>
-                        <span class="achievement-value">{{ p.times_went_blind }}/{{ p.times_offered }} took blind</span>
-                        <span class="achievement-detail">({{ p.blind_success_rate or 0 }}% success)</span>
+                        <span class="achievement-value">{{ p.blind_successes }}/{{ p.times_went_blind }} succeeded</span>
+                        <span class="achievement-detail">({{ p.blind_success_rate or 0 }}%, took {{ p.blind_rate or 0 }}%)</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -418,7 +418,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ h.player }}</span>
                         <span class="achievement-value bags-value">+{{ h.overtricks }} bags</span>
-                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }}, {{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }}, {% if h.hand_id %}<a href="/game/{{ h.hand_id }}" class="game-link">{{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }}</a>{% else %}{{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -432,7 +432,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ h.player }}</span>
                         <span class="achievement-value loss-value">-{{ h.undertricks }} tricks short</span>
-                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }}, {{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }}, {% if h.hand_id %}<a href="/game/{{ h.hand_id }}" class="game-link">{{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }}</a>{% else %}{{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -446,7 +446,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ h.player }}</span>
                         <span class="achievement-value streak-value">+{{ h.points_scored }} pts</span>
-                        <span class="achievement-detail">(hand {{ h.hand_number }}, {{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }})</span>
+                        <span class="achievement-detail">(hand {{ h.hand_number }}, {% if h.hand_id %}<a href="/game/{{ h.hand_id }}" class="game-link">{{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }}</a>{% else %}{{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }}{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
