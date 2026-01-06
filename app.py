@@ -19,7 +19,7 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location, get_google_players_leaderboard, get_fun_stats, get_player_achievements
+from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location, get_google_players_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats
 from utilities.gmail_utils import send_simple_email
 
 from utilities.google_auth_utils import SimpleGoogleAuth
@@ -572,6 +572,7 @@ def stats():
     monthly_stats = get_monthly_stats_by_location()
     fun_stats = get_fun_stats()
     achievements = get_player_achievements()
+    special_cards = get_special_card_stats()
 
     return render_template('stats.html',
                         google_leaders=google_leaders,
@@ -581,6 +582,7 @@ def stats():
                         monthly_stats=monthly_stats,
                         fun_stats=fun_stats,
                         achievements=achievements,
+                        special_cards=special_cards,
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')

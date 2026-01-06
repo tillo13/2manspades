@@ -794,6 +794,83 @@ def get_player_achievements() -> List[Dict[str, Any]]:
         ''')
         biggest_wins = [dict(row) for row in cur.fetchall()]
 
+        # Current win streaks (consecutive recent wins)
+        cur.execute('''
+            WITH recent_games AS (
+                SELECT
+                    SPLIT_PART(p.google_name, ' ', 1) as player,
+                    h.completed_at,
+                    CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END as won,
+                    ROW_NUMBER() OVER (PARTITION BY p.google_email ORDER BY h.completed_at DESC) as rn
+                FROM twomanspades.hands h
+                JOIN twomanspades.players p ON h.player_id = p.player_id
+                WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
+            ),
+            streaks AS (
+                SELECT player,
+                    SUM(won) as streak,
+                    MIN(CASE WHEN won = 0 THEN rn ELSE 999 END) - 1 as current_streak
+                FROM recent_games
+                WHERE rn <= 20
+                GROUP BY player
+            )
+            SELECT player, GREATEST(current_streak, 0) as streak
+            FROM streaks WHERE current_streak > 0
+            ORDER BY streak DESC
+        ''')
+        win_streaks = [dict(row) for row in cur.fetchall()]
+
+        # Total bags accumulated per player
+        cur.execute('''
+            SELECT
+                SPLIT_PART(p.google_name, ' ', 1) as player,
+                SUM(h.player_bags) as total_bags,
+                COUNT(DISTINCT h.hand_id) as games,
+                ROUND(AVG(h.player_bags)::numeric, 2) as avg_bags
+            FROM twomanspades.hands h
+            JOIN twomanspades.players p ON h.player_id = p.player_id
+            WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
+            GROUP BY SPLIT_PART(p.google_name, ' ', 1)
+            ORDER BY total_bags DESC
+        ''')
+        bag_stats = [dict(row) for row in cur.fetchall()]
+
+        # Most common bid per player
+        cur.execute('''
+            WITH bid_counts AS (
+                SELECT
+                    SPLIT_PART(p.google_name, ' ', 1) as player,
+                    (ge.event_data->'action_data'->>'bid_amount')::int as bid,
+                    COUNT(*) as times
+                FROM twomanspades.game_events ge
+                JOIN twomanspades.players p ON ge.google_email = p.google_email
+                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player' AND p.google_id IS NOT NULL
+                GROUP BY SPLIT_PART(p.google_name, ' ', 1), (ge.event_data->'action_data'->>'bid_amount')::int
+            ),
+            ranked AS (
+                SELECT player, bid, times,
+                    ROW_NUMBER() OVER (PARTITION BY player ORDER BY times DESC) as rn
+                FROM bid_counts
+            )
+            SELECT player, bid as favorite_bid, times
+            FROM ranked WHERE rn = 1
+            ORDER BY times DESC
+        ''')
+        favorite_bids = [dict(row) for row in cur.fetchall()]
+
+        # Worst losses (for fun/competitive spirit)
+        cur.execute('''
+            SELECT SPLIT_PART(p.google_name, ' ', 1) as player,
+                h.hand_player_score, h.hand_computer_score,
+                h.hand_computer_score - h.hand_player_score as margin
+            FROM twomanspades.hands h
+            JOIN twomanspades.players p ON h.player_id = p.player_id
+            WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
+            AND h.hand_player_score < h.hand_computer_score
+            ORDER BY margin DESC LIMIT 5
+        ''')
+        worst_losses = [dict(row) for row in cur.fetchall()]
+
         cur.close()
         conn.close()
 
@@ -801,9 +878,113 @@ def get_player_achievements() -> List[Dict[str, Any]]:
             'bid_accuracy': bid_accuracy,
             'nil_stats': nil_stats,
             'closest_wins': closest_wins,
-            'biggest_wins': biggest_wins
+            'biggest_wins': biggest_wins,
+            'win_streaks': win_streaks,
+            'bag_stats': bag_stats,
+            'favorite_bids': favorite_bids,
+            'worst_losses': worst_losses
         }
 
     except Exception as e:
         print(f"Failed to get player achievements: {e}")
+        return {}
+
+
+def get_special_card_stats() -> Dict[str, Any]:
+    """Get stats about the special cards (10 of clubs, 7 of diamonds)"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Overall special card captures
+        cur.execute('''
+            SELECT
+                CASE WHEN event_data->>'beneficiary' = 'You' THEN 'Players' ELSE 'Marta' END as winner,
+                CASE
+                    WHEN event_data->>'explanation' LIKE '%10%' THEN '10 of Clubs'
+                    WHEN event_data->>'explanation' LIKE '%7%' THEN '7 of Diamonds'
+                END as card,
+                COUNT(*) as times
+            FROM twomanspades.game_events
+            WHERE event_type = 'special_card_effect'
+            GROUP BY 1, 2
+            ORDER BY card, winner
+        ''')
+        overall_captures = [dict(row) for row in cur.fetchall()]
+
+        # Special card captures by Google player
+        cur.execute('''
+            SELECT
+                SPLIT_PART(p.google_name, ' ', 1) as player,
+                SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%10%' THEN 1 ELSE 0 END) as ten_clubs,
+                SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%7%' THEN 1 ELSE 0 END) as seven_diamonds,
+                COUNT(*) as total_special,
+                SUM((ge.event_data->>'bag_reduction')::int) as total_bags_saved
+            FROM twomanspades.game_events ge
+            JOIN twomanspades.players p ON ge.google_email = p.google_email
+            WHERE ge.event_type = 'special_card_effect'
+            AND ge.event_data->>'beneficiary' = 'You'
+            AND p.google_id IS NOT NULL
+            GROUP BY SPLIT_PART(p.google_name, ' ', 1)
+            ORDER BY total_special DESC
+        ''')
+        player_captures = [dict(row) for row in cur.fetchall()]
+
+        # Win rate when capturing special cards (Google players)
+        cur.execute('''
+            WITH special_games AS (
+                SELECT DISTINCT ge.hand_id, p.google_email
+                FROM twomanspades.game_events ge
+                JOIN twomanspades.players p ON ge.google_email = p.google_email
+                WHERE ge.event_type = 'special_card_effect'
+                AND ge.event_data->>'beneficiary' = 'You'
+                AND p.google_id IS NOT NULL
+            )
+            SELECT
+                SPLIT_PART(p.google_name, ' ', 1) as player,
+                COUNT(*) as games_with_special,
+                SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as wins,
+                ROUND(100.0 * SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate
+            FROM special_games sg
+            JOIN twomanspades.hands h ON sg.hand_id = h.hand_id
+            JOIN twomanspades.players p ON sg.google_email = p.google_email
+            WHERE h.completed_at IS NOT NULL
+            GROUP BY SPLIT_PART(p.google_name, ' ', 1)
+            ORDER BY games_with_special DESC
+        ''')
+        win_rate_with_special = [dict(row) for row in cur.fetchall()]
+
+        # Marta's special card captures (for comparison)
+        cur.execute('''
+            SELECT
+                SUM(CASE WHEN event_data->>'explanation' LIKE '%10%' THEN 1 ELSE 0 END) as ten_clubs,
+                SUM(CASE WHEN event_data->>'explanation' LIKE '%7%' THEN 1 ELSE 0 END) as seven_diamonds,
+                COUNT(*) as total
+            FROM twomanspades.game_events
+            WHERE event_type = 'special_card_effect'
+            AND event_data->>'beneficiary' = 'Marta'
+        ''')
+        marta_captures = dict(cur.fetchone())
+
+        # Total special card appearances
+        cur.execute('''
+            SELECT COUNT(*) as total_appearances
+            FROM twomanspades.game_events
+            WHERE event_type = 'special_card_effect'
+        ''')
+        total = cur.fetchone()['total_appearances']
+
+        cur.close()
+        conn.close()
+
+        return {
+            'overall_captures': overall_captures,
+            'player_captures': player_captures,
+            'win_rate_with_special': win_rate_with_special,
+            'marta_captures': marta_captures,
+            'total_appearances': total
+        }
+
+    except Exception as e:
+        print(f"Failed to get special card stats: {e}")
         return {}

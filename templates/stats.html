@@ -252,7 +252,7 @@
                     {% for g in achievements.closest_wins %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
-                        <span class="achievement-value">{{ g.hand_player_score }}-{{ g.hand_computer_score }}</span>
+                        <span class="achievement-value">{{ g.hand_player_score }} to {{ g.hand_computer_score }}</span>
                         <span class="achievement-detail">(+{{ g.margin }})</span>
                     </div>
                     {% endfor %}
@@ -266,13 +266,136 @@
                     {% for g in achievements.biggest_wins %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
-                        <span class="achievement-value">{{ g.hand_player_score }}-{{ g.hand_computer_score }}</span>
+                        <span class="achievement-value">{{ g.hand_player_score }} to {{ g.hand_computer_score }}</span>
                         <span class="achievement-detail">(+{{ g.margin }})</span>
                     </div>
                     {% endfor %}
                 </div>
                 {% endif %}
+
+                <!-- Win Streaks -->
+                {% if achievements.win_streaks %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Current Win Streaks</div>
+                    {% for p in achievements.win_streaks %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value streak-value">{{ p.streak }} in a row</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Favorite Bids -->
+                {% if achievements.favorite_bids %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Favorite Bid</div>
+                    {% for p in achievements.favorite_bids %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value">Bids {{ p.favorite_bid }}</span>
+                        <span class="achievement-detail">({{ p.times }}x)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Bag Stats -->
+                {% if achievements.bag_stats %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Bag Leaders</div>
+                    {% for p in achievements.bag_stats %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value bags-value">{{ p.total_bags }} bags</span>
+                        <span class="achievement-detail">({{ p.avg_bags }}/game)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Worst Losses -->
+                {% if achievements.worst_losses %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Worst Losses</div>
+                    {% for g in achievements.worst_losses %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ g.player }}</span>
+                        <span class="achievement-value loss-value">{{ g.hand_player_score }} to {{ g.hand_computer_score }}</span>
+                        <span class="achievement-detail">(-{{ g.margin }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
+        </div>
+        {% endif %}
+
+        <!-- Special Cards Section -->
+        {% if special_cards %}
+        <div class="stats-section special-cards-section">
+            <div class="section-title">Special Cards: 10♣ & 7♦</div>
+            <div class="special-cards-intro">
+                The <strong>10 of Clubs</strong> (-1 bag) and <strong>7 of Diamonds</strong> (-2 bags) are game-changers. Win the trick containing them to reduce your bags!
+            </div>
+
+            <!-- Overall Captures -->
+            <div class="special-cards-grid">
+                <div class="special-card-box ten-clubs">
+                    <div class="card-icon">10♣</div>
+                    <div class="card-name">10 of Clubs</div>
+                    <div class="card-effect">-1 bag per capture</div>
+                    {% for c in special_cards.overall_captures if c.card == '10 of Clubs' %}
+                    <div class="capture-stat">{{ c.winner }}: {{ c.times }}</div>
+                    {% endfor %}
+                </div>
+                <div class="special-card-box seven-diamonds">
+                    <div class="card-icon">7♦</div>
+                    <div class="card-name">7 of Diamonds</div>
+                    <div class="card-effect">-2 bags per capture</div>
+                    {% for c in special_cards.overall_captures if c.card == '7 of Diamonds' %}
+                    <div class="capture-stat">{{ c.winner }}: {{ c.times }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Player Captures -->
+            {% if special_cards.player_captures %}
+            <div class="special-player-stats">
+                <div class="achievement-title">Player Special Card Stats</div>
+                {% for p in special_cards.player_captures %}
+                <div class="special-player-row">
+                    <span class="achievement-player">{{ p.player }}</span>
+                    <span class="special-captures">
+                        <span class="ten-capture">10♣: {{ p.ten_clubs }}</span>
+                        <span class="seven-capture">7♦: {{ p.seven_diamonds }}</span>
+                    </span>
+                    <span class="bags-saved">{{ p.total_bags_saved }} bags saved</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Win Rate with Special Cards -->
+            {% if special_cards.win_rate_with_special %}
+            <div class="special-player-stats">
+                <div class="achievement-title">Win Rate When Capturing Special Cards</div>
+                {% for p in special_cards.win_rate_with_special %}
+                <div class="special-player-row">
+                    <span class="achievement-player">{{ p.player }}</span>
+                    <span class="achievement-value">{{ p.win_rate }}%</span>
+                    <span class="achievement-detail">({{ p.wins }}/{{ p.games_with_special }} games)</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Marta comparison -->
+            {% if special_cards.marta_captures %}
+            <div class="marta-comparison">
+                Marta has captured: 10♣ {{ special_cards.marta_captures.ten_clubs or 0 }}x, 7♦ {{ special_cards.marta_captures.seven_diamonds or 0 }}x
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 
