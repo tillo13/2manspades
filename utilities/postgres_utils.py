@@ -1765,6 +1765,52 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
                         trick_history.append(t)
                     hand['trick_history'] = trick_history
 
+        # Get timing data for the game
+        cur.execute('''
+            SELECT
+                MIN(timestamp) as game_start,
+                MAX(timestamp) as game_end,
+                EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 as total_minutes
+            FROM twomanspades.game_events
+            WHERE hand_id = %s
+        ''', (hand_id,))
+        timing = cur.fetchone()
+        if timing and timing[0]:
+            summary['game_start'] = timing[0]
+            summary['game_end'] = timing[1]
+            summary['total_minutes'] = round(timing[2], 1) if timing[2] else None
+
+        # Get per-hand timing
+        cur.execute('''
+            SELECT
+                hand_number,
+                MIN(timestamp) as hand_start,
+                MAX(timestamp) as hand_end,
+                EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 as hand_minutes
+            FROM twomanspades.game_events
+            WHERE hand_id = %s AND hand_number > 0
+            GROUP BY hand_number
+            ORDER BY hand_number
+        ''', (hand_id,))
+        hand_timings = {}
+        prev_hand_end = None
+        for row in cur.fetchall():
+            gap_minutes = None
+            if prev_hand_end and row[1]:
+                gap_minutes = round((row[1] - prev_hand_end).total_seconds() / 60, 1)
+            hand_timings[row[0]] = {
+                'start': row[1],
+                'end': row[2],
+                'duration_minutes': round(row[3], 1) if row[3] else None,
+                'gap_from_previous': gap_minutes
+            }
+            prev_hand_end = row[2]
+
+        # Add timing to hands
+        for h in hands.values():
+            if h['hand_number'] in hand_timings:
+                h['timing'] = hand_timings[h['hand_number']]
+
         # Convert to sorted list
         hands_list = sorted(hands.values(), key=lambda h: h['hand_number'])
 

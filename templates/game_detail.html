@@ -206,6 +206,47 @@
             text-align: center;
         }
 
+        .game-timing {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e9ecef;
+            font-size: 0.85rem;
+        }
+        .timing-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+        }
+        .timing-label {
+            color: #666;
+        }
+        .timing-value {
+            color: #333;
+            font-weight: 500;
+        }
+        .timing-highlight {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+
+        .time-gap-indicator {
+            text-align: center;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            background: #fff3cd;
+            border-radius: 6px;
+            color: #856404;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .hand-timing-info {
+            font-size: 0.75rem;
+            color: #999;
+            margin-bottom: 0.5rem;
+            font-style: italic;
+        }
+
         @media (max-width: 480px) {
             .trick-detail {
                 grid-template-columns: 1fr;
@@ -221,11 +262,8 @@
         <!-- Game Header -->
         <div class="game-header">
             <div class="game-meta">
-                {% if game.summary.completed_at %}
-                {{ game.summary.completed_at.strftime('%B %d, %Y at %I:%M %p') }}
-                {% endif %}
                 {% if game.summary.player_name %}
-                · Played by {{ game.summary.player_name }}
+                Played by {{ game.summary.player_name }}
                 {% endif %}
             </div>
             <div class="game-result {{ 'won' if game.summary.won else 'lost' }}">
@@ -242,6 +280,32 @@
                 · {{ game.summary.player_bags }} bags
                 {% endif %}
             </div>
+            {% if game.summary.game_start %}
+            <div class="game-timing">
+                <div class="timing-row">
+                    <span class="timing-label">Started:</span>
+                    <span class="timing-value">{{ game.summary.game_start.strftime('%b %d, %Y at %I:%M:%S %p') }}</span>
+                </div>
+                <div class="timing-row">
+                    <span class="timing-label">Ended:</span>
+                    <span class="timing-value">{{ game.summary.game_end.strftime('%b %d, %Y at %I:%M:%S %p') }}</span>
+                </div>
+                <div class="timing-row">
+                    <span class="timing-label">Duration:</span>
+                    <span class="timing-value {% if game.summary.total_minutes and game.summary.total_minutes > 60 %}timing-highlight{% endif %}">
+                        {% if game.summary.total_minutes %}
+                            {% if game.summary.total_minutes > 1440 %}
+                                {{ (game.summary.total_minutes / 1440)|round(1) }} days ({{ game.summary.total_minutes|round(1) }} min)
+                            {% elif game.summary.total_minutes > 60 %}
+                                {{ (game.summary.total_minutes / 60)|round(1) }} hours ({{ game.summary.total_minutes|round(1) }} min)
+                            {% else %}
+                                {{ game.summary.total_minutes }} min
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Hand by Hand Breakdown -->
@@ -256,6 +320,18 @@
 
         {% for hand in game.hands %}
         {% if hand.hand_number > 0 %}
+        <!-- Gap indicator if there was a long break -->
+        {% if hand.timing and hand.timing.gap_from_previous and hand.timing.gap_from_previous > 5 %}
+        <div class="time-gap-indicator">
+            {% if hand.timing.gap_from_previous > 1440 %}
+            ⏸️ {{ (hand.timing.gap_from_previous / 1440)|round(1) }} day break
+            {% elif hand.timing.gap_from_previous > 60 %}
+            ⏸️ {{ (hand.timing.gap_from_previous / 60)|round(1) }} hour break
+            {% else %}
+            ⏸️ {{ hand.timing.gap_from_previous|round(0)|int }} min break
+            {% endif %}
+        </div>
+        {% endif %}
         <div class="hand-card">
             <div class="hand-header">
                 <div class="hand-number">Hand {{ hand.hand_number }}</div>
@@ -267,6 +343,12 @@
                 </div>
                 {% endif %}
             </div>
+            {% if hand.timing %}
+            <div class="hand-timing-info">
+                {{ hand.timing.start.strftime('%I:%M:%S %p') }} - {{ hand.timing.end.strftime('%I:%M:%S %p') }}
+                ({{ hand.timing.duration_minutes }} min)
+            </div>
+            {% endif %}
 
             <!-- Bids -->
             <div class="bids-section">
