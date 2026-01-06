@@ -24,7 +24,7 @@
     <div class="container">
         <div class="header">
             <h1>Player Statistics</h1>
-            <div class="subtitle">Family leaderboard and performance metrics</div>
+            <div class="subtitle">Leaderboard and performance metrics</div>
         </div>
 
         <!-- Overall Stats Banner -->
@@ -32,15 +32,15 @@
         <div class="stats-section overall-banner">
             <div class="overall-stats-grid">
                 <div class="overall-stat">
-                    <div class="overall-value">{{ fun_stats.total_games|default(0) }}</div>
+                    <div class="overall-value">{{ "{:,}".format(fun_stats.total_games|default(0)|int) }}</div>
                     <div class="overall-label">Games Completed</div>
                 </div>
                 <div class="overall-stat">
-                    <div class="overall-value">{{ fun_stats.total_hands|default(0) }}</div>
+                    <div class="overall-value">{{ "{:,}".format(fun_stats.total_hands|default(0)|int) }}</div>
                     <div class="overall-label">Hands Played</div>
                 </div>
                 <div class="overall-stat">
-                    <div class="overall-value">{{ fun_stats.total_tricks|default(0)|int }}</div>
+                    <div class="overall-value">{{ "{:,}".format(fun_stats.total_tricks|default(0)|int) }}</div>
                     <div class="overall-label">Tricks Played</div>
                 </div>
                 <div class="overall-stat">
@@ -51,9 +51,13 @@
                     <div class="overall-value">{{ fun_stats.human_win_pct|default(0) }}%</div>
                     <div class="overall-label">Human Win Rate</div>
                 </div>
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.avg_game_length|default(0) }}</div>
+                    <div class="overall-label">Avg Game Length</div>
+                </div>
             </div>
             <div class="game-length-note">
-                Average game: {{ fun_stats.avg_game_length|default(0) }} hands (shortest: {{ fun_stats.shortest_game|default(0) }}, longest: {{ fun_stats.longest_game|default(0) }})
+                Shortest game: {{ fun_stats.shortest_game|default(0) }} hands, longest: {{ fun_stats.longest_game|default(0) }} hands
             </div>
         </div>
         {% endif %}
@@ -147,6 +151,10 @@
                                 <div class="stat-value">{{ player.total_games }}</div>
                             </div>
                             <div class="stat-item">
+                                <div class="stat-label">Losses</div>
+                                <div class="stat-value loss-stat">{{ player.losses }}</div>
+                            </div>
+                            <div class="stat-item">
                                 <div class="stat-label">High Score</div>
                                 <div class="stat-value win-stat">{{ player.highest_score or '-' }}</div>
                             </div>
@@ -204,8 +212,8 @@
                     {% for g in achievements.closest_wins %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
-                        <span class="achievement-value">{{ g.hand_player_score }} to {{ g.hand_computer_score }}</span>
-                        <span class="achievement-detail">(+{{ g.margin }})</span>
+                        <span class="achievement-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
+                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -218,8 +226,8 @@
                     {% for g in achievements.biggest_wins %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
-                        <span class="achievement-value">{{ g.hand_player_score }} to {{ g.hand_computer_score }}</span>
-                        <span class="achievement-detail">(+{{ g.margin }})</span>
+                        <span class="achievement-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
+                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -232,7 +240,20 @@
                     {% for p in achievements.win_streaks %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ p.player }}</span>
-                        <span class="achievement-value streak-value">{{ p.streak }} in a row</span>
+                        <span class="achievement-value streak-value">{{ p.streak }} wins in a row</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Loss Streaks -->
+                {% if achievements.loss_streaks %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Current Loss Streaks</div>
+                    {% for p in achievements.loss_streaks %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value loss-value">{{ p.streak }} losses in a row</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -252,15 +273,15 @@
                 </div>
                 {% endif %}
 
-                <!-- Bag Stats -->
+                <!-- Overbid Stats (bags per hand) -->
                 {% if achievements.bag_stats %}
                 <div class="achievement-card">
-                    <div class="achievement-title">Bag Leaders</div>
+                    <div class="achievement-title">Overbid Tax</div>
                     {% for p in achievements.bag_stats %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ p.player }}</span>
-                        <span class="achievement-value bags-value">{{ p.total_bags }} bags</span>
-                        <span class="achievement-detail">({{ p.avg_bags }}/hand)</span>
+                        <span class="achievement-value bags-value">{{ p.bags_per_hand }} bags/hand</span>
+                        <span class="achievement-detail">({{ p.total_bags }} total)</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -273,8 +294,22 @@
                     {% for g in achievements.worst_losses %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
-                        <span class="achievement-value loss-value">{{ g.hand_player_score }} to {{ g.hand_computer_score }}</span>
-                        <span class="achievement-detail">(-{{ g.margin }})</span>
+                        <span class="achievement-value loss-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
+                        <span class="achievement-detail">(-{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Blind Bid Stats -->
+                {% if achievements.blind_stats %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Blind Bid Courage</div>
+                    {% for p in achievements.blind_stats %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value">{{ p.times_went_blind }}/{{ p.times_offered }} took blind</span>
+                        <span class="achievement-detail">({{ p.blind_success_rate or 0 }}% success)</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -348,6 +383,57 @@
                 Marta has captured: 10♣ {{ special_cards.marta_captures.ten_clubs or 0 }}x, 7♦ {{ special_cards.marta_captures.seven_diamonds or 0 }}x
             </div>
             {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Per-Hand Stats Section -->
+        {% if per_hand_stats %}
+        <div class="stats-section">
+            <div class="section-title">Per-Hand Highlights</div>
+            <div class="achievements-grid">
+                <!-- Biggest Overtricks (overbid a hand) -->
+                {% if per_hand_stats.biggest_overtricks %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Biggest Overbids (Single Hand)</div>
+                    {% for h in per_hand_stats.biggest_overtricks %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ h.player }}</span>
+                        <span class="achievement-value bags-value">+{{ h.overtricks }} bags</span>
+                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Biggest Sets (underbid) -->
+                {% if per_hand_stats.biggest_sets %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Biggest Sets (Single Hand)</div>
+                    {% for h in per_hand_stats.biggest_sets %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ h.player }}</span>
+                        <span class="achievement-value loss-value">-{{ h.undertricks }} tricks short</span>
+                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Average Tricks -->
+                {% if per_hand_stats.avg_player_tricks_per_hand %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Trick Averages</div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Players</span>
+                        <span class="achievement-value">{{ per_hand_stats.avg_player_tricks_per_hand }} tricks/hand</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Marta</span>
+                        <span class="achievement-value">{{ per_hand_stats.avg_computer_tricks_per_hand }} tricks/hand</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
         {% endif %}
 

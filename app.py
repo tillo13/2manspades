@@ -19,7 +19,7 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats
+from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats, get_per_hand_stats
 from utilities.gmail_utils import send_simple_email
 
 from utilities.google_auth_utils import SimpleGoogleAuth
@@ -569,13 +569,15 @@ def stats():
     achievements = get_player_achievements()
     special_cards = get_special_card_stats()
     overall_stats = get_overall_game_stats()
+    per_hand_stats = get_per_hand_stats()
 
     return render_template('stats.html',
                         google_leaders=google_leaders,
                         fun_stats=fun_stats,
                         achievements=achievements,
                         special_cards=special_cards,
-                        overall_stats=overall_stats)
+                        overall_stats=overall_stats,
+                        per_hand_stats=per_hand_stats)
 
 @app.route('/debug_game_creation')
 def debug_game_creation():

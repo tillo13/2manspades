@@ -51,6 +51,7 @@ def create_views():
     # View 2: Unified leaderboard - uses game_completed events as source of truth
     # This is the authoritative record of finished games
     print("Creating vw_unified_leaderboard...")
+    cur.execute('DROP VIEW IF EXISTS twomanspades.vw_unified_leaderboard CASCADE')
     cur.execute('''
         CREATE OR REPLACE VIEW twomanspades.vw_unified_leaderboard AS
         SELECT
@@ -61,6 +62,8 @@ def create_views():
             ROUND(100.0 * SUM(CASE WHEN ge.event_data->>'winner' = 'player' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) as win_rate,
             ROUND(AVG(CASE WHEN ge.event_data->>'winner' = 'player' THEN v.hand_player_score END)::numeric, 0) as avg_winning_score,
             MAX(v.hand_player_score) as highest_score,
+            SUM(v.player_bags) as total_bags,
+            ROUND(SUM(v.player_bags)::numeric / NULLIF(SUM((ge.event_data->>'hands_played')::int), 0), 2) as bags_per_hand,
             SUM(CASE WHEN v.is_google_auth THEN 1 ELSE 0 END) as google_games,
             SUM(CASE WHEN NOT v.is_google_auth THEN 1 ELSE 0 END) as location_games
         FROM twomanspades.game_events ge
@@ -72,25 +75,63 @@ def create_views():
     print("  ✓ vw_unified_leaderboard created")
 
     # View 3: Player game details - uses game_completed events as source of truth
+    # Parses actual final scores from final_message since hands table scores can be stale
     print("Creating vw_player_game_details...")
-    cur.execute('''
+    # Drop first since we're renaming columns
+    cur.execute('DROP VIEW IF EXISTS twomanspades.vw_player_game_details CASCADE')
+    cur.execute(r'''
         CREATE OR REPLACE VIEW twomanspades.vw_player_game_details AS
+        WITH parsed_scores AS (
+            SELECT
+                ge.hand_id,
+                ge.event_data->>'winner' as winner,
+                ge.event_data->>'final_message' as final_message,
+                ge.event_data->>'game_end_reason' as game_end_reason,
+                (ge.event_data->>'hands_played')::int as hands_played,
+                -- Parse player score from final_message (first number after "WIN" or "WINS")
+                -- Format: "GAME OVER! You WIN 343 to 83!" or "GAME OVER! Marta WINS 300 to 250!"
+                CASE
+                    WHEN ge.event_data->>'winner' = 'player' THEN
+                        (regexp_match(ge.event_data->>'final_message', '(\-?\d+) to \-?\d+'))[1]::int
+                    ELSE
+                        (regexp_match(ge.event_data->>'final_message', '(\-?\d+) to \-?\d+'))[1]::int
+                END as msg_first_score,
+                CASE
+                    WHEN ge.event_data->>'winner' = 'player' THEN
+                        (regexp_match(ge.event_data->>'final_message', '\-?\d+ to (\-?\d+)'))[1]::int
+                    ELSE
+                        (regexp_match(ge.event_data->>'final_message', '\-?\d+ to (\-?\d+)'))[1]::int
+                END as msg_second_score
+            FROM twomanspades.game_events ge
+            WHERE ge.event_type = 'game_completed'
+        )
         SELECT
             COALESCE(v.player_name, 'Other') as player_name,
             v.hand_id,
-            v.hand_player_score,
-            v.hand_computer_score,
+            -- Use parsed scores: if player won, first score is player's; if computer won, second score is player's
+            CASE
+                WHEN ps.winner = 'player' THEN ps.msg_first_score
+                ELSE ps.msg_second_score
+            END as final_player_score,
+            CASE
+                WHEN ps.winner = 'player' THEN ps.msg_second_score
+                ELSE ps.msg_first_score
+            END as final_computer_score,
             v.completed_at,
             v.player_bags,
             v.started_at,
             v.is_google_auth,
-            CASE WHEN ge.event_data->>'winner' = 'player' THEN true ELSE false END as won,
-            v.hand_player_score - v.hand_computer_score as margin,
-            ge.event_data->>'final_message' as final_message,
-            ge.event_data->>'game_end_reason' as game_end_reason
-        FROM twomanspades.game_events ge
-        JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
-        WHERE ge.event_type = 'game_completed'
+            CASE WHEN ps.winner = 'player' THEN true ELSE false END as won,
+            -- Calculate margin from parsed scores
+            CASE
+                WHEN ps.winner = 'player' THEN ps.msg_first_score - ps.msg_second_score
+                ELSE ps.msg_second_score - ps.msg_first_score
+            END as margin,
+            ps.final_message,
+            ps.game_end_reason,
+            ps.hands_played
+        FROM parsed_scores ps
+        JOIN twomanspades.vw_player_identity v ON ps.hand_id = v.hand_id
     ''')
     print("  ✓ vw_player_game_details created")
 
