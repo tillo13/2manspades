@@ -85,11 +85,20 @@
             color: #333;
         }
 
+        .tricks-section {
+            margin-bottom: 0.75rem;
+        }
+        .tricks-hint {
+            font-size: 0.75rem;
+            color: #999;
+            font-style: italic;
+            margin-left: 0.5rem;
+        }
         .tricks-grid {
             display: flex;
             flex-wrap: wrap;
             gap: 0.4rem;
-            margin-bottom: 0.75rem;
+            margin-top: 0.5rem;
         }
         .trick {
             text-align: center;
@@ -261,6 +270,7 @@
 
             <!-- Bids -->
             <div class="bids-section">
+                <strong>Bids:</strong>
                 {% for bid in hand.bids %}
                 <span class="bid-item {% if bid.is_blind %}blind{% elif bid.is_nil %}nil{% endif %}">
                     <span class="bid-player">{{ bid.player }}:</span>
@@ -269,22 +279,26 @@
                 {% endfor %}
             </div>
 
-            <!-- Tricks Summary -->
+            <!-- Tricks Won -->
             {% if hand.tricks %}
-            <div class="tricks-grid">
-                {% for trick in hand.tricks %}
-                <div class="trick {{ 'player-won' if trick.winner != 'Marta' else 'computer-won' }}">
-                    <div class="trick-number">{{ trick.number }}</div>
-                    <div>{{ trick.winner }}</div>
+            <div class="tricks-section">
+                <strong>Tricks won:</strong>
+                <span class="tricks-hint">(click below for card details)</span>
+                <div class="tricks-grid">
+                    {% for trick in hand.tricks %}
+                    <div class="trick {{ 'player-won' if trick.winner != 'Marta' else 'computer-won' }}">
+                        <div class="trick-number">{{ trick.number }}</div>
+                        <div>{{ trick.winner }}</div>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
             {% endif %}
 
-            <!-- Trick History (cards played) -->
+            <!-- Trick Details -->
             {% if hand.trick_history %}
             <button class="expand-tricks" onclick="toggleTricks({{ hand.hand_number }})">
-                Show Cards Played ▼
+                Show Trick Details ▼
             </button>
             <div class="trick-history" id="tricks-{{ hand.hand_number }}">
                 <div class="trick-detail">
@@ -334,9 +348,9 @@
             el.classList.toggle('show');
             const btn = el.previousElementSibling;
             if (el.classList.contains('show')) {
-                btn.textContent = 'Hide Cards Played ▲';
+                btn.textContent = 'Hide Trick Details ▲';
             } else {
-                btn.textContent = 'Show Cards Played ▼';
+                btn.textContent = 'Show Trick Details ▼';
             }
         }
     </script>
