@@ -1361,11 +1361,13 @@ def get_per_hand_stats() -> Dict[str, Any]:
             WITH bid_data AS (
                 SELECT
                     v.player_name as player,
+                    COALESCE(v.completed_at, gc.timestamp) as game_date,
                     (ge.event_data->'action_data'->>'bid_amount')::int as bid,
                     ge.hand_id,
                     ge.hand_number
                 FROM twomanspades.game_events ge
                 JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+                LEFT JOIN twomanspades.game_events gc ON ge.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND v.player_name IS NOT NULL AND v.player_name != 'Other'
                 AND ge.hand_number IS NOT NULL
@@ -1380,6 +1382,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
             SELECT
                 b.player,
                 b.bid,
+                b.game_date as completed_at,
                 COALESCE(t.player_tricks, 0) as tricks_won,
                 COALESCE(t.player_tricks, 0) - b.bid as overtricks
             FROM bid_data b
@@ -1395,11 +1398,13 @@ def get_per_hand_stats() -> Dict[str, Any]:
             WITH bid_data AS (
                 SELECT
                     v.player_name as player,
+                    COALESCE(v.completed_at, gc.timestamp) as game_date,
                     (ge.event_data->'action_data'->>'bid_amount')::int as bid,
                     ge.hand_id,
                     ge.hand_number
                 FROM twomanspades.game_events ge
                 JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+                LEFT JOIN twomanspades.game_events gc ON ge.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND v.player_name IS NOT NULL AND v.player_name != 'Other'
                 AND ge.hand_number IS NOT NULL
@@ -1414,6 +1419,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
             SELECT
                 b.player,
                 b.bid,
+                b.game_date as completed_at,
                 COALESCE(t.player_tricks, 0) as tricks_won,
                 b.bid - COALESCE(t.player_tricks, 0) as undertricks
             FROM bid_data b
@@ -1423,6 +1429,33 @@ def get_per_hand_stats() -> Dict[str, Any]:
             LIMIT 5
         ''')
         stats['biggest_sets'] = [dict(row) for row in cur.fetchall()]
+
+        # Biggest single-hand point gains
+        cur.execute('''
+            WITH hand_scores AS (
+                SELECT
+                    ge.hand_id,
+                    ge.hand_number,
+                    (ge.event_data->'final_scores'->>'player_score')::int as cumulative_score,
+                    LAG((ge.event_data->'final_scores'->>'player_score')::int, 1, 0)
+                        OVER (PARTITION BY ge.hand_id ORDER BY ge.hand_number) as prev_score
+                FROM twomanspades.game_events ge
+                WHERE ge.event_type = 'hand_scoring'
+            )
+            SELECT
+                v.player_name as player,
+                hs.cumulative_score - hs.prev_score as points_scored,
+                hs.hand_number,
+                COALESCE(v.completed_at, gc.timestamp) as completed_at
+            FROM hand_scores hs
+            JOIN twomanspades.vw_player_identity v ON hs.hand_id = v.hand_id
+            LEFT JOIN twomanspades.game_events gc ON hs.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+            WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
+            AND (hs.cumulative_score - hs.prev_score) > 0
+            ORDER BY (hs.cumulative_score - hs.prev_score) DESC
+            LIMIT 5
+        ''')
+        stats['biggest_hand_points'] = [dict(row) for row in cur.fetchall()]
 
         # Average tricks per hand won (using hand_number to get per-hand averages)
         cur.execute('''

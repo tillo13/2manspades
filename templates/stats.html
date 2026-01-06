@@ -418,7 +418,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ h.player }}</span>
                         <span class="achievement-value bags-value">+{{ h.overtricks }} bags</span>
-                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }})</span>
+                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }}, {{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -432,7 +432,21 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ h.player }}</span>
                         <span class="achievement-value loss-value">-{{ h.undertricks }} tricks short</span>
-                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }})</span>
+                        <span class="achievement-detail">(bid {{ h.bid }}, won {{ h.tricks_won }}, {{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Biggest Single-Hand Points -->
+                {% if per_hand_stats.biggest_hand_points %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Biggest Hand Points</div>
+                    {% for h in per_hand_stats.biggest_hand_points %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ h.player }}</span>
+                        <span class="achievement-value streak-value">+{{ h.points_scored }} pts</span>
+                        <span class="achievement-detail">(hand {{ h.hand_number }}, {{ h.completed_at.strftime('%Y%b%-d') if h.completed_at else 'N/A' }})</span>
                     </div>
                     {% endfor %}
                 </div>
