@@ -58,57 +58,6 @@
             </div>
         </div>
 
-        <!-- Time-Based Metrics -->
-        <div class="stats-section">
-            <div class="section-title">Time Metrics</div>
-            <div class="achievements-grid">
-                <div class="achievement-card">
-                    <div class="achievement-title">Game Duration</div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Average</span>
-                        <span class="achievement-value">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</span>
-                    </div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Fastest</span>
-                        <span class="achievement-detail">{{ fun_stats.min_game_duration_minutes|default(0) }} min {% if fun_stats.fastest_game_hand_id %}<a href="/game/{{ fun_stats.fastest_game_hand_id }}" class="game-link">({{ fun_stats.fastest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
-                    </div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Slowest</span>
-                        <span class="achievement-detail">{{ fun_stats.max_game_duration_minutes|default(0) }} min {% if fun_stats.slowest_game_hand_id %}<a href="/game/{{ fun_stats.slowest_game_hand_id }}" class="game-link">({{ fun_stats.slowest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
-                    </div>
-                </div>
-                <div class="achievement-card">
-                    <div class="achievement-title">Hand Duration</div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Average</span>
-                        <span class="achievement-value">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</span>
-                    </div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Fastest</span>
-                        <span class="achievement-detail">{{ fun_stats.min_hand_duration_minutes|default(0) }} min</span>
-                    </div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Slowest</span>
-                        <span class="achievement-detail">{{ fun_stats.max_hand_duration_minutes|default(0) }} min</span>
-                    </div>
-                </div>
-                <div class="achievement-card">
-                    <div class="achievement-title">Game Length</div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Average</span>
-                        <span class="achievement-value">{{ fun_stats.avg_game_length|default(0) }} hands</span>
-                    </div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Shortest</span>
-                        <span class="achievement-detail">{{ fun_stats.shortest_game|default(0) }} hands {% if fun_stats.shortest_game_hand_id %}<a href="/game/{{ fun_stats.shortest_game_hand_id }}" class="game-link">({{ fun_stats.shortest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
-                    </div>
-                    <div class="achievement-row">
-                        <span class="achievement-player">Longest</span>
-                        <span class="achievement-detail">{{ fun_stats.longest_game|default(0) }} hands {% if fun_stats.longest_game_hand_id %}<a href="/game/{{ fun_stats.longest_game_hand_id }}" class="game-link">({{ fun_stats.longest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
         {% endif %}
 
         <!-- Collapsible Win/Loss Explanation -->
@@ -639,6 +588,43 @@
                 First game played: {{ overall_stats.first_game_date }}
             </div>
             {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Time Metrics Section -->
+        {% if fun_stats %}
+        <div class="stats-section">
+            <div class="section-title">Time Metrics</div>
+            <div class="records-grid" style="background: transparent; padding: 0;">
+                <div class="record-item" style="background: white; border-left: 3px solid #667eea;">
+                    <span class="record-label">Avg Game Duration</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</span>
+                </div>
+                <div class="record-item" style="background: white; border-left: 3px solid #667eea;">
+                    <span class="record-label">Avg Hand Duration</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</span>
+                </div>
+                <div class="record-item" style="background: white; border-left: 3px solid #667eea;">
+                    <span class="record-label">Avg Game Length</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.avg_game_length|default(0) }} hands</span>
+                </div>
+                <div class="record-item" style="background: white; border-left: 3px solid #28a745;">
+                    <span class="record-label">Fastest Game</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.min_game_duration_minutes|default(0) }} min {% if fun_stats.fastest_game_hand_id %}<a href="/game/{{ fun_stats.fastest_game_hand_id }}" class="game-link">({{ fun_stats.fastest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
+                </div>
+                <div class="record-item" style="background: white; border-left: 3px solid #dc3545;">
+                    <span class="record-label">Slowest Game</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.max_game_duration_minutes|default(0) }} min {% if fun_stats.slowest_game_hand_id %}<a href="/game/{{ fun_stats.slowest_game_hand_id }}" class="game-link">({{ fun_stats.slowest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
+                </div>
+                <div class="record-item" style="background: white; border-left: 3px solid #28a745;">
+                    <span class="record-label">Shortest Game</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.shortest_game|default(0) }} hands {% if fun_stats.shortest_game_hand_id %}<a href="/game/{{ fun_stats.shortest_game_hand_id }}" class="game-link">({{ fun_stats.shortest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
+                </div>
+                <div class="record-item" style="background: white; border-left: 3px solid #dc3545;">
+                    <span class="record-label">Longest Game</span>
+                    <span class="record-value" style="color: #333;">{{ fun_stats.longest_game|default(0) }} hands {% if fun_stats.longest_game_hand_id %}<a href="/game/{{ fun_stats.longest_game_hand_id }}" class="game-link">({{ fun_stats.longest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
+                </div>
+            </div>
         </div>
         {% endif %}
 
