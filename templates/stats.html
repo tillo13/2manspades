@@ -233,27 +233,18 @@
                 </div>
                 {% endif %}
 
-                <!-- Win Streaks -->
-                {% if achievements.win_streaks %}
+                <!-- Current Streaks (wins and losses combined) -->
+                {% if achievements.streaks %}
                 <div class="achievement-card">
-                    <div class="achievement-title">Current Win Streaks</div>
-                    {% for p in achievements.win_streaks %}
+                    <div class="achievement-title">Current Streaks</div>
+                    {% for p in achievements.streaks %}
                     <div class="achievement-row">
                         <span class="achievement-player">{{ p.player }}</span>
+                        {% if p.streak_type == 'win' %}
                         <span class="achievement-value streak-value">{{ p.streak }} wins in a row</span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                <!-- Loss Streaks -->
-                {% if achievements.loss_streaks %}
-                <div class="achievement-card">
-                    <div class="achievement-title">Current Loss Streaks</div>
-                    {% for p in achievements.loss_streaks %}
-                    <div class="achievement-row">
-                        <span class="achievement-player">{{ p.player }}</span>
+                        {% else %}
                         <span class="achievement-value loss-value">{{ p.streak }} losses in a row</span>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -310,6 +301,20 @@
                         <span class="achievement-player">{{ p.player }}</span>
                         <span class="achievement-value">{{ p.times_went_blind }}/{{ p.times_offered }} took blind</span>
                         <span class="achievement-detail">({{ p.blind_success_rate or 0 }}% success)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Blind Bids by Level (5-10) -->
+                {% if achievements.blind_by_level %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Blind Bids by Level</div>
+                    {% for p in achievements.blind_by_level %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value">Blind {{ p.level }}: {{ p.successes }}/{{ p.attempts }}</span>
+                        <span class="achievement-detail">({{ p.success_rate|int }}%)</span>
                     </div>
                     {% endfor %}
                 </div>

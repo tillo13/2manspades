@@ -821,8 +821,8 @@ def get_player_achievements() -> Dict[str, Any]:
             ORDER BY streak DESC
         ''')
         all_streaks = [dict(row) for row in cur.fetchall()]
-        win_streaks = [s for s in all_streaks if s['streak_type'] == 'win']
-        loss_streaks = [s for s in all_streaks if s['streak_type'] == 'loss']
+        # Combined streaks list - sorted by streak length, includes both wins and losses
+        streaks = all_streaks
 
         # Overbid stats (bags per hand) - bags = overbidding penalty
         cur.execute('''
@@ -925,6 +925,40 @@ def get_player_achievements() -> Dict[str, Any]:
         ''')
         blind_stats = [dict(row) for row in cur.fetchall()]
 
+        # Blind bid breakdown by level (5-10) per player
+        cur.execute('''
+            WITH blind_bids AS (
+                SELECT
+                    v.player_name as player,
+                    ge.hand_id,
+                    ge.hand_number,
+                    (ge.event_data->'action_data'->>'bid_amount')::int as blind_bid
+                FROM twomanspades.game_events ge
+                JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+                WHERE ge.event_type = 'action_blind_bid'
+                AND ge.player = 'player'
+                AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+            ),
+            hand_results AS (
+                SELECT hand_id, hand_number,
+                    SUM(CASE WHEN event_data->>'winner' = 'player' THEN 1 ELSE 0 END) as tricks_won
+                FROM twomanspades.game_events
+                WHERE event_type = 'trick_completed' AND hand_number IS NOT NULL
+                GROUP BY hand_id, hand_number
+            )
+            SELECT
+                b.player,
+                b.blind_bid as level,
+                COUNT(*) as attempts,
+                SUM(CASE WHEN COALESCE(hr.tricks_won, 0) >= b.blind_bid THEN 1 ELSE 0 END) as successes,
+                ROUND(100.0 * SUM(CASE WHEN COALESCE(hr.tricks_won, 0) >= b.blind_bid THEN 1 ELSE 0 END) / COUNT(*), 0) as success_rate
+            FROM blind_bids b
+            LEFT JOIN hand_results hr ON b.hand_id = hr.hand_id AND b.hand_number = hr.hand_number
+            GROUP BY b.player, b.blind_bid
+            ORDER BY b.player, b.blind_bid
+        ''')
+        blind_by_level = [dict(row) for row in cur.fetchall()]
+
         cur.close()
         conn.close()
 
@@ -933,12 +967,12 @@ def get_player_achievements() -> Dict[str, Any]:
             'nil_stats': nil_stats,
             'closest_wins': closest_wins,
             'biggest_wins': biggest_wins,
-            'win_streaks': win_streaks,
-            'loss_streaks': loss_streaks,
+            'streaks': streaks,  # Combined win and loss streaks
             'bag_stats': bag_stats,
             'favorite_bids': favorite_bids,
             'worst_losses': worst_losses,
-            'blind_stats': blind_stats
+            'blind_stats': blind_stats,
+            'blind_by_level': blind_by_level  # Blind bids broken down by level 5-10
         }
 
     except Exception as e:
@@ -1276,7 +1310,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
                 COALESCE(t.player_tricks, 0) - b.bid as overtricks
             FROM bid_data b
             LEFT JOIN tricks_data t ON b.hand_id = t.hand_id AND b.hand_number = t.hand_number
-            WHERE b.bid > 0 AND COALESCE(t.player_tricks, 0) <= 13
+            WHERE b.bid > 0 AND COALESCE(t.player_tricks, 0) <= 10
             ORDER BY (COALESCE(t.player_tricks, 0) - b.bid) DESC
             LIMIT 5
         ''')
@@ -1333,7 +1367,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
                 ROUND(AVG(player_tricks), 2) as avg_player_tricks,
                 ROUND(AVG(computer_tricks), 2) as avg_computer_tricks
             FROM hand_tricks
-            WHERE player_tricks + computer_tricks = 13
+            WHERE player_tricks + computer_tricks = 10
         ''')
         avg_tricks = cur.fetchone()
         stats['avg_player_tricks_per_hand'] = avg_tricks['avg_player_tricks']
