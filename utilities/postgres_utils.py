@@ -1795,13 +1795,21 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         hand_timings = {}
         prev_hand_end = None
         for row in cur.fetchall():
+            # Calculate duration relative to previous hand end (not absolute timestamps)
+            if prev_hand_end and row['hand_end']:
+                duration = round((row['hand_end'] - prev_hand_end).total_seconds() / 60, 1)
+            else:
+                # First hand: use its own start to end
+                duration = round(row['hand_minutes'], 1) if row['hand_minutes'] else None
+
             gap_minutes = None
             if prev_hand_end and row['hand_start']:
                 gap_minutes = round((row['hand_start'] - prev_hand_end).total_seconds() / 60, 1)
+
             hand_timings[row['hand_number']] = {
                 'start': row['hand_start'],
                 'end': row['hand_end'],
-                'duration_minutes': round(row['hand_minutes'], 1) if row['hand_minutes'] else None,
+                'duration_minutes': duration,
                 'gap_from_previous': gap_minutes
             }
             prev_hand_end = row['hand_end']
