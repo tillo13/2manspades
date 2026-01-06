@@ -61,37 +61,28 @@
 
         .bids-section {
             display: flex;
-            gap: 1rem;
+            gap: 1.5rem;
             margin-bottom: 0.75rem;
             flex-wrap: wrap;
+            font-size: 0.9rem;
         }
         .bid-item {
-            padding: 0.4rem 0.75rem;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border: 1px solid #dee2e6;
-            font-size: 0.85rem;
+            display: inline;
         }
-        .bid-item.blind {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+        .bid-item.blind .bid-amount {
+            color: #667eea;
+            font-weight: bold;
         }
-        .bid-item.nil {
-            background: #fd7e14;
-            color: white;
-            border-color: #fd7e14;
+        .bid-item.nil .bid-amount {
+            color: #fd7e14;
+            font-weight: bold;
         }
         .bid-player {
-            font-size: 0.75rem;
-            color: #666;
-        }
-        .bid-item.blind .bid-player,
-        .bid-item.nil .bid-player {
-            color: rgba(255,255,255,0.8);
+            color: #333;
         }
         .bid-amount {
-            font-weight: bold;
+            font-weight: 600;
+            color: #333;
         }
 
         .tricks-grid {
@@ -271,13 +262,10 @@
             <!-- Bids -->
             <div class="bids-section">
                 {% for bid in hand.bids %}
-                <div class="bid-item {% if bid.is_blind %}blind{% elif bid.is_nil %}nil{% endif %}">
-                    <div class="bid-player">{{ bid.player }}</div>
-                    <div class="bid-amount">
-                        {% if bid.is_blind %}BLIND {% endif %}
-                        {% if bid.is_nil %}NIL{% else %}{{ bid.amount }}{% endif %}
-                    </div>
-                </div>
+                <span class="bid-item {% if bid.is_blind %}blind{% elif bid.is_nil %}nil{% endif %}">
+                    <span class="bid-player">{{ bid.player }}:</span>
+                    <span class="bid-amount">{% if bid.is_blind %}BLIND {% endif %}{% if bid.is_nil %}NIL{% else %}{{ bid.amount }}{% endif %}</span>
+                </span>
                 {% endfor %}
             </div>
 
@@ -323,7 +311,7 @@
             <!-- Scoring Explanation -->
             {% if hand.scoring and hand.scoring.explanation %}
             <div class="scoring-explanation">
-                {{ hand.scoring.explanation }}
+                {{ hand.scoring.explanation|replace('You:', game.summary.player_name ~ ':')|replace('You ', game.summary.player_name ~ ' ') }}
             </div>
             {% endif %}
         </div>
