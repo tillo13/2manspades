@@ -213,7 +213,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %})</span>
+                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -227,7 +227,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %})</span>
+                        <span class="achievement-detail">(+{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -286,7 +286,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ g.player }}</span>
                         <span class="achievement-value loss-value">{{ g.final_player_score }} to {{ g.final_computer_score }}</span>
-                        <span class="achievement-detail">(-{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %})</span>
+                        <span class="achievement-detail">(-{{ g.margin }}{% if g.player_bags %}, {{ g.player_bags }} bags{% endif %}, {{ g.completed_at.strftime('%Y%b%-d') if g.completed_at else 'N/A' }})</span>
                     </div>
                     {% endfor %}
                 </div>

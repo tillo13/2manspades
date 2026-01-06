@@ -771,7 +771,7 @@ def get_player_achievements() -> Dict[str, Any]:
         # Closest wins (Nail-biters) - from vw_player_game_details with parsed scores
         cur.execute('''
             SELECT player_name as player, final_player_score, final_computer_score,
-                   margin, player_bags
+                   margin, player_bags, completed_at
             FROM twomanspades.vw_player_game_details
             WHERE won = true AND player_name != 'Other'
             AND final_player_score IS NOT NULL
@@ -782,7 +782,7 @@ def get_player_achievements() -> Dict[str, Any]:
         # Biggest blowouts - from vw_player_game_details with parsed scores
         cur.execute('''
             SELECT player_name as player, final_player_score, final_computer_score,
-                   margin, player_bags
+                   margin, player_bags, completed_at
             FROM twomanspades.vw_player_game_details
             WHERE won = true AND player_name != 'Other'
             AND final_player_score IS NOT NULL
@@ -867,7 +867,7 @@ def get_player_achievements() -> Dict[str, Any]:
         # Worst losses - from vw_player_game_details with parsed scores
         cur.execute('''
             SELECT player_name as player, final_player_score, final_computer_score,
-                   final_computer_score - final_player_score as margin, player_bags
+                   final_computer_score - final_player_score as margin, player_bags, completed_at
             FROM twomanspades.vw_player_game_details
             WHERE won = false AND player_name != 'Other'
             AND final_player_score IS NOT NULL
