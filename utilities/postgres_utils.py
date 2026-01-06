@@ -724,6 +724,34 @@ def get_fun_stats() -> Dict[str, Any]:
             stats['min_game_duration_minutes'] = duration[1]
             stats['max_game_duration_minutes'] = duration[2]
 
+        # Average hand duration in minutes (time between hand_scoring events)
+        cur.execute('''
+            WITH hand_times AS (
+                SELECT
+                    hand_id,
+                    hand_number,
+                    timestamp as end_time,
+                    LAG(timestamp) OVER (PARTITION BY hand_id ORDER BY hand_number) as prev_time
+                FROM twomanspades.game_events
+                WHERE event_type = 'hand_scoring'
+                AND hand_id IN (
+                    SELECT hand_id FROM twomanspades.game_events
+                    WHERE event_type = 'game_completed'
+                )
+            )
+            SELECT
+                ROUND(AVG(EXTRACT(EPOCH FROM (end_time - prev_time)) / 60)::numeric, 2) as avg_hand_minutes,
+                ROUND(MIN(EXTRACT(EPOCH FROM (end_time - prev_time)) / 60)::numeric, 2) as min_hand_minutes,
+                ROUND(MAX(EXTRACT(EPOCH FROM (end_time - prev_time)) / 60)::numeric, 2) as max_hand_minutes
+            FROM hand_times
+            WHERE prev_time IS NOT NULL AND end_time > prev_time
+        ''')
+        hand_duration = cur.fetchone()
+        if hand_duration:
+            stats['avg_hand_duration_minutes'] = hand_duration[0]
+            stats['min_hand_duration_minutes'] = hand_duration[1]
+            stats['max_hand_duration_minutes'] = hand_duration[2]
+
         cur.close()
         conn.close()
         return stats

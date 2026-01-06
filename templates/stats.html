@@ -55,14 +55,40 @@
                     <div class="overall-value">{{ fun_stats.avg_game_length|default(0) }} hands</div>
                     <div class="overall-label">Avg Game Length</div>
                 </div>
-                <div class="overall-stat">
-                    <div class="overall-value">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</div>
-                    <div class="overall-label">Avg Game Time</div>
-                </div>
             </div>
-            <div class="game-length-note">
-                Shortest: {{ fun_stats.shortest_game|default(0) }} hands ({{ fun_stats.min_game_duration_minutes|default(0) }} min),
-                Longest: {{ fun_stats.longest_game|default(0) }} hands ({{ fun_stats.max_game_duration_minutes|default(0) }} min)
+        </div>
+
+        <!-- Time-Based Metrics -->
+        <div class="stats-section time-metrics-section">
+            <div class="section-title">Time Metrics</div>
+            <div class="time-metrics-grid">
+                <div class="time-metric-box">
+                    <div class="time-metric-header">Game Duration</div>
+                    <div class="time-metric-main">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</div>
+                    <div class="time-metric-label">Average</div>
+                    <div class="time-metric-range">
+                        <span>Fastest: {{ fun_stats.min_game_duration_minutes|default(0) }} min</span>
+                        <span>Slowest: {{ fun_stats.max_game_duration_minutes|default(0) }} min</span>
+                    </div>
+                </div>
+                <div class="time-metric-box">
+                    <div class="time-metric-header">Hand Duration</div>
+                    <div class="time-metric-main">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</div>
+                    <div class="time-metric-label">Average</div>
+                    <div class="time-metric-range">
+                        <span>Fastest: {{ fun_stats.min_hand_duration_minutes|default(0) }} min</span>
+                        <span>Slowest: {{ fun_stats.max_hand_duration_minutes|default(0) }} min</span>
+                    </div>
+                </div>
+                <div class="time-metric-box">
+                    <div class="time-metric-header">Game Length</div>
+                    <div class="time-metric-main">{{ fun_stats.avg_game_length|default(0) }} hands</div>
+                    <div class="time-metric-label">Average</div>
+                    <div class="time-metric-range">
+                        <span>Shortest: {{ fun_stats.shortest_game|default(0) }} hands</span>
+                        <span>Longest: {{ fun_stats.longest_game|default(0) }} hands</span>
+                    </div>
+                </div>
             </div>
         </div>
         {% endif %}

@@ -181,6 +181,17 @@
         .trick-history.show {
             display: block;
         }
+
+        .incomplete-data-note {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 1rem;
+            color: #fcd34d;
+            font-size: 0.9rem;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -216,6 +227,13 @@
 
         <!-- Hand by Hand Breakdown -->
         <div class="section-title">Hand by Hand</div>
+
+        {% set hands_with_data = game.hands|selectattr('hand_number', 'gt', 0)|list|length %}
+        {% if game.summary.hands_played and hands_with_data < game.summary.hands_played %}
+        <div class="incomplete-data-note">
+            Note: Only {{ hands_with_data }} of {{ game.summary.hands_played }} hands have detailed data recorded. This is an older game with incomplete logging.
+        </div>
+        {% endif %}
 
         {% for hand in game.hands %}
         {% if hand.hand_number > 0 %}
