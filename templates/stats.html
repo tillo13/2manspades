@@ -52,7 +52,7 @@
                     <div class="overall-label">Human Win Rate</div>
                 </div>
                 <div class="overall-stat">
-                    <div class="overall-value">{{ fun_stats.avg_game_length|default(0) }}</div>
+                    <div class="overall-value">{{ fun_stats.avg_game_length|default(0) }} hands</div>
                     <div class="overall-label">Avg Game Length</div>
                 </div>
             </div>
@@ -127,7 +127,7 @@
                             <td class="win-loss-stat">{{ player.wins }}-{{ player.losses }}</td>
                             <td class="percentage">{{ player.win_rate or 0 }}%</td>
                             <td>{{ player.total_games }}</td>
-                            <td class="win-stat">{{ player.highest_score or '-' }}</td>
+                            <td class="win-stat">{{ player.highest_score or '-' }}{% if player.highest_score_bags is not none %} ({{ player.highest_score_bags }} bags){% endif %}</td>
                             <td class="win-stat">{{ player.avg_winning_score or '-' }}</td>
                         </tr>
                         {% endfor %}
@@ -156,7 +156,7 @@
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">High Score</div>
-                                <div class="stat-value win-stat">{{ player.highest_score or '-' }}</div>
+                                <div class="stat-value win-stat">{{ player.highest_score or '-' }}{% if player.highest_score_bags is not none %} ({{ player.highest_score_bags }}){% endif %}</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Avg Win Score</div>
@@ -457,13 +457,27 @@
                 <div class="achievement-card">
                     <div class="achievement-title">Trick Averages</div>
                     <div class="achievement-row">
-                        <span class="achievement-player">Players</span>
+                        <span class="achievement-player">All Players</span>
                         <span class="achievement-value">{{ per_hand_stats.avg_player_tricks_per_hand }} tricks/hand</span>
                     </div>
                     <div class="achievement-row">
                         <span class="achievement-player">Marta</span>
                         <span class="achievement-value">{{ per_hand_stats.avg_computer_tricks_per_hand }} tricks/hand</span>
                     </div>
+                </div>
+                {% endif %}
+
+                <!-- Per-Player Trick Averages -->
+                {% if per_hand_stats.player_tricks_per_hand %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Tricks Per Hand by Player</div>
+                    {% for p in per_hand_stats.player_tricks_per_hand %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value">{{ p.avg_tricks }} tricks/hand</span>
+                        <span class="achievement-detail">({{ p.total_hands }} hands)</span>
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
             </div>

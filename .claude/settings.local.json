@@ -20,7 +20,8 @@
       "Bash(done)",
       "Bash(__NEW_LINE__ echo -e \"\\\\n=== Print functions - called from where? ===\")",
       "Bash(cat:*)",
-      "Bash(timeout 15 python3:*)"
+      "Bash(timeout 15 python3:*)",
+      "Bash(timeout 30 python3:*)"
     ]
   }
 }

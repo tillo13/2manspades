@@ -1489,6 +1489,30 @@ def get_per_hand_stats() -> Dict[str, Any]:
         stats['avg_player_tricks_per_hand'] = avg_tricks['avg_player_tricks']
         stats['avg_computer_tricks_per_hand'] = avg_tricks['avg_computer_tricks']
 
+        # Average tricks per hand by player
+        cur.execute('''
+            WITH hand_tricks AS (
+                SELECT
+                    ge.hand_id,
+                    ge.hand_number,
+                    SUM(CASE WHEN ge.event_data->>'winner' = 'player' THEN 1 ELSE 0 END) as player_tricks
+                FROM twomanspades.game_events ge
+                WHERE ge.event_type = 'trick_completed'
+                AND ge.hand_number IS NOT NULL
+                GROUP BY ge.hand_id, ge.hand_number
+            )
+            SELECT
+                v.player_name as player,
+                COUNT(*) as total_hands,
+                ROUND(AVG(ht.player_tricks), 2) as avg_tricks
+            FROM hand_tricks ht
+            JOIN twomanspades.vw_player_identity v ON ht.hand_id = v.hand_id
+            WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
+            GROUP BY v.player_name
+            ORDER BY avg_tricks DESC
+        ''')
+        stats['player_tricks_per_hand'] = [dict(row) for row in cur.fetchall()]
+
         cur.close()
         conn.close()
         return stats

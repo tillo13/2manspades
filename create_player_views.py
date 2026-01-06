@@ -48,29 +48,43 @@ def create_views():
     ''')
     print("  ✓ vw_player_identity created")
 
-    # View 2: Unified leaderboard - uses game_completed events as source of truth
-    # This is the authoritative record of finished games
+    # View 2: Unified leaderboard - uses vw_player_game_details (based on game_completed events)
+    # This view has properly parsed scores from final_message
     print("Creating vw_unified_leaderboard...")
     cur.execute('DROP VIEW IF EXISTS twomanspades.vw_unified_leaderboard CASCADE')
     cur.execute('''
         CREATE OR REPLACE VIEW twomanspades.vw_unified_leaderboard AS
+        WITH player_stats AS (
+            SELECT
+                player_name,
+                COUNT(*) as total_games,
+                SUM(CASE WHEN won THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN NOT won THEN 1 ELSE 0 END) as losses,
+                ROUND(100.0 * SUM(CASE WHEN won THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) as win_rate,
+                ROUND(AVG(CASE WHEN won THEN final_player_score END)::numeric, 0) as avg_winning_score,
+                MAX(final_player_score) as highest_score,
+                SUM(COALESCE(player_bags, 0)) as total_bags,
+                ROUND(SUM(COALESCE(player_bags, 0))::numeric / NULLIF(SUM(hands_played), 0), 2) as bags_per_hand,
+                SUM(CASE WHEN is_google_auth THEN 1 ELSE 0 END) as google_games,
+                SUM(CASE WHEN NOT is_google_auth THEN 1 ELSE 0 END) as location_games
+            FROM twomanspades.vw_player_game_details
+            WHERE player_name IS NOT NULL
+            GROUP BY player_name
+        ),
+        highest_score_bags AS (
+            SELECT DISTINCT ON (player_name)
+                player_name,
+                player_bags as highest_score_bags
+            FROM twomanspades.vw_player_game_details
+            WHERE player_name IS NOT NULL AND final_player_score IS NOT NULL
+            ORDER BY player_name, final_player_score DESC
+        )
         SELECT
-            COALESCE(v.player_name, 'Other') as player_name,
-            COUNT(*) as total_games,
-            SUM(CASE WHEN ge.event_data->>'winner' = 'player' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN ge.event_data->>'winner' = 'computer' THEN 1 ELSE 0 END) as losses,
-            ROUND(100.0 * SUM(CASE WHEN ge.event_data->>'winner' = 'player' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) as win_rate,
-            ROUND(AVG(CASE WHEN ge.event_data->>'winner' = 'player' THEN v.hand_player_score END)::numeric, 0) as avg_winning_score,
-            MAX(v.hand_player_score) as highest_score,
-            SUM(v.player_bags) as total_bags,
-            ROUND(SUM(v.player_bags)::numeric / NULLIF(SUM((ge.event_data->>'hands_played')::int), 0), 2) as bags_per_hand,
-            SUM(CASE WHEN v.is_google_auth THEN 1 ELSE 0 END) as google_games,
-            SUM(CASE WHEN NOT v.is_google_auth THEN 1 ELSE 0 END) as location_games
-        FROM twomanspades.game_events ge
-        JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
-        WHERE ge.event_type = 'game_completed'
-        GROUP BY COALESCE(v.player_name, 'Other')
-        ORDER BY wins DESC
+            ps.*,
+            hsb.highest_score_bags
+        FROM player_stats ps
+        LEFT JOIN highest_score_bags hsb ON ps.player_name = hsb.player_name
+        ORDER BY ps.wins DESC
     ''')
     print("  ✓ vw_unified_leaderboard created")
 
