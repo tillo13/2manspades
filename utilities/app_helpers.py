@@ -7,9 +7,9 @@ import time
 from .logging_utils import log_action, log_game_event, track_session_client, get_client_ip, IS_PRODUCTION
 from .custom_rules import (
     check_special_cards_in_trick, reduce_bags_safely, assign_even_odd_at_game_start,
-    calculate_discard_score_with_winner, calculate_hand_scores_with_bags, 
+    calculate_discard_score_with_winner, calculate_hand_scores_with_bags,
     get_player_names_with_parity, check_special_cards_in_discard,
-    check_blind_bidding_eligibility
+    check_blind_bidding_eligibility, get_display_score
 )
 from .gameplay_logic import determine_trick_winner, init_game, init_new_hand, check_game_over
 from .computer_logic import (
@@ -21,9 +21,7 @@ from .logging_utils import initialize_game_logging_with_client, finalize_game_lo
 
 
 
-# =============================================================================
 # CONTENT FILTERING
-# =============================================================================
 
 def process_ip_geolocation(client_ip: str):
     """Process IP geolocation lookup - queue background lookup if needed"""
@@ -175,9 +173,7 @@ def check_content_filter(message):
         print(f"[FILTER] Error checking content filter: {e}")
         return True, None
 
-# =============================================================================
 # DEVELOPMENT SERVER UTILITIES
-# =============================================================================
 
 def start_development_server(app):
     """Start development server with port management and browser opening (macOS optimized)"""
@@ -269,29 +265,7 @@ def start_development_server(app):
     # Run Flask app
     app.run(debug=True, port=port, use_reloader=False)
 
-# =============================================================================
-# SCORE DISPLAY FUNCTIONS
-# =============================================================================
-
-def get_display_score(base_score, bags):
-    """Convert base score and bags to display score (bags in ones column)"""
-    if bags >= 0:
-        if base_score < 0:
-            tens_and_higher = (base_score // 10) * 10
-            return tens_and_higher - bags
-        else:
-            tens_and_higher = (base_score // 10) * 10
-            return tens_and_higher + bags
-    else:
-        return base_score
-
-def get_base_score_from_display(display_score, bags):
-    """Convert display score back to base score (removing bags from ones column)"""
-    return display_score - bags
-
-# =============================================================================
 # SESSION TRACKING
-# =============================================================================
 
 # In utilities/app_helpers.py
 
@@ -313,9 +287,7 @@ def track_request_session(session, request):
         return client_info
     return None
 
-# =============================================================================
 # GAME INITIALIZATION
-# =============================================================================
 
 def initialize_new_game_session(request):
     """Initialize a new game session with logging"""
@@ -349,9 +321,7 @@ def process_new_game_request(session, request):
     
     return game
 
-# =============================================================================
 # GAME STATE BUILDING
-# =============================================================================
 
 def build_safe_game_state(game, debug_mode=False):
     """Build safe game state for frontend"""
@@ -416,9 +386,7 @@ def build_safe_game_state(game, debug_mode=False):
     
     return safe_state
 
-# =============================================================================
 # BIDDING LOGIC
-# =============================================================================
 
 def process_bidding_phase(game, session, bid, request):
     """Process player bidding with computer response and game state updates"""
@@ -531,9 +499,7 @@ def process_blind_bid_phase(game, session, bid, request):
     computer_blind_text = " (BLIND)" if computer_is_blind else ""
     game['message'] = f'You bid BLIND {bid}! Marta bid {computer_bid}{computer_blind_text}. Select a card to discard.'
 
-# =============================================================================
 # DISCARD LOGIC
-# =============================================================================
 
 def process_discard_phase(game, session, card_index, request):
     """Process discard phase with computer response and scoring"""
@@ -770,9 +736,7 @@ def transition_to_bidding_phase(game, session):
         
         print(f"DEBUG: Player not eligible for blind bidding (deficit only {blind_eligibility['player_deficit']}), proceeding to normal bidding")
 
-# =============================================================================
 # GAME LOGIC HELPERS
-# =============================================================================
 
 def resolve_trick_with_delay(game, session_obj=None):
     """Resolve trick and set it up to be displayed for 3 seconds with logging"""
@@ -964,9 +928,7 @@ def computer_lead_with_logging(game, session_obj=None):
         if session_obj:
             log_game_event('spades_broken', {'broken_by': 'computer', 'card': f"{card['rank']}{card['suit']}"}, session_obj)
 
-# =============================================================================
 # HAND COMPLETION LOGIC
-# =============================================================================
 def process_hand_completion(game, session):
     """Process hand completion with all scoring logic"""
     log_game_event(

@@ -15,608 +15,7 @@
         gtag('config', 'G-F5VP0CXERK');
     </script>
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px 8px;
-        }
-
-        .container {
-            max-width: 650px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e9ecef;
-        }
-
-        .header h1 {
-            color: #4a5568;
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-
-        .header .subtitle {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .back-button {
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-            z-index: 1000;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .back-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-        }
-
-        .stats-section {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid #e9ecef;
-        }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 12px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #dee2e6;
-            text-align: center;
-        }
-
-        .no-stats {
-            text-align: center;
-            color: #666;
-            font-style: italic;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 2px dashed #dee2e6;
-        }
-
-        /* Collapsible Sections */
-        .collapsible-section {
-            margin-bottom: 25px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 1px solid #dee2e6;
-            overflow: hidden;
-        }
-
-        .collapsible-toggle {
-            padding: 15px 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #667eea;
-            color: white;
-            user-select: none;
-            transition: background 0.3s ease;
-        }
-
-        .collapsible-toggle:hover {
-            background: #5a67d8;
-        }
-
-        .collapsible-toggle-text {
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .collapsible-chevron {
-            font-size: 14px;
-            transition: transform 0.3s ease;
-        }
-
-        .collapsible-section.expanded .collapsible-chevron {
-            transform: rotate(180deg);
-        }
-
-        .collapsible-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-
-        .collapsible-section.expanded .collapsible-content {
-            max-height: 1200px;
-        }
-
-        .collapsible-inner {
-            padding: 20px;
-        }
-
-        /* Win/Loss Explanation */
-        .winloss-explanation {
-            background: #e8f5e9;
-            border: 2px solid #4caf50;
-            border-radius: 10px;
-            padding: 20px;
-        }
-
-        .winloss-explanation h3 {
-            color: #2e7d32;
-            margin-bottom: 12px;
-            font-size: 18px;
-        }
-
-        .winloss-explanation p {
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .winloss-explanation ul {
-            margin: 10px 0 10px 20px;
-        }
-
-        .winloss-explanation li {
-            margin-bottom: 6px;
-            color: #333;
-        }
-
-        .winloss-explanation strong {
-            color: #2e7d32;
-        }
-
-        .counts-section {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 4px;
-        }
-
-        .counts-section strong {
-            color: #856404;
-        }
-
-        /* Legend Section */
-        .legend-columns {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        .legend-column {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-        }
-
-        .legend-category {
-            font-weight: bold;
-            font-size: 14px;
-            color: #333;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e9ecef;
-        }
-
-        .legend-item {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 4px;
-            transition: background 0.2s ease;
-        }
-
-        .legend-item:hover {
-            background: #e3f2fd;
-        }
-
-        .legend-label {
-            font-weight: 600;
-            color: #667eea;
-            display: block;
-            margin-bottom: 3px;
-        }
-
-        .legend-description {
-            color: #666;
-            font-size: 13px;
-            display: block;
-        }
-
-        .legend-note {
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 13px;
-            color: #666;
-            border-left: 4px solid #667eea;
-        }
-
-        /* Responsive display logic */
-        .desktop-table {
-            display: none;
-        }
-
-        .mobile-cards {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-        }
-
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-
-        .stats-table th,
-        .stats-table td {
-            padding: 8px 4px;
-            text-align: center;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .stats-table th {
-            background: #667eea;
-            color: white;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            font-size: 10px;
-        }
-
-        .stats-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .player-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #dee2e6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .player-card.rank-1 {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            border-color: #ffc107;
-            box-shadow: 0 3px 8px rgba(255, 193, 7, 0.3);
-        }
-
-        .player-card.rank-2 {
-            background: linear-gradient(135deg, #e2e3e5 0%, #f8f9fa 100%);
-            border-color: #6c757d;
-        }
-
-        .player-card.rank-3 {
-            background: linear-gradient(135deg, #f4cccc 0%, #fce4ec 100%);
-            border-color: #e91e63;
-        }
-
-        .player-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .player-rank {
-            background: #667eea;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-            min-width: 30px;
-            text-align: center;
-        }
-
-        .player-name {
-            font-weight: bold;
-            font-size: 16px;
-            flex-grow: 1;
-            text-align: center;
-        }
-
-        .player-hands {
-            background: #667eea;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .player-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 6px;
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: #666;
-            font-weight: 600;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-        }
-
-        .stat-value {
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .stat-value.bid-stat {
-            color: #6f42c1;
-        }
-
-        .stat-value.nil-stat {
-            color: #dc3545;
-        }
-
-        .stat-value.bags-stat {
-            color: #fd7e14;
-        }
-
-        .competitive-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #dee2e6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .competitive-stats {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .stat-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 6px;
-        }
-
-        .winning-stats {
-            background: rgba(40, 167, 69, 0.1);
-            border: 1px solid rgba(40, 167, 69, 0.2);
-        }
-
-        .losing-stats {
-            background: rgba(220, 53, 69, 0.1);
-            border: 1px solid rgba(220, 53, 69, 0.2);
-        }
-
-        .win-loss-record {
-            font-size: 14px;
-            font-weight: bold;
-            color: #667eea;
-            text-align: center;
-        }
-
-        .win-loss-stat {
-            color: #333;
-            font-weight: bold;
-        }
-
-        .win-stat {
-            color: #28a745;
-            font-weight: 600;
-        }
-
-        .loss-stat {
-            color: #dc3545;
-            font-weight: 600;
-        }
-
-        /* Monthly Stats Styling */
-        .monthly-container {
-            margin-top: 15px;
-        }
-
-        .month-card {
-            margin-bottom: 12px;
-            padding: 12px;
-            border-radius: 8px;
-            background: white;
-            border: 1px solid #dee2e6;
-        }
-
-        .month-card.current-month {
-            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%);
-            border: 2px solid #4caf50;
-        }
-
-        .month-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e9ecef;
-        }
-
-        .month-title {
-            font-weight: bold;
-            font-size: 15px;
-            color: #333;
-        }
-
-        .current-badge {
-            background: #4caf50;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .month-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-
-        .table-note {
-            font-size: 11px;
-            color: #666;
-            text-align: center;
-            margin-top: 8px;
-            font-style: italic;
-        }
-
-        /* Desktop layout */
-        @media (min-width: 768px) {
-            .container {
-                padding: 25px;
-                max-width: 900px;
-            }
-
-            .desktop-table {
-                display: block;
-            }
-
-            .mobile-cards {
-                display: none;
-            }
-
-            .player-stats {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 10px;
-            }
-
-            .stat-item {
-                padding: 10px;
-            }
-
-            .player-card {
-                padding: 20px;
-            }
-
-            .player-header {
-                margin-bottom: 15px;
-            }
-
-            .player-name {
-                font-size: 18px;
-            }
-
-            .legend-columns {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .competitive-stats {
-                flex-direction: row;
-                gap: 15px;
-            }
-
-            .stat-group {
-                flex: 1;
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-
-            .month-stats {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 15px;
-                margin: 0 4px;
-            }
-
-            .header h1 {
-                font-size: 20px;
-            }
-
-            .back-button {
-                top: 10px;
-                left: 10px;
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-
-            .player-stats {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 6px;
-            }
-
-            .stat-item {
-                padding: 6px;
-            }
-
-            .stat-label {
-                font-size: 10px;
-            }
-
-            .stat-value {
-                font-size: 12px;
-            }
-
-            .winloss-explanation {
-                padding: 15px;
-            }
-
-            .winloss-explanation h3 {
-                font-size: 16px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}">
 </head>
 
 <body>
@@ -627,6 +26,33 @@
             <h1>Player Statistics</h1>
             <div class="subtitle">Competitive leaderboard and performance metrics</div>
         </div>
+
+        <!-- Overall Stats Banner -->
+        {% if fun_stats %}
+        <div class="stats-section overall-banner">
+            <div class="overall-stats-grid">
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.total_games|default(0) }}</div>
+                    <div class="overall-label">Games Played</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.total_tricks|default(0)|int }}</div>
+                    <div class="overall-label">Tricks Played</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.human_wins|default(0) }}-{{ fun_stats.marta_wins|default(0) }}</div>
+                    <div class="overall-label">Humans vs Marta</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.human_win_pct|default(0) }}%</div>
+                    <div class="overall-label">Human Win Rate</div>
+                </div>
+            </div>
+            <div class="game-length-note">
+                Average game: {{ fun_stats.avg_game_length|default(0) }} hands (shortest: {{ fun_stats.shortest_game|default(0) }}, longest: {{ fun_stats.longest_game|default(0) }})
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Collapsible Win/Loss Explanation -->
         <div class="collapsible-section collapsed" id="winlossSection">
@@ -745,9 +171,114 @@
             </div>
         </div>
 
-        <!-- Competitive Leaderboard Section -->
+        <!-- Player Leaderboard (Google Logged-in Users) -->
         <div class="stats-section">
-            <div class="section-title">Competitive Rankings</div>
+            <div class="section-title">Player Leaderboard</div>
+            {% if google_leaders %}
+            <div class="mobile-cards">
+                {% for player in google_leaders %}
+                <div class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                    <div class="player-header">
+                        <div class="player-rank">#{{ loop.index }}</div>
+                        <div class="player-name">{{ player.first_name }}</div>
+                        <div class="win-loss-record">{{ player.wins }}-{{ player.losses }} ({{ player.win_rate or 0 }}%)</div>
+                    </div>
+                    <div class="competitive-stats">
+                        <div class="stat-group winning-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Games Played</div>
+                                <div class="stat-value">{{ player.total_games }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Win Score</div>
+                                <div class="stat-value win-stat">{{ player.avg_winning_score or '-' }}</div>
+                            </div>
+                        </div>
+                        {% if player.avg_losing_score %}
+                        <div class="stat-group losing-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Loss Score</div>
+                                <div class="stat-value loss-stat">{{ player.avg_losing_score }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="table-note">Sign in with Google to appear on this leaderboard</div>
+            {% else %}
+            <div class="no-stats">No players yet - be the first to sign in and play!</div>
+            {% endif %}
+        </div>
+
+        <!-- Player Achievements -->
+        {% if achievements %}
+        <div class="stats-section">
+            <div class="section-title">Player Achievements</div>
+            <div class="achievements-grid">
+                <!-- Bid Accuracy -->
+                {% if achievements.bid_accuracy %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Bid Accuracy</div>
+                    {% for p in achievements.bid_accuracy %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value">{{ p.exact_pct }}% exact</span>
+                        <span class="achievement-detail">({{ p.exact_bids }}/{{ p.hands }} hands)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Nil Stats -->
+                {% if achievements.nil_stats %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Nil Success</div>
+                    {% for p in achievements.nil_stats %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ p.player }}</span>
+                        <span class="achievement-value">{{ p.successful }}/{{ p.attempts }}</span>
+                        <span class="achievement-detail">({{ p.rate }}%)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Closest Wins -->
+                {% if achievements.closest_wins %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Nail-Biters</div>
+                    {% for g in achievements.closest_wins %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ g.player }}</span>
+                        <span class="achievement-value">{{ g.hand_player_score }}-{{ g.hand_computer_score }}</span>
+                        <span class="achievement-detail">(+{{ g.margin }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Biggest Blowouts -->
+                {% if achievements.biggest_wins %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Biggest Blowouts</div>
+                    {% for g in achievements.biggest_wins %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ g.player }}</span>
+                        <span class="achievement-value">{{ g.hand_player_score }}-{{ g.hand_computer_score }}</span>
+                        <span class="achievement-detail">(+{{ g.margin }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Location Rankings (IP-based) -->
+        <div class="stats-section">
+            <div class="section-title">Location Rankings</div>
             {% if competitive_leaders %}
 
             <!-- Competitive Table View (Desktop) -->

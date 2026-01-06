@@ -13,9 +13,7 @@ from datetime import datetime
 import threading
 import queue
 
-# =============================================================================
 # GLOBAL LOGGING CONFIGURATION
-# =============================================================================
 
 # Environment detection
 IS_LOCAL_DEVELOPMENT = os.environ.get('GAE_ENV') != 'standard'
@@ -37,9 +35,7 @@ CURRENT_LOG_FILE = None
 # Production logging placeholder
 PRODUCTION_LOG_PLACEHOLDER = "[PRODUCTION] Log entry saved to pending database implementation"
 
-# =============================================================================
 # ASYNC DATABASE LOGGING SYSTEM
-# =============================================================================
 
 # Global async logging system
 _db_queue = queue.Queue(maxsize=1000)  # Limit queue size to prevent memory issues
@@ -128,9 +124,7 @@ def get_async_db_stats():
         'worker_running': _db_worker_running
     }
 
-# =============================================================================
 # CLIENT IP TRACKING FUNCTIONS
-# =============================================================================
 
 def get_client_ip(request):
     """Get the client's real IP address, preferring IPv4 when available from the same client."""
@@ -224,9 +218,7 @@ def get_session_client_summary(session):
         }
     return None
 
-# =============================================================================
 # FILE MANAGEMENT FUNCTIONS - WRITE ONLY
-# =============================================================================
 
 def _ensure_logs_directory():
     """Ensure the logging directory exists - only in local development, no scanning"""
@@ -335,9 +327,7 @@ def _finalize_current_log_file(final_game_state):
     if LOG_TO_CONSOLE:
         print(f"Finalized game log: {os.path.basename(CURRENT_LOG_FILE)}")
 
-# =============================================================================
 # GAME INITIALIZATION - STREAMLINED
-# =============================================================================
 
 def initialize_game_logging(game):
     """Initialize logging structures and start new log file for a new game - NO FILE SCANNING"""
@@ -462,9 +452,7 @@ def start_new_hand_logging(game):
     hand_id = str(uuid.uuid4())
     game['current_hand_id'] = hand_id
 
-# =============================================================================
 # CORE LOGGING FUNCTIONS - NOW WITH ASYNC DATABASE OPERATIONS
-# =============================================================================
 
 def log_action(action_type, player, action_data, session=None, additional_context=None, request=None):
     """Central logging function for all player/system game actions with ASYNC database integration"""
@@ -615,84 +603,7 @@ def _log_game_event_to_db_async(hand_id, event_type, event_data, **kwargs):
         traceback.print_exc()
         return False
 
-def log_ai_decision(decision_type, decision_data, analysis=None, reasoning=None, session=None):
-    """Central logging function for AI decision-making process"""
-    if not LOGGING_ENABLED or not LOG_AI_DECISIONS:
-        return
-    
-    decision_record = _build_ai_decision_record(decision_type, decision_data, analysis, reasoning)
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_decision',
-        'data': decision_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_decision_log(decision_record)
-
-def log_ai_analysis(analysis_type, analysis_data, session=None):
-    """Log detailed AI analysis with structured data"""
-    if not LOGGING_ENABLED or not LOG_AI_ANALYSIS:
-        return
-    
-    analysis_record = {
-        'timestamp': time.time(),
-        'analysis_type': analysis_type,
-        'analysis_data': analysis_data
-    }
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_analysis',
-        'data': analysis_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_analysis_log(analysis_record)
-
-def log_ai_strategy(strategy_type, strategy_data, session=None):
-    """Log AI strategy decisions and evaluations"""
-    if not LOGGING_ENABLED or not LOG_AI_ANALYSIS:
-        return
-    
-    strategy_record = {
-        'timestamp': time.time(),
-        'strategy_type': strategy_type,
-        'strategy_data': strategy_data
-    }
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_strategy',
-        'data': strategy_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_strategy_log(strategy_record)
-
-def log_ai_evaluation(evaluation_type, candidates, chosen_candidate, session=None):
-    """Log AI evaluation of multiple options"""
-    if not LOGGING_ENABLED or not LOG_AI_ANALYSIS:
-        return
-    
-    evaluation_record = {
-        'timestamp': time.time(),
-        'evaluation_type': evaluation_type,
-        'candidates_evaluated': len(candidates),
-        'all_candidates': candidates,
-        'chosen_candidate': chosen_candidate,
-        'confidence': _calculate_evaluation_confidence(candidates, chosen_candidate)
-    }
-    
-    _write_to_current_log_file({
-        'log_type': 'ai_evaluation',
-        'data': evaluation_record
-    })
-    
-    if LOG_TO_CONSOLE and CONSOLE_LOG_LEVEL in ['ALL', 'AI_ONLY']:
-        _print_ai_evaluation_log(evaluation_record)
-
-# =============================================================================
 # INTERNAL HELPER FUNCTIONS
-# =============================================================================
 
 def _build_action_record(action_type, player, action_data, session, additional_context):
     """Build standardized action record"""
@@ -723,17 +634,6 @@ def _build_action_record(action_type, player, action_data, session, additional_c
         'additional_context': additional_context
     }
 
-def _build_ai_decision_record(decision_type, decision_data, analysis, reasoning):
-    """Build standardized AI decision record"""
-    return {
-        'timestamp': time.time(),
-        'decision_type': decision_type,
-        'decision_data': decision_data,
-        'analysis': analysis,
-        'reasoning': reasoning,
-        'confidence': _calculate_confidence(decision_type, decision_data, analysis)
-    }
-
 def _build_event_record(event_type, event_data, session):
     """Build standardized event record"""
     game = session['game'] if session and 'game' in session else {}
@@ -747,49 +647,7 @@ def _build_event_record(event_type, event_data, session):
         'event_data': event_data
     }
 
-def _calculate_confidence(decision_type, decision_data, analysis):
-    """Calculate confidence score for AI decisions"""
-    if not analysis:
-        return 0.5
-    
-    if decision_type == 'bid':
-        expected_tricks = analysis.get('base_expectation', 0)
-        bid_amount = decision_data.get('bid_amount', 0)
-        diff = abs(expected_tricks - bid_amount)
-        return max(0.0, min(1.0, 1.0 - (diff / 5.0)))
-    elif decision_type == 'discard_choice':
-        chosen_score = decision_data.get('final_score', 0)
-        if chosen_score >= 1000:
-            return 1.0
-        elif chosen_score >= 500:
-            return 0.9
-        else:
-            return 0.6
-    
-    return 0.5
-
-def _calculate_evaluation_confidence(candidates, chosen_candidate):
-    """Calculate confidence for AI evaluations"""
-    if not candidates or len(candidates) < 2:
-        return 1.0
-    
-    if isinstance(chosen_candidate, dict) and 'score' in chosen_candidate:
-        try:
-            scores = [c.get('score', 0) for c in candidates if isinstance(c, dict)]
-            if scores and len(scores) >= 2:
-                best_score = max(scores)
-                second_best = sorted(scores, reverse=True)[1]
-                if best_score > 0:
-                    confidence = min(1.0, (best_score - second_best) / best_score)
-                    return max(0.1, confidence)
-        except:
-            pass
-    
-    return max(0.3, 1.0 - (len(candidates) * 0.1))
-
-# =============================================================================
 # CONSOLE OUTPUT FUNCTIONS
-# =============================================================================
 
 def _print_action_log(action_record):
     """Print action log to console with formatting"""
@@ -806,68 +664,13 @@ def _print_action_log(action_record):
     
     print("=" * 60)
 
-def _print_ai_decision_log(decision_record):
-    """Print AI decision log to console with formatting"""
-    timestamp_str = datetime.fromtimestamp(decision_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    print(f"AI DECISION: {decision_record['decision_type'].upper()}")
-    print(f"Time: {timestamp_str} | Confidence: {decision_record['confidence']:.2f}")
-    print(f"Decision: {decision_record['decision_data']}")
-    
-    if decision_record.get('analysis'):
-        print(f"Analysis: {decision_record['analysis']}")
-    if decision_record.get('reasoning'):
-        print(f"Reasoning: {decision_record['reasoning']}")
-    
-    print("=" * 58)
-
 def _print_event_log(event_record):
     """Print game event log to console with formatting"""
     print(f"GAME EVENT: {event_record['event_type'].upper()}")
     print(f"Hand #{event_record['hand_number']} | Data: {event_record['event_data']}")
     print("*" * 40)
 
-def _print_ai_analysis_log(analysis_record):
-    """Print AI analysis log to console with formatting"""
-    timestamp_str = datetime.fromtimestamp(analysis_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    print(f"AI ANALYSIS: {analysis_record['analysis_type'].upper()}")
-    print(f"Time: {timestamp_str}")
-    
-    for key, value in analysis_record['analysis_data'].items():
-        if isinstance(value, (int, float)):
-            print(f"  {key}: {value:.2f}")
-        else:
-            print(f"  {key}: {value}")
-    
-    print("-" * 40)
-
-def _print_ai_strategy_log(strategy_record):
-    """Print AI strategy log to console with formatting"""
-    timestamp_str = datetime.fromtimestamp(strategy_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    print(f"AI STRATEGY: {strategy_record['strategy_type'].upper()}")
-    print(f"Time: {timestamp_str}")
-    print(f"Strategy: {strategy_record['strategy_data']}")
-    print("-" * 40)
-
-def _print_ai_evaluation_log(evaluation_record):
-    """Print AI evaluation log to console with formatting"""
-    timestamp_str = datetime.fromtimestamp(evaluation_record['timestamp']).strftime('%H:%M:%S.%f')[:-3]
-    print(f"AI EVALUATION: {evaluation_record['evaluation_type'].upper()}")
-    print(f"Time: {timestamp_str} | Confidence: {evaluation_record['confidence']:.2f}")
-    print(f"Evaluated {evaluation_record['candidates_evaluated']} options")
-    print(f"Chosen: {evaluation_record['chosen_candidate']}")
-    
-    top_candidates = evaluation_record['all_candidates'][:3]
-    for i, candidate in enumerate(top_candidates):
-        print(f"  #{i+1}: {candidate}")
-    
-    if len(evaluation_record['all_candidates']) > 3:
-        print(f"  ... and {len(evaluation_record['all_candidates']) - 3} more")
-    
-    print("-" * 40)
-
-# =============================================================================
 # DEBUG ENDPOINTS - FILE READING ONLY ON DEMAND
-# =============================================================================
 
 def get_environment_info():
     """Get information about the current environment - NO FILE READING"""
@@ -884,112 +687,7 @@ def get_environment_info():
         'async_db_stats': get_async_db_stats()
     }
 
-def get_logging_summary():
-    """Get summary of current session only - NO FILE READING"""
-    return {
-        'current_log_file': os.path.basename(CURRENT_LOG_FILE) if CURRENT_LOG_FILE else None,
-        'logging_enabled': LOGGING_ENABLED,
-        'environment': 'local_development' if IS_LOCAL_DEVELOPMENT else 'production',
-        'file_logging_available': IS_LOCAL_DEVELOPMENT,
-        'async_db_logging_available': IS_PRODUCTION,
-        'async_db_stats': get_async_db_stats(),
-        'message': 'Historical log analysis available via explicit debug endpoints only'
-    }
-
-# The following functions are only called by explicit debug routes, never during normal gameplay
-
-def list_game_logs():
-    """List all available game log files - ONLY for debug endpoints"""
-    if not IS_LOCAL_DEVELOPMENT or not os.path.exists(LOGS_DIRECTORY):
-        return []
-    
-    log_files = []
-    for filename in os.listdir(LOGS_DIRECTORY):
-        if filename.startswith('game_log_') and filename.endswith('.json'):
-            filepath = os.path.join(LOGS_DIRECTORY, filename)
-            try:
-                parts = filename.replace('game_log_', '').replace('.json', '').split('_')
-                if len(parts) >= 3:
-                    stat = os.stat(filepath)
-                    log_files.append({
-                        'filename': filename,
-                        'date': parts[0],
-                        'time': parts[1],
-                        'game_id': parts[2],
-                        'size_bytes': stat.st_size,
-                        'modified': datetime.fromtimestamp(stat.st_mtime).isoformat()
-                    })
-            except Exception:
-                pass
-    
-    return sorted(log_files, key=lambda x: x['modified'], reverse=True)
-
-def get_game_log_summary(filename):
-    """Get summary of a specific game log file - ONLY for debug endpoints"""
-    if not IS_LOCAL_DEVELOPMENT:
-        return {'error': 'File logging not available in production'}
-    
-    filepath = os.path.join(LOGS_DIRECTORY, filename)
-    if not os.path.exists(filepath):
-        return {'error': f'Log file not found: {filename}'}
-    
-    try:
-        with open(filepath, 'r') as f:
-            logs = json.load(f)
-        
-        log_counts = {}
-        for entry in logs:
-            log_type = entry.get('log_type', 'unknown')
-            log_counts[log_type] = log_counts.get(log_type, 0) + 1
-        
-        return {
-            'filename': filename,
-            'total_entries': len(logs),
-            'log_type_counts': log_counts,
-            'file_size_kb': round(os.path.getsize(filepath) / 1024, 2)
-        }
-    except Exception as e:
-        return {'error': f'Could not analyze log file: {e}'}
-
-# =============================================================================
-# CONTROL FUNCTIONS
-# =============================================================================
-
-def enable_logging():
-    """Enable all logging"""
-    global LOGGING_ENABLED
-    LOGGING_ENABLED = True
-    if LOG_TO_CONSOLE:
-        print("Logging ENABLED")
-
-def disable_logging():
-    """Disable all logging"""
-    global LOGGING_ENABLED
-    LOGGING_ENABLED = False
-    if LOG_TO_CONSOLE:
-        print("Logging DISABLED")
-
-def set_console_log_level(level):
-    """Set console logging level"""
-    global CONSOLE_LOG_LEVEL
-    valid_levels = ['ALL', 'ACTIONS_ONLY', 'AI_ONLY', 'EVENTS_ONLY', 'OFF']
-    if level in valid_levels:
-        CONSOLE_LOG_LEVEL = level
-        if LOG_TO_CONSOLE:
-            print(f"Console log level set to: {level}")
-    else:
-        if LOG_TO_CONSOLE:
-            print(f"Invalid log level. Valid options: {valid_levels}")
-
-def toggle_console_logging():
-    """Toggle console logging on/off"""
-    global LOG_TO_CONSOLE
-    LOG_TO_CONSOLE = not LOG_TO_CONSOLE
-    print(f"Console logging: {'ON' if LOG_TO_CONSOLE else 'OFF'}")
-
-# =============================================================================
 # ENHANCED BATCH EVENT SYSTEM WITH ASYNC PROCESSING
-# =============================================================================
 
 class GameEventBatch:
     def __init__(self, hand_id):

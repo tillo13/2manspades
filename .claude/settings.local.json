@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(python3:*)",
+      "Bash(wc:*)",
+      "Bash(# Count bloat patterns across all Python files echo \"\"=== SECTION DIVIDERS \\(# ====...\\) ===\"\" grep -c \"\"^# ===\"\" utilities/*.py app.py)",
+      "Bash(sort:*)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Sample section dividers ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Longest comments in computer_logic.py ===\")",
+      "Bash(awk:*)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Repeated game[''field''] patterns ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n... and more:\")",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Similar function name patterns ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Functions called in logging_utils that are defined there ===\")",
+      "Bash(# Better check - look for function calls within logging_utils itself echo \"\"=== AI logging functions - check if called ===\"\" for func in log_ai_decision log_ai_analysis log_ai_strategy log_ai_evaluation; do echo -n \"\"$func: \"\" grep -rn \"\"$func\\(\"\" utilities/*.py app.py)",
+      "Bash(do echo -n \"$func: \" grep -rn \"$func\\(\" utilities/*.py app.py)",
+      "Bash(done)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Print functions - called from where? ===\")",
+      "Bash(cat:*)"
+    ]
+  }
+}

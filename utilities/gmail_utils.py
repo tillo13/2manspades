@@ -13,9 +13,7 @@ from os import path
 import logging
 from typing import List, Optional, Dict, Any
 
-# =============================================================================
 # GLOBAL VARIABLES - Email configuration
-# =============================================================================
 
 # Define the project ID and the secret IDs for username and app password
 PROJECT_ID = 'kumori-404602'
@@ -31,9 +29,7 @@ EMAIL_DEFAULTS = {
     "timeout_seconds": 30
 }
 
-# =============================================================================
 # CORE FUNCTIONS
-# =============================================================================
 
 def get_secret_version(project_id: str, secret_id: str, version_id: str = "latest") -> str:
     """Get secret from Google Cloud Secret Manager."""

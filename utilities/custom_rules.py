@@ -1,5 +1,16 @@
 import random
 
+def get_display_score(base_score, bags):
+    """Convert base score and bags to display score (bags in ones column)"""
+    if bags >= 0:
+        if base_score < 0:
+            tens_and_higher = (base_score // 10) * 10
+            return tens_and_higher - bags
+        else:
+            tens_and_higher = (base_score // 10) * 10
+            return tens_and_higher + bags
+    return base_score
+
 def get_discard_value(card):
     """
     Get the numerical value of a card for discard scoring.
@@ -214,25 +225,13 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
         computer_bags = game_state.get('computer_bags', 0)
         target_score = game_state.get('target_score', 300)
         
-        # Calculate display scores (what players see)
-        def calc_display_score(base_score, bags):
-            if bags >= 0:
-                if base_score < 0:
-                    tens_and_higher = (base_score // 10) * 10
-                    return tens_and_higher - bags
-                else:
-                    tens_and_higher = (base_score // 10) * 10
-                    return tens_and_higher + bags
-            else:
-                return base_score
-        
-        player_display = calc_display_score(player_score, player_bags)
-        computer_display = calc_display_score(computer_score, computer_bags)
+        player_display = get_display_score(player_score, player_bags)
+        computer_display = get_display_score(computer_score, computer_bags)
         
         # Determine if denial should be used (automatic for both players)
         if winner == 'player':
             # Player wins the discard pile
-            new_player_display = calc_display_score(player_score + base_points, player_bags)
+            new_player_display = get_display_score(player_score + base_points, player_bags)
             
             # Check if either player would reach target score
             if new_player_display >= target_score or computer_display >= target_score:
@@ -249,7 +248,7 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
                 
         else:  # winner == 'computer'
             # Computer wins the discard pile
-            new_computer_display = calc_display_score(computer_score + base_points, computer_bags)
+            new_computer_display = get_display_score(computer_score + base_points, computer_bags)
             
             # Check if either player would reach target score
             if new_computer_display >= target_score or player_display >= target_score:

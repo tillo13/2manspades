@@ -1,0 +1,156 @@
+/* Instructions page styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+    color: #4a5568;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.5em;
+}
+
+h2 {
+    color: #2d3748;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+h3 {
+    color: #4a5568;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.section {
+    margin-bottom: 25px;
+}
+
+.highlight {
+    background: #fff5f5;
+    border-left: 4px solid #e53e3e;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+
+.tip {
+    background: #f0fff4;
+    border-left: 4px solid #38a169;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+
+.example {
+    background: #ebf8ff;
+    border: 1px solid #90cdf4;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+}
+
+.card-example {
+    display: inline-block;
+    background: white;
+    border: 2px solid #333;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 2px;
+    font-weight: bold;
+    min-width: 50px;
+    text-align: center;
+}
+
+.spade {
+    color: #000;
+}
+
+.heart {
+    color: #ff0000;
+}
+
+.diamond {
+    color: #ff6200;
+}
+
+.club {
+    color: #333;
+}
+
+.scoring-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.scoring-table th,
+.scoring-table td {
+    border: 1px solid #cbd5e0;
+    padding: 12px;
+    text-align: left;
+}
+
+.scoring-table th {
+    background: #edf2f7;
+    font-weight: bold;
+}
+
+.back-button {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: #4299e1;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+}
+
+.back-button:hover {
+    background: #3182ce;
+    transform: translateY(-2px);
+}
+
+ol,
+ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+.ai-update {
+    background: #f0f8ff;
+    border-left: 4px solid #4299e1;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}

@@ -1,0 +1,112 @@
+{
+  "summary": {
+    "total_files": 32,
+    "in_chain": 16,
+    "not_in_chain": 16
+  },
+  "dependency_chain": [
+    "app.py",
+    "static/game.js",
+    "static/manifest.json",
+    "static/style.css",
+    "templates/index.html",
+    "templates/instructions.html",
+    "templates/stats.html",
+    "utilities/app_helpers.py",
+    "utilities/claude_utils.py",
+    "utilities/computer_logic.py",
+    "utilities/custom_rules.py",
+    "utilities/gameplay_logic.py",
+    "utilities/gmail_utils.py",
+    "utilities/google_auth_utils.py",
+    "utilities/logging_utils.py",
+    "utilities/postgres_utils.py"
+  ],
+  "not_in_chain": [
+    "CLAUDE.md",
+    "README.md",
+    "app.yaml",
+    "data.csv",
+    "gcloud_deploy.py",
+    "git_push.sh",
+    "jobs copy.py",
+    "map_app.py",
+    "requirements.txt",
+    "setup_kumori_db.sh",
+    "skills.md",
+    "start_new_kumori_based_project.md",
+    "static/icon-192.png",
+    "static/icon-512.png",
+    "test_app.yaml",
+    "test_requirements.txt"
+  ],
+  "references": {
+    "app.py": [
+      "utilities/app_helpers.py",
+      "utilities/gameplay_logic.py",
+      "utilities/logging_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/gmail_utils.py",
+      "utilities/google_auth_utils.py",
+      "utilities/logging_utils.py",
+      "utilities/claude_utils.py",
+      "utilities/computer_logic.py",
+      "utilities/logging_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "templates/index.html",
+      "templates/instructions.html",
+      "templates/stats.html"
+    ],
+    "utilities/app_helpers.py": [
+      "utilities/logging_utils.py",
+      "utilities/custom_rules.py",
+      "utilities/gameplay_logic.py",
+      "utilities/computer_logic.py",
+      "utilities/logging_utils.py",
+      "utilities/logging_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/logging_utils.py",
+      "utilities/logging_utils.py",
+      "utilities/logging_utils.py"
+    ],
+    "utilities/gameplay_logic.py": [
+      "utilities/logging_utils.py",
+      "utilities/custom_rules.py",
+      "utilities/logging_utils.py",
+      "utilities/custom_rules.py"
+    ],
+    "utilities/logging_utils.py": [
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py",
+      "utilities/postgres_utils.py"
+    ],
+    "utilities/postgres_utils.py": [],
+    "utilities/gmail_utils.py": [
+      "utilities/gmail_utils.py"
+    ],
+    "utilities/google_auth_utils.py": [],
+    "utilities/claude_utils.py": [],
+    "utilities/computer_logic.py": [
+      "utilities/custom_rules.py",
+      "utilities/logging_utils.py",
+      "utilities/custom_rules.py",
+      "utilities/custom_rules.py"
+    ],
+    "templates/index.html": [
+      "static/manifest.json",
+      "static/style.css",
+      "static/game.js"
+    ],
+    "templates/instructions.html": [],
+    "templates/stats.html": [],
+    "utilities/custom_rules.py": [],
+    "static/style.css": [],
+    "static/game.js": []
+  }
+}

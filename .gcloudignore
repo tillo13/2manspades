@@ -36,3 +36,10 @@ __pycache__/
 /json_keys
 
 logging/
+
+# Archive folder (old/unused code)
+/archive
+
+# Dev tools not needed on server
+gcloud_deploy.py
+*.md

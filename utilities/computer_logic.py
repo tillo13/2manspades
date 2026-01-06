@@ -12,9 +12,7 @@ from .custom_rules import (
 
 from .logging_utils import log_game_event
 
-# =============================================================================
 # GLOBAL AI DIFFICULTY SETTINGS
-# =============================================================================
 
 # Discard Strategy Settings
 SINGLETON_SPECIAL_PRIORITY = 1000    # How much to prioritize discarding singleton 7♦/10♣
@@ -39,9 +37,7 @@ LEAD_SAFETY_CONSIDERATION = True    # Whether to avoid leading into dangerous su
 # Meta-Strategy Settings
 DEFAULT_BLIND_BID = 5
 
-# =============================================================================
 # HAND ANALYSIS FUNCTIONS
-# =============================================================================
 
 def analyze_hand_strength(hand):
     """
@@ -170,9 +166,7 @@ def analyze_suit_distribution(hand):
     
     return distribution
 
-# =============================================================================
 # DISCARD STRATEGY
-# =============================================================================
 
 def computer_discard_strategy(computer_hand, game_state):
     """
@@ -234,9 +228,7 @@ def computer_discard_strategy(computer_hand, game_state):
     # Return index of card with highest discard score
     return max(discard_candidates, key=lambda x: x[1])[0]
 
-# =============================================================================
 # BIDDING STRATEGY
-# =============================================================================
 
 def should_bid_nil(hand, game_state):
     """
@@ -377,9 +369,7 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     
     return raw_bid, False
 
-# =============================================================================
 # PLAYING STRATEGY
-# =============================================================================
 
 def computer_lead_strategy(computer_hand, spades_broken, game_state=None):
     """

@@ -19,10 +19,10 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location
+from utilities.postgres_utils import get_ip_address_game_stats, get_city_leaders_stats, get_competitive_leaders_stats, get_monthly_stats_by_location, get_google_players_leaderboard, get_fun_stats, get_player_achievements
 from utilities.gmail_utils import send_simple_email
 
-from utilities.google_auth_utils import SimpleGoogleAuth, login_required
+from utilities.google_auth_utils import SimpleGoogleAuth
 
 
 
@@ -563,21 +563,24 @@ def instructions():
 
 @app.route('/stats')
 def stats():
-    client_ip = get_client_ip(request)  # Add 'request' parameter here!
-    
-    # Get existing stats
+    client_ip = get_client_ip(request)
+
+    google_leaders = get_google_players_leaderboard()
     competitive_leaders = get_competitive_leaders_stats()
     detailed_leaders = get_city_leaders_stats()
     player_stats = get_ip_address_game_stats(client_ip)
-    
-    # Get monthly stats
     monthly_stats = get_monthly_stats_by_location()
-    
-    return render_template('stats.html', 
+    fun_stats = get_fun_stats()
+    achievements = get_player_achievements()
+
+    return render_template('stats.html',
+                        google_leaders=google_leaders,
                         competitive_leaders=competitive_leaders,
                         detailed_leaders=detailed_leaders,
                         player_stats=player_stats[0] if player_stats else None,
                         monthly_stats=monthly_stats,
+                        fun_stats=fun_stats,
+                        achievements=achievements,
                         current_ip=client_ip)
 
 @app.route('/debug_game_creation')
