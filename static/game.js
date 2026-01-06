@@ -650,8 +650,23 @@ function handleResultsDisplay() {
     if (gameState.hand_over && gameState.hand_results) {
         resultsSection.classList.add('show');
         resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
+
+        // Pulse the login button if user is not logged in
+        pulseLoginIfNotLoggedIn();
     } else {
         resultsSection.classList.remove('show');
+    }
+}
+
+function pulseLoginIfNotLoggedIn() {
+    const loginBtn = document.getElementById('loginButton');
+    if (loginBtn && loginBtn.textContent.trim() === 'Login') {
+        // Remove existing animation class first
+        loginBtn.classList.remove('login-pulse');
+        // Force reflow to restart animation
+        void loginBtn.offsetWidth;
+        // Add animation class
+        loginBtn.classList.add('login-pulse');
     }
 }
 

@@ -1027,12 +1027,55 @@ body {
 
 /* Game detail links */
 .game-link {
-    color: #60a5fa;
+    color: #667eea;
     text-decoration: none;
     transition: color 0.2s;
 }
 .game-link:hover {
-    color: #93c5fd;
+    color: #5a67d8;
     text-decoration: underline;
+}
+
+/* Time Records Grid */
+.time-records-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.time-record-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    border-left: 3px solid #667eea;
+}
+
+.time-record-item.fastest {
+    border-left-color: #28a745;
+}
+
+.time-record-item.slowest {
+    border-left-color: #fd7e14;
+}
+
+.time-record-label {
+    font-size: 13px;
+    color: #666;
+}
+
+.time-record-value {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+@media (min-width: 768px) {
+    .time-records-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 

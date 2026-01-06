@@ -1459,3 +1459,17 @@ button:disabled {
         border-radius: 15px 15px 0 0;
     }
 }
+
+/* Gentle login button pulse for non-logged-in users */
+@keyframes gentlePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(33, 150, 243, 0.3);
+    }
+}
+
+.login-pulse {
+    animation: gentlePulse 2s ease-in-out 3;
+}
