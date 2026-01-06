@@ -1775,10 +1775,10 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             WHERE hand_id = %s
         ''', (hand_id,))
         timing = cur.fetchone()
-        if timing and timing[0]:
-            summary['game_start'] = timing[0]
-            summary['game_end'] = timing[1]
-            summary['total_minutes'] = round(timing[2], 1) if timing[2] else None
+        if timing and timing['game_start']:
+            summary['game_start'] = timing['game_start']
+            summary['game_end'] = timing['game_end']
+            summary['total_minutes'] = round(timing['total_minutes'], 1) if timing['total_minutes'] else None
 
         # Get per-hand timing
         cur.execute('''
@@ -1796,15 +1796,15 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         prev_hand_end = None
         for row in cur.fetchall():
             gap_minutes = None
-            if prev_hand_end and row[1]:
-                gap_minutes = round((row[1] - prev_hand_end).total_seconds() / 60, 1)
-            hand_timings[row[0]] = {
-                'start': row[1],
-                'end': row[2],
-                'duration_minutes': round(row[3], 1) if row[3] else None,
+            if prev_hand_end and row['hand_start']:
+                gap_minutes = round((row['hand_start'] - prev_hand_end).total_seconds() / 60, 1)
+            hand_timings[row['hand_number']] = {
+                'start': row['hand_start'],
+                'end': row['hand_end'],
+                'duration_minutes': round(row['hand_minutes'], 1) if row['hand_minutes'] else None,
                 'gap_from_previous': gap_minutes
             }
-            prev_hand_end = row[2]
+            prev_hand_end = row['hand_end']
 
         # Add timing to hands
         for h in hands.values():
