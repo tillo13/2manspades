@@ -1676,10 +1676,16 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
                     'computer_score': scores.get('computer_score'),
                     'explanation': data.get('scoring_explanation', '')
                 }
-                # Extract trick history if available
+                # Extract trick history if available, convert "You" to player name
                 hand_results = data.get('hand_results', {})
                 if 'trick_history' in hand_results:
-                    hand['trick_history'] = hand_results['trick_history']
+                    trick_history = []
+                    for trick in hand_results['trick_history']:
+                        t = dict(trick)
+                        if t.get('winner') == 'You':
+                            t['winner'] = summary['player_name']
+                        trick_history.append(t)
+                    hand['trick_history'] = trick_history
 
         # Convert to sorted list
         hands_list = sorted(hands.values(), key=lambda h: h['hand_number'])

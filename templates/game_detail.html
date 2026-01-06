@@ -9,106 +9,113 @@
     <style>
         .game-header {
             text-align: center;
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
         }
         .game-result {
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             font-weight: bold;
             margin: 0.5rem 0;
         }
-        .game-result.won { color: #4ade80; }
-        .game-result.lost { color: #f87171; }
+        .game-result.won { color: #28a745; }
+        .game-result.lost { color: #dc3545; }
         .game-meta {
-            color: #94a3b8;
+            color: #666;
             font-size: 0.9rem;
         }
         .final-score {
-            font-size: 1.8rem;
-            margin: 1rem 0;
+            font-size: 1.5rem;
+            margin: 0.75rem 0;
         }
-        .final-score .player-score { color: #3b82f6; }
-        .final-score .computer-score { color: #f59e0b; }
+        .final-score .player-score { color: #667eea; font-weight: bold; }
+        .final-score .computer-score { color: #fd7e14; font-weight: bold; }
 
         .hand-card {
-            background: #1e293b;
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid #3b82f6;
-        }
-        .hand-card.scoring-hand {
-            border-left-color: #22c55e;
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border: 1px solid #dee2e6;
         }
         .hand-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #334155;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
         }
         .hand-number {
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: bold;
-            color: #e2e8f0;
+            color: #333;
         }
         .hand-score {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
         }
-        .hand-score .player { color: #3b82f6; }
-        .hand-score .computer { color: #f59e0b; }
+        .hand-score .player { color: #667eea; font-weight: 600; }
+        .hand-score .computer { color: #fd7e14; font-weight: 600; }
 
         .bids-section {
             display: flex;
-            gap: 2rem;
-            margin-bottom: 1rem;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
         }
         .bid-item {
-            padding: 0.5rem 1rem;
-            background: #0f172a;
-            border-radius: 8px;
+            padding: 0.4rem 0.75rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            font-size: 0.85rem;
         }
         .bid-item.blind {
-            background: #7c3aed;
+            background: #667eea;
             color: white;
+            border-color: #667eea;
         }
         .bid-item.nil {
-            background: #dc2626;
+            background: #fd7e14;
             color: white;
+            border-color: #fd7e14;
         }
         .bid-player {
-            font-size: 0.8rem;
-            color: #94a3b8;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .bid-item.blind .bid-player,
+        .bid-item.nil .bid-player {
+            color: rgba(255,255,255,0.8);
         }
         .bid-amount {
-            font-size: 1.2rem;
             font-weight: bold;
         }
 
         .tricks-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
         }
         .trick {
             text-align: center;
-            padding: 0.4rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            min-width: 32px;
         }
         .trick.player-won {
-            background: rgba(59, 130, 246, 0.3);
-            border: 2px solid #3b82f6;
-            color: #93c5fd;
+            background: #e8f4fd;
+            border: 1px solid #667eea;
+            color: #667eea;
         }
         .trick.computer-won {
-            background: rgba(245, 158, 11, 0.3);
-            border: 2px solid #f59e0b;
-            color: #fcd34d;
+            background: #fff3e6;
+            border: 1px solid #fd7e14;
+            color: #fd7e14;
         }
         .trick-number {
             font-weight: bold;
@@ -117,80 +124,92 @@
         .trick-detail {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-            margin-bottom: 1rem;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
         }
         .trick-detail-item {
-            background: #0f172a;
-            padding: 0.75rem;
-            border-radius: 8px;
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 6px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 0.8rem;
+            border: 1px solid #e9ecef;
         }
         .trick-detail-item.winner {
-            border: 1px solid #22c55e;
+            border-color: #28a745;
         }
         .card-played {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
         }
-        .card-played .hearts, .card-played .diamonds { color: #ef4444; }
-        .card-played .spades, .card-played .clubs { color: #e2e8f0; }
+        .card-played .hearts, .card-played .diamonds { color: #dc3545; }
+        .card-played .spades, .card-played .clubs { color: #333; }
 
         .scoring-explanation {
-            background: #0f172a;
-            padding: 1rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            color: #94a3b8;
-            line-height: 1.6;
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.5;
+            border: 1px solid #e9ecef;
         }
 
         .game-end-message {
             text-align: center;
-            padding: 1.5rem;
-            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
-            border-radius: 12px;
-            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #d4edda;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            margin-top: 1rem;
         }
         .game-end-message.lost {
-            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+            background: #f8d7da;
+            border-color: #dc3545;
         }
         .game-end-text {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: bold;
+            color: #333;
         }
 
         .expand-tricks {
-            background: #334155;
-            border: none;
-            color: #94a3b8;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            color: #666;
+            padding: 0.4rem 0.75rem;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            margin-top: 0.4rem;
         }
         .expand-tricks:hover {
-            background: #475569;
+            background: #dee2e6;
         }
         .trick-history {
             display: none;
-            margin-top: 1rem;
+            margin-top: 0.75rem;
         }
         .trick-history.show {
             display: block;
         }
 
         .incomplete-data-note {
-            background: rgba(245, 158, 11, 0.2);
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            padding: 12px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 0.75rem;
             margin-bottom: 1rem;
-            color: #fcd34d;
-            font-size: 0.9rem;
+            color: #856404;
+            font-size: 0.85rem;
             text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .trick-detail {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -214,7 +233,7 @@
             </div>
             <div class="final-score">
                 <span class="player-score">{{ game.summary.final_player_score }}</span>
-                <span style="color: #64748b;"> - </span>
+                <span style="color: #999;"> - </span>
                 <span class="computer-score">{{ game.summary.final_computer_score }}</span>
             </div>
             <div class="game-meta">
@@ -237,13 +256,13 @@
 
         {% for hand in game.hands %}
         {% if hand.hand_number > 0 %}
-        <div class="hand-card {% if hand.scoring %}scoring-hand{% endif %}">
+        <div class="hand-card">
             <div class="hand-header">
                 <div class="hand-number">Hand {{ hand.hand_number }}</div>
                 {% if hand.scoring %}
                 <div class="hand-score">
                     <span class="player">{{ hand.scoring.player_score }}</span>
-                    <span style="color: #64748b;"> - </span>
+                    <span style="color: #999;"> - </span>
                     <span class="computer">{{ hand.scoring.computer_score }}</span>
                 </div>
                 {% endif %}
@@ -266,7 +285,7 @@
             {% if hand.tricks %}
             <div class="tricks-grid">
                 {% for trick in hand.tricks %}
-                <div class="trick {{ 'player-won' if trick.winner == 'You' else 'computer-won' }}">
+                <div class="trick {{ 'player-won' if trick.winner != 'Marta' else 'computer-won' }}">
                     <div class="trick-number">{{ trick.number }}</div>
                     <div>{{ trick.winner }}</div>
                 </div>
@@ -292,7 +311,7 @@
                                 Marta: <span class="{{ trick.computer_card[-1]|lower }}s">{{ trick.computer_card }}</span>
                             </span>
                         </div>
-                        <div style="font-size: 0.85rem; color: {% if trick.winner != 'Marta' %}#3b82f6{% else %}#f59e0b{% endif %};">
+                        <div style="font-size: 0.8rem; color: {% if trick.winner != 'Marta' %}#667eea{% else %}#fd7e14{% endif %};">
                             {{ trick.winner }}
                         </div>
                     </div>

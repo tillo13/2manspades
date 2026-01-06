@@ -59,34 +59,52 @@
         </div>
 
         <!-- Time-Based Metrics -->
-        <div class="stats-section time-metrics-section">
+        <div class="stats-section">
             <div class="section-title">Time Metrics</div>
-            <div class="time-metrics-grid">
-                <div class="time-metric-box">
-                    <div class="time-metric-header">Game Duration</div>
-                    <div class="time-metric-main">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</div>
-                    <div class="time-metric-label">Average</div>
-                    <div class="time-metric-range">
-                        <span>Fastest: {{ fun_stats.min_game_duration_minutes|default(0) }} min</span>
-                        <span>Slowest: {{ fun_stats.max_game_duration_minutes|default(0) }} min</span>
+            <div class="achievements-grid">
+                <div class="achievement-card">
+                    <div class="achievement-title">Game Duration</div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Average</span>
+                        <span class="achievement-value">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Fastest</span>
+                        <span class="achievement-detail">{{ fun_stats.min_game_duration_minutes|default(0) }} min</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Slowest</span>
+                        <span class="achievement-detail">{{ fun_stats.max_game_duration_minutes|default(0) }} min</span>
                     </div>
                 </div>
-                <div class="time-metric-box">
-                    <div class="time-metric-header">Hand Duration</div>
-                    <div class="time-metric-main">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</div>
-                    <div class="time-metric-label">Average</div>
-                    <div class="time-metric-range">
-                        <span>Fastest: {{ fun_stats.min_hand_duration_minutes|default(0) }} min</span>
-                        <span>Slowest: {{ fun_stats.max_hand_duration_minutes|default(0) }} min</span>
+                <div class="achievement-card">
+                    <div class="achievement-title">Hand Duration</div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Average</span>
+                        <span class="achievement-value">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Fastest</span>
+                        <span class="achievement-detail">{{ fun_stats.min_hand_duration_minutes|default(0) }} min</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Slowest</span>
+                        <span class="achievement-detail">{{ fun_stats.max_hand_duration_minutes|default(0) }} min</span>
                     </div>
                 </div>
-                <div class="time-metric-box">
-                    <div class="time-metric-header">Game Length</div>
-                    <div class="time-metric-main">{{ fun_stats.avg_game_length|default(0) }} hands</div>
-                    <div class="time-metric-label">Average</div>
-                    <div class="time-metric-range">
-                        <span>Shortest: {{ fun_stats.shortest_game|default(0) }} hands</span>
-                        <span>Longest: {{ fun_stats.longest_game|default(0) }} hands</span>
+                <div class="achievement-card">
+                    <div class="achievement-title">Game Length</div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Average</span>
+                        <span class="achievement-value">{{ fun_stats.avg_game_length|default(0) }} hands</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Shortest</span>
+                        <span class="achievement-detail">{{ fun_stats.shortest_game|default(0) }} hands</span>
+                    </div>
+                    <div class="achievement-row">
+                        <span class="achievement-player">Longest</span>
+                        <span class="achievement-detail">{{ fun_stats.longest_game|default(0) }} hands</span>
                     </div>
                 </div>
             </div>
