@@ -70,11 +70,11 @@
                     </div>
                     <div class="achievement-row">
                         <span class="achievement-player">Fastest</span>
-                        <span class="achievement-detail">{{ fun_stats.min_game_duration_minutes|default(0) }} min</span>
+                        <span class="achievement-detail">{{ fun_stats.min_game_duration_minutes|default(0) }} min {% if fun_stats.fastest_game_hand_id %}<a href="/game/{{ fun_stats.fastest_game_hand_id }}" class="game-link">({{ fun_stats.fastest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
                     </div>
                     <div class="achievement-row">
                         <span class="achievement-player">Slowest</span>
-                        <span class="achievement-detail">{{ fun_stats.max_game_duration_minutes|default(0) }} min</span>
+                        <span class="achievement-detail">{{ fun_stats.max_game_duration_minutes|default(0) }} min {% if fun_stats.slowest_game_hand_id %}<a href="/game/{{ fun_stats.slowest_game_hand_id }}" class="game-link">({{ fun_stats.slowest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
                     </div>
                 </div>
                 <div class="achievement-card">
@@ -100,11 +100,11 @@
                     </div>
                     <div class="achievement-row">
                         <span class="achievement-player">Shortest</span>
-                        <span class="achievement-detail">{{ fun_stats.shortest_game|default(0) }} hands</span>
+                        <span class="achievement-detail">{{ fun_stats.shortest_game|default(0) }} hands {% if fun_stats.shortest_game_hand_id %}<a href="/game/{{ fun_stats.shortest_game_hand_id }}" class="game-link">({{ fun_stats.shortest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
                     </div>
                     <div class="achievement-row">
                         <span class="achievement-player">Longest</span>
-                        <span class="achievement-detail">{{ fun_stats.longest_game|default(0) }} hands</span>
+                        <span class="achievement-detail">{{ fun_stats.longest_game|default(0) }} hands {% if fun_stats.longest_game_hand_id %}<a href="/game/{{ fun_stats.longest_game_hand_id }}" class="game-link">({{ fun_stats.longest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span>
                     </div>
                 </div>
             </div>

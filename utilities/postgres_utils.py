@@ -697,19 +697,46 @@ def get_fun_stats() -> Dict[str, Any]:
         stats['shortest_game'] = row[1]
         stats['longest_game'] = row[2]
 
+        # Get hand_ids for shortest and longest games by hands played
+        cur.execute('''
+            SELECT hand_id, timestamp, (event_data->>'hands_played')::int as hands
+            FROM twomanspades.game_events
+            WHERE event_type = 'game_completed'
+            AND event_data->>'hands_played' IS NOT NULL
+            ORDER BY (event_data->>'hands_played')::int ASC, timestamp DESC
+            LIMIT 1
+        ''')
+        shortest = cur.fetchone()
+        if shortest:
+            stats['shortest_game_hand_id'] = shortest[0]
+            stats['shortest_game_date'] = shortest[1]
+
+        cur.execute('''
+            SELECT hand_id, timestamp, (event_data->>'hands_played')::int as hands
+            FROM twomanspades.game_events
+            WHERE event_type = 'game_completed'
+            AND event_data->>'hands_played' IS NOT NULL
+            ORDER BY (event_data->>'hands_played')::int DESC, timestamp DESC
+            LIMIT 1
+        ''')
+        longest = cur.fetchone()
+        if longest:
+            stats['longest_game_hand_id'] = longest[0]
+            stats['longest_game_date'] = longest[1]
+
         # Average game duration in minutes (time from first to last event)
         cur.execute('''
             WITH game_times AS (
                 SELECT
-                    hand_id,
-                    MIN(timestamp) as start_time,
-                    MAX(timestamp) as end_time
-                FROM twomanspades.game_events
-                WHERE hand_id IN (
+                    gt.hand_id,
+                    MIN(gt.timestamp) as start_time,
+                    MAX(gt.timestamp) as end_time
+                FROM twomanspades.game_events gt
+                WHERE gt.hand_id IN (
                     SELECT hand_id FROM twomanspades.game_events
                     WHERE event_type = 'game_completed'
                 )
-                GROUP BY hand_id
+                GROUP BY gt.hand_id
             )
             SELECT
                 ROUND(AVG(EXTRACT(EPOCH FROM (end_time - start_time)) / 60)::numeric, 1) as avg_minutes,
@@ -723,6 +750,57 @@ def get_fun_stats() -> Dict[str, Any]:
             stats['avg_game_duration_minutes'] = duration[0]
             stats['min_game_duration_minutes'] = duration[1]
             stats['max_game_duration_minutes'] = duration[2]
+
+        # Get hand_ids for fastest and slowest games
+        cur.execute('''
+            WITH game_times AS (
+                SELECT
+                    gt.hand_id,
+                    MIN(gt.timestamp) as start_time,
+                    MAX(gt.timestamp) as end_time,
+                    EXTRACT(EPOCH FROM (MAX(gt.timestamp) - MIN(gt.timestamp))) / 60 as duration_minutes
+                FROM twomanspades.game_events gt
+                WHERE gt.hand_id IN (
+                    SELECT hand_id FROM twomanspades.game_events
+                    WHERE event_type = 'game_completed'
+                )
+                GROUP BY gt.hand_id
+                HAVING MAX(gt.timestamp) > MIN(gt.timestamp)
+            )
+            SELECT hand_id, start_time, duration_minutes
+            FROM game_times
+            ORDER BY duration_minutes ASC
+            LIMIT 1
+        ''')
+        fastest = cur.fetchone()
+        if fastest:
+            stats['fastest_game_hand_id'] = fastest[0]
+            stats['fastest_game_date'] = fastest[1]
+
+        cur.execute('''
+            WITH game_times AS (
+                SELECT
+                    gt.hand_id,
+                    MIN(gt.timestamp) as start_time,
+                    MAX(gt.timestamp) as end_time,
+                    EXTRACT(EPOCH FROM (MAX(gt.timestamp) - MIN(gt.timestamp))) / 60 as duration_minutes
+                FROM twomanspades.game_events gt
+                WHERE gt.hand_id IN (
+                    SELECT hand_id FROM twomanspades.game_events
+                    WHERE event_type = 'game_completed'
+                )
+                GROUP BY gt.hand_id
+                HAVING MAX(gt.timestamp) > MIN(gt.timestamp)
+            )
+            SELECT hand_id, start_time, duration_minutes
+            FROM game_times
+            ORDER BY duration_minutes DESC
+            LIMIT 1
+        ''')
+        slowest = cur.fetchone()
+        if slowest:
+            stats['slowest_game_hand_id'] = slowest[0]
+            stats['slowest_game_date'] = slowest[1]
 
         # Average hand duration in minutes (time between hand_scoring events)
         cur.execute('''
