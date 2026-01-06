@@ -24,7 +24,7 @@
     <div class="container">
         <div class="header">
             <h1>Player Statistics</h1>
-            <div class="subtitle">Competitive leaderboard and performance metrics</div>
+            <div class="subtitle">Family leaderboard and performance metrics</div>
         </div>
 
         <!-- Overall Stats Banner -->
@@ -33,7 +33,11 @@
             <div class="overall-stats-grid">
                 <div class="overall-stat">
                     <div class="overall-value">{{ fun_stats.total_games|default(0) }}</div>
-                    <div class="overall-label">Games Played</div>
+                    <div class="overall-label">Games Completed</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.total_hands|default(0) }}</div>
+                    <div class="overall-label">Hands Played</div>
                 </div>
                 <div class="overall-stat">
                     <div class="overall-value">{{ fun_stats.total_tricks|default(0)|int }}</div>
@@ -92,95 +96,48 @@
             </div>
         </div>
 
-        <!-- Collapsible Legend Section -->
-        <div class="collapsible-section collapsed" id="legendSection">
-            <div class="collapsible-toggle" onclick="toggleSection('legendSection')">
-                <span class="collapsible-toggle-text">Statistics Guide</span>
-                <span class="collapsible-chevron" id="legendChevron">▼</span>
-            </div>
-            <div class="collapsible-content" id="legendContent">
-                <div class="collapsible-inner">
-                    <div class="legend-columns">
-                        <div class="legend-column">
-                            <div class="legend-category">Competitive Stats</div>
-                            <div class="legend-item">
-                                <span class="legend-label">Games Started:</span>
-                                <span class="legend-description">Total games initiated (including abandoned)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Total Games:</span>
-                                <span class="legend-description">Completed games only (excludes abandoned)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Win Rate:</span>
-                                <span class="legend-description">Percentage of completed games won</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Avg Winning Score:</span>
-                                <span class="legend-description">Average final score when you win</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Avg Losing Score:</span>
-                                <span class="legend-description">Average final score when you lose</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Avg Losing Margin:</span>
-                                <span class="legend-description">Average points behind when losing</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Games Abandoned:</span>
-                                <span class="legend-description">Games started but not completed (not counted as wins or
-                                    losses)</span>
-                            </div>
-                        </div>
-                        <div class="legend-column">
-                            <div class="legend-category">Detailed Hand Performance</div>
-                            <div class="legend-item">
-                                <span class="legend-label">Hands Played:</span>
-                                <span class="legend-description">Individual hands with successful bids</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Average Bids:</span>
-                                <span class="legend-description">Mean tricks bid per hand by you and Marta</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Nil Attempts:</span>
-                                <span class="legend-description">Times you attempted 0-trick bids</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Nil Success:</span>
-                                <span class="legend-description">Successful nils out of total attempts (e.g.,
-                                    5/11)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Total Bags:</span>
-                                <span class="legend-description">Cumulative penalty points from overtricks</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-label">Average Bags:</span>
-                                <span class="legend-description">Mean bags per hand (overtricks beyond bid)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="legend-note">
-                        <strong>Note:</strong> Rankings are determined by sports-style competitive performance (win
-                        rate, then total wins) rather than hand-level statistics. Competitive stats show game outcomes,
-                        while detailed stats show bidding patterns and bag management across individual hands.
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Player Leaderboard (Google Logged-in Users) -->
+        <!-- Player Leaderboard -->
         <div class="stats-section">
             <div class="section-title">Player Leaderboard</div>
             {% if google_leaders %}
+
+            <!-- Desktop Table View -->
+            <div class="table-container desktop-table">
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>W-L</th>
+                            <th>Win %</th>
+                            <th>Games</th>
+                            <th>High Score</th>
+                            <th>Avg Win</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in google_leaders %}
+                        <tr class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ player.player_name }}</strong></td>
+                            <td class="win-loss-stat">{{ player.wins }}-{{ player.losses }}</td>
+                            <td class="percentage">{{ player.win_rate or 0 }}%</td>
+                            <td>{{ player.total_games }}</td>
+                            <td class="win-stat">{{ player.highest_score or '-' }}</td>
+                            <td class="win-stat">{{ player.avg_winning_score or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View -->
             <div class="mobile-cards">
                 {% for player in google_leaders %}
                 <div class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
                     <div class="player-header">
                         <div class="player-rank">#{{ loop.index }}</div>
-                        <div class="player-name">{{ player.first_name }}</div>
+                        <div class="player-name">{{ player.player_name }}</div>
                         <div class="win-loss-record">{{ player.wins }}-{{ player.losses }} ({{ player.win_rate or 0 }}%)</div>
                     </div>
                     <div class="competitive-stats">
@@ -190,25 +147,20 @@
                                 <div class="stat-value">{{ player.total_games }}</div>
                             </div>
                             <div class="stat-item">
+                                <div class="stat-label">High Score</div>
+                                <div class="stat-value win-stat">{{ player.highest_score or '-' }}</div>
+                            </div>
+                            <div class="stat-item">
                                 <div class="stat-label">Avg Win Score</div>
                                 <div class="stat-value win-stat">{{ player.avg_winning_score or '-' }}</div>
                             </div>
                         </div>
-                        {% if player.avg_losing_score %}
-                        <div class="stat-group losing-stats">
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Loss Score</div>
-                                <div class="stat-value loss-stat">{{ player.avg_losing_score }}</div>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
-            <div class="table-note">Sign in with Google to appear on this leaderboard</div>
             {% else %}
-            <div class="no-stats">No players yet - be the first to sign in and play!</div>
+            <div class="no-stats">No players yet - be the first to play!</div>
             {% endif %}
         </div>
 
@@ -308,7 +260,7 @@
                     <div class="achievement-row">
                         <span class="achievement-player">{{ p.player }}</span>
                         <span class="achievement-value bags-value">{{ p.total_bags }} bags</span>
-                        <span class="achievement-detail">({{ p.avg_bags }}/game)</span>
+                        <span class="achievement-detail">({{ p.avg_bags }}/hand)</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -399,293 +351,114 @@
         </div>
         {% endif %}
 
-        <!-- Location Rankings (IP-based) -->
-        <div class="stats-section">
-            <div class="section-title">Location Rankings</div>
-            {% if competitive_leaders %}
+        <!-- All-Time Records Section -->
+        {% if overall_stats %}
+        <div class="stats-section overall-records-section">
+            <div class="section-title">All-Time Records</div>
+            <div class="all-time-subtitle">Big numbers from every game ever played</div>
 
-            <!-- Competitive Table View (Desktop) -->
-            <div class="table-container desktop-table">
-                <table class="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>W-L</th>
-                            <th>Win %</th>
-                            <th>Games</th>
-                            <th>Avg Win Score</th>
-                            <th>Avg Win Margin</th>
-                            <th>Avg Loss Score</th>
-                            <th>Avg Loss Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for player in competitive_leaders %}
-                        <tr
-                            class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ player.family_member }}</strong></td>
-                            <td class="win-loss-stat">{{ player.total_wins|default(0) }}-{{
-                                player.total_losses|default(0) }}</td>
-                            <td class="percentage">{{ "%.1f"|format(player.win_rate_percent or 0) }}%</td>
-                            <td>{{ player.total_games|default(0) }}</td>
-                            <td class="win-stat">{{ "%.0f"|format(player.avg_winning_score) if player.avg_winning_score
-                                else '-' }}</td>
-                            <td class="win-stat">+{{ "%.0f"|format(player.avg_winning_margin) if
-                                player.avg_winning_margin else '-' }}</td>
-                            <td class="loss-stat">{{ "%.0f"|format(player.avg_losing_score) if player.avg_losing_score
-                                else '-' }}</td>
-                            <td class="loss-stat">-{{ "%.0f"|format(player.avg_losing_margin) if
-                                player.avg_losing_margin else '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Competitive Card View (Mobile) -->
-            <div class="player-cards mobile-cards">
-                {% for player in competitive_leaders %}
-                <div
-                    class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                    <div class="player-header">
-                        <div class="player-rank">#{{ loop.index }}</div>
-                        <div class="player-name">{{ player.family_member }}</div>
-                        <div class="win-loss-record">{{ player.total_wins|default(0) }}-{{
-                            player.total_losses|default(0) }} ({{ "%.1f"|format(player.win_rate_percent or 0) }}%)</div>
-                    </div>
-
-                    <div class="competitive-stats">
-                        <div class="stat-group winning-stats">
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Winning Score</div>
-                                <div class="stat-value win-stat">{{ "%.0f"|format(player.avg_winning_score) if
-                                    player.avg_winning_score else 'No wins yet' }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Winning Margin</div>
-                                <div class="stat-value win-stat">+{{ "%.0f"|format(player.avg_winning_margin) if
-                                    player.avg_winning_margin else 'No wins yet' }}</div>
-                            </div>
-                        </div>
-
-                        {% if player.avg_losing_score %}
-                        <div class="stat-group losing-stats">
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Losing Score</div>
-                                <div class="stat-value loss-stat">{{ "%.0f"|format(player.avg_losing_score) }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Losing Margin</div>
-                                <div class="stat-value loss-stat">-{{ "%.0f"|format(player.avg_losing_margin) }}</div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="table-note">Ranked by win rate, then total wins</div>
-            {% else %}
-            <div class="no-stats">No competitive data available</div>
-            {% endif %}
-        </div>
-
-        <!-- Detailed Performance Section -->
-        <div class="stats-section">
-            <div class="section-title">Detailed Hand Performance</div>
-            {% if detailed_leaders and detailed_leaders|length > 0 %}
-
-            <!-- Traditional Table View (Desktop) -->
-            <div class="table-container desktop-table">
-                <table class="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Hands</th>
-                            <th>Avg Bid</th>
-                            <th>Comp Bid</th>
-                            <th>Nil Bids</th>
-                            <th>Nil Success</th>
-                            <th>Player Bags</th>
-                            <th>Comp Bags</th>
-                            <th>Avg P Bags</th>
-                            <th>Avg C Bags</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for player in detailed_leaders %}
-                        <tr
-                            class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ player.family_member }}</strong></td>
-                            <td>{{ player.total_hands_with_bids|default(0) }}</td>
-                            <td class="bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }}</td>
-                            <td class="bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }}</td>
-                            <td class="nil-stat">{{ player.total_player_nil_bids|default(0) }}</td>
-                            <td class="nil-stat">{{ player.total_player_nils_successful|default(0) }}/{{
-                                player.total_player_nil_bids|default(0) }}</td>
-                            <td class="bags-stat">{{ player.total_player_bags|default(0) }}</td>
-                            <td class="bags-stat">{{ player.total_computer_bags|default(0) }}</td>
-                            <td class="bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }}</td>
-                            <td class="bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Card View (Mobile) -->
-            <div class="player-cards mobile-cards">
-                {% for player in detailed_leaders %}
-                <div
-                    class="player-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                    <div class="player-header">
-                        <div class="player-rank">#{{ loop.index }}</div>
-                        <div class="player-name">{{ player.family_member }}</div>
-                        <div class="player-hands">{{ player.total_hands_with_bids|default(0) }} hands played</div>
-                    </div>
-
-                    <div class="player-stats">
-                        <div class="stat-item">
-                            <div class="stat-label">Avg Player Bid</div>
-                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_player_bid or 0) }} tricks
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Avg Computer Bid</div>
-                            <div class="stat-value bid-stat">{{ "%.2f"|format(player.avg_computer_bid or 0) }} tricks
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Nil Bids</div>
-                            <div class="stat-value nil-stat">{{ player.total_player_nil_bids|default(0) }} attempts
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Nil Success Rate</div>
-                            <div class="stat-value nil-stat">
-                                {% if player.total_player_nil_bids and player.total_player_nil_bids > 0 %}
-                                {{ player.total_player_nils_successful|default(0) }}/{{ player.total_player_nil_bids }}
-                                ({{ "%.0f"|format((player.total_player_nils_successful|default(0) /
-                                player.total_player_nil_bids) * 100) }}%)
-                                {% else %}
-                                No nils
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Player Bags</div>
-                            <div class="stat-value bags-stat">{{ player.total_player_bags|default(0) }} bags</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Computer Bags</div>
-                            <div class="stat-value bags-stat">{{ player.total_computer_bags|default(0) }} bags</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Avg Player Bags</div>
-                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_player_bags or 0) }} per hand
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Avg Computer Bags</div>
-                            <div class="stat-value bags-stat">{{ "%.2f"|format(player.avg_computer_bags or 0) }} per
-                                hand</div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="table-note">Hand-level bidding and bag statistics</div>
-            {% else %}
-            <div class="no-stats">No detailed performance data available</div>
-            {% endif %}
-        </div>
-
-        <!-- Monthly Performance History Section -->
-        <div class="stats-section">
-            <div class="section-title">Monthly Performance History</div>
-            {% if monthly_stats %}
-            {% set sorted_members = monthly_stats.items() | list | sort(attribute='1.monthly.0.total_hands',
-            reverse=True) %}
-            {% for family_member, data in sorted_members %}
-            <div class="player-card" style="margin-bottom: 20px;">
-                <div class="player-header">
-                    <div class="player-name">{{ family_member }}</div>
+            <div class="big-numbers-grid">
+                <!-- Grand Total Points -->
+                <div class="big-number-card">
+                    <div class="big-number">{{ "{:,}".format(overall_stats.grand_total_points|int) }}</div>
+                    <div class="big-label">Total Points Scored</div>
+                    <div class="big-detail">Humans: {{ "{:,}".format(overall_stats.total_player_points|int) }} | Marta: {{ "{:,}".format(overall_stats.total_computer_points|int) }}</div>
                 </div>
 
-                {% if data.monthly %}
-                <div class="monthly-container">
-                    {% for month_stat in data.monthly %}
-                    <div class="month-card {% if loop.index == 1 %}current-month{% endif %}">
-                        <div class="month-header">
-                            <div class="month-title">{{ month_stat.month.strftime('%B %Y') }}</div>
-                            {% if loop.index == 1 %}
-                            <span class="current-badge">CURRENT</span>
-                            {% endif %}
-                        </div>
-                        <div class="month-stats">
-                            <div class="stat-item">
-                                <div class="stat-label">Hands Played</div>
-                                <div class="stat-value">{{ month_stat.total_hands }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Hands Won</div>
-                                <div class="stat-value win-stat">{{ month_stat.hands_won }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Hands Lost</div>
-                                <div class="stat-value loss-stat">{{ month_stat.hands_lost }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Win Rate</div>
-                                <div class="stat-value">
-                                    {% if month_stat.total_hands > 0 %}
-                                    {{ "%.1f"|format((month_stat.hands_won / month_stat.total_hands) * 100) }}%
-                                    {% else %}
-                                    0%
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Player Score</div>
-                                <div class="stat-value">{{ "%.0f"|format(month_stat.avg_player_score) }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Computer Score</div>
-                                <div class="stat-value">{{ "%.0f"|format(month_stat.avg_computer_score) }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Total Bags</div>
-                                <div class="stat-value bags-stat">{{ month_stat.total_bags }}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Avg Bags/Hand</div>
-                                <div class="stat-value bags-stat">
-                                    {% if month_stat.total_hands > 0 %}
-                                    {{ "%.2f"|format(month_stat.total_bags / month_stat.total_hands) }}
-                                    {% else %}
-                                    0.00
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
+                <!-- Total Cards Played -->
+                <div class="big-number-card">
+                    <div class="big-number">{{ "{:,}".format(overall_stats.total_cards_played|int) }}</div>
+                    <div class="big-label">Cards Played</div>
+                    <div class="big-detail">That's {{ (overall_stats.total_cards_played / 52)|int }} complete decks!</div>
                 </div>
-                {% else %}
-                <div class="no-stats">No monthly statistics available</div>
+
+                <!-- Trick Battle -->
+                <div class="big-number-card">
+                    <div class="big-number">{{ "{:,}".format(overall_stats.total_player_tricks|int) }}-{{ "{:,}".format(overall_stats.total_computer_tricks|int) }}</div>
+                    <div class="big-label">Tricks Won</div>
+                    <div class="big-detail">Humans vs Marta</div>
+                </div>
+
+                <!-- Total Bags -->
+                <div class="big-number-card">
+                    <div class="big-number">{{ "{:,}".format(overall_stats.total_player_bags|int) }}</div>
+                    <div class="big-label">Human Bags</div>
+                    <div class="big-detail">Marta has {{ "{:,}".format(overall_stats.total_computer_bags|int) }} bags</div>
+                </div>
+            </div>
+
+            <div class="records-grid">
+                <!-- Highest Score Ever -->
+                {% if overall_stats.highest_player_score_ever %}
+                <div class="record-item">
+                    <span class="record-label">Highest Player Score</span>
+                    <span class="record-value highlight-value">{{ overall_stats.highest_player_score_ever }}</span>
+                </div>
+                {% endif %}
+
+                {% if overall_stats.highest_computer_score_ever %}
+                <div class="record-item">
+                    <span class="record-label">Highest Marta Score</span>
+                    <span class="record-value">{{ overall_stats.highest_computer_score_ever }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Lowest Winning Score -->
+                {% if overall_stats.lowest_winning_score %}
+                <div class="record-item">
+                    <span class="record-label">Lowest Winning Score</span>
+                    <span class="record-value">{{ overall_stats.lowest_winning_score }} to {{ overall_stats.lowest_win_opponent_score }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Biggest Comeback -->
+                {% if overall_stats.biggest_comeback_deficit %}
+                <div class="record-item">
+                    <span class="record-label">Biggest Comeback</span>
+                    <span class="record-value highlight-value">Down {{ overall_stats.biggest_comeback_deficit }}+</span>
+                </div>
+                {% endif %}
+
+                <!-- Most Popular Bid -->
+                {% if overall_stats.most_popular_bid is defined %}
+                <div class="record-item">
+                    <span class="record-label">Most Popular Bid</span>
+                    <span class="record-value">{{ overall_stats.most_popular_bid }} ({{ "{:,}".format(overall_stats.most_popular_bid_times) }}x)</span>
+                </div>
+                {% endif %}
+
+                <!-- Nil Stats -->
+                {% if overall_stats.total_nil_attempts %}
+                <div class="record-item">
+                    <span class="record-label">Nil Success Rate</span>
+                    <span class="record-value">{{ overall_stats.successful_nils }}/{{ overall_stats.total_nil_attempts }} ({{ overall_stats.nil_success_rate }}%)</span>
+                </div>
+                {% endif %}
+
+                <!-- Blind Nil Stats -->
+                {% if overall_stats.blind_nil_attempts %}
+                <div class="record-item">
+                    <span class="record-label">Blind Nil Attempts</span>
+                    <span class="record-value">{{ overall_stats.blind_nil_successes or 0 }}/{{ overall_stats.blind_nil_attempts }} successful</span>
+                </div>
+                {% endif %}
+
+                <!-- Spades Broken -->
+                {% if overall_stats.times_spades_broken %}
+                <div class="record-item">
+                    <span class="record-label">Times Spades Broken</span>
+                    <span class="record-value">{{ "{:,}".format(overall_stats.times_spades_broken) }}</span>
+                </div>
                 {% endif %}
             </div>
-            {% endfor %}
-            {% else %}
-            <div class="no-stats">No monthly data available</div>
+
+            {% if overall_stats.first_game_date %}
+            <div class="first-game-note">
+                First game played: {{ overall_stats.first_game_date }}
+            </div>
             {% endif %}
         </div>
+        {% endif %}
 
     </div>
 
@@ -717,16 +490,6 @@
                     });
                 });
             }
-
-            // Add hover effects for legend items on desktop
-            document.querySelectorAll('.legend-item').forEach(item => {
-                item.addEventListener('mouseenter', function () {
-                    this.style.backgroundColor = '#e3f2fd';
-                });
-                item.addEventListener('mouseleave', function () {
-                    this.style.backgroundColor = 'white';
-                });
-            });
         });
     </script>
 </body>

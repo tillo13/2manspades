@@ -19,7 +19,8 @@
       "Bash(do echo -n \"$func: \" grep -rn \"$func\\(\" utilities/*.py app.py)",
       "Bash(done)",
       "Bash(__NEW_LINE__ echo -e \"\\\\n=== Print functions - called from where? ===\")",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(timeout 15 python3:*)"
     ]
   }
 }

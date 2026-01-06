@@ -874,3 +874,153 @@ body {
         justify-content: space-between;
     }
 }
+
+/* All-Time Records Section */
+.overall-records-section {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    padding: 25px 20px;
+}
+
+.overall-records-section .section-title {
+    color: #ffd700;
+    border-bottom-color: rgba(255, 215, 0, 0.3);
+    font-size: 22px;
+}
+
+.all-time-subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 20px;
+}
+
+.big-numbers-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.big-number-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px 15px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.big-number-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.big-number {
+    font-size: 28px;
+    font-weight: 800;
+    color: #ffd700;
+    line-height: 1.1;
+    margin-bottom: 8px;
+}
+
+.big-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.big-detail {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.records-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.record-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    border-left: 3px solid rgba(255, 215, 0, 0.5);
+}
+
+.record-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.record-value {
+    font-weight: 700;
+    font-size: 14px;
+    color: #4fc3f7;
+}
+
+.record-value.highlight-value {
+    color: #ffd700;
+}
+
+.first-game-note {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    margin-top: 10px;
+}
+
+@media (min-width: 768px) {
+    .big-numbers-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .big-number {
+        font-size: 36px;
+    }
+
+    .records-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .overall-records-section {
+        padding: 20px 15px;
+    }
+
+    .big-number {
+        font-size: 22px;
+    }
+
+    .big-label {
+        font-size: 11px;
+    }
+
+    .big-detail {
+        font-size: 10px;
+    }
+
+    .record-item {
+        padding: 8px 10px;
+    }
+
+    .record-label {
+        font-size: 12px;
+    }
+
+    .record-value {
+        font-size: 13px;
+    }
+}

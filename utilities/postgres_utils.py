@@ -558,31 +558,16 @@ def get_player_city_membership(client_ip):
         print(f"Failed to get player city membership: {e}")
         return 'Other'
     
-def get_google_players_leaderboard() -> List[Dict[str, Any]]:
-    """Get leaderboard for Google-logged players (first name only for privacy)"""
+def get_unified_leaderboard() -> List[Dict[str, Any]]:
+    """Get unified leaderboard from vw_unified_leaderboard view.
+    Combines Google-auth games with location-inferred games for known players:
+    Tom (Helena/MT), Luke (Rocklin/CA + Virginia), Andy (Seattle/WA), Jon (Elliston/MT).
+    """
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        cur.execute("""
-            SELECT
-                SPLIT_PART(p.google_name, ' ', 1) as first_name,
-                COUNT(DISTINCT h.hand_id) as total_games,
-                SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN h.hand_player_score < h.hand_computer_score THEN 1 ELSE 0 END) as losses,
-                ROUND(
-                    SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END)::numeric /
-                    NULLIF(COUNT(DISTINCT h.hand_id), 0) * 100, 1
-                ) as win_rate,
-                ROUND(AVG(CASE WHEN h.hand_player_score > h.hand_computer_score THEN h.hand_player_score END)::numeric, 0) as avg_winning_score,
-                ROUND(AVG(CASE WHEN h.hand_player_score < h.hand_computer_score THEN h.hand_player_score END)::numeric, 0) as avg_losing_score
-            FROM twomanspades.players p
-            JOIN twomanspades.hands h ON p.player_id = h.player_id
-            WHERE p.google_id IS NOT NULL
-            AND h.completed_at IS NOT NULL
-            GROUP BY p.google_email, SPLIT_PART(p.google_name, ' ', 1)
-            ORDER BY wins DESC, win_rate DESC
-        """)
+        cur.execute("SELECT * FROM twomanspades.vw_unified_leaderboard")
 
         results = cur.fetchall()
         cur.close()
@@ -591,8 +576,13 @@ def get_google_players_leaderboard() -> List[Dict[str, Any]]:
         return [dict(row) for row in results]
 
     except Exception as e:
-        print(f"Failed to get Google players leaderboard: {e}")
+        print(f"Failed to get unified leaderboard: {e}")
         return []
+
+
+def get_google_players_leaderboard() -> List[Dict[str, Any]]:
+    """Legacy function - now wraps get_unified_leaderboard for backward compatibility"""
+    return get_unified_leaderboard()
 
 def get_competitive_leaders_stats() -> List[Dict[str, Any]]:
     """Get competitive win/loss records from vw_city_leaders view"""
@@ -647,25 +637,32 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
 
 
 def get_fun_stats() -> Dict[str, Any]:
-    """Get fun/interesting stats for display"""
+    """Get fun/interesting stats for display.
+    Uses game_completed events as source of truth for finished games."""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
 
         stats = {}
 
-        # Overall stats
+        # Total hands played (all completed hands, not just games)
         cur.execute('SELECT COUNT(DISTINCT hand_id) FROM twomanspades.hands WHERE completed_at IS NOT NULL')
+        stats['total_hands'] = cur.fetchone()[0]
+
+        # Total completed GAMES - from game_completed events (authoritative source)
+        cur.execute("SELECT COUNT(*) FROM twomanspades.game_events WHERE event_type = 'game_completed'")
         stats['total_games'] = cur.fetchone()[0]
 
         cur.execute('SELECT COUNT(*) FROM twomanspades.game_events WHERE event_type = %s', ('trick_completed',))
         stats['total_tricks'] = cur.fetchone()[0]
 
+        # Win/loss from game_completed events (authoritative source)
         cur.execute('''
             SELECT
-                SUM(CASE WHEN hand_player_score > hand_computer_score THEN 1 ELSE 0 END),
-                SUM(CASE WHEN hand_player_score < hand_computer_score THEN 1 ELSE 0 END)
-            FROM twomanspades.hands WHERE completed_at IS NOT NULL
+                SUM(CASE WHEN event_data->>'winner' = 'player' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN event_data->>'winner' = 'computer' THEN 1 ELSE 0 END)
+            FROM twomanspades.game_events
+            WHERE event_type = 'game_completed'
         ''')
         row = cur.fetchone()
         stats['human_wins'] = row[0] or 0
@@ -685,14 +682,15 @@ def get_fun_stats() -> Dict[str, Any]:
         ''')
         stats['bid_distribution'] = [{'bid': r[0], 'count': r[1]} for r in cur.fetchall()]
 
-        # Average game length
+        # Average game length - from game_completed events
         cur.execute('''
-            WITH game_lengths AS (
-                SELECT hand_id, MAX((event_data->'hand_results'->>'hand_number')::int) as hands
-                FROM twomanspades.game_events WHERE event_type = 'hand_scoring'
-                GROUP BY hand_id
-            )
-            SELECT ROUND(AVG(hands), 1), MIN(hands), MAX(hands) FROM game_lengths WHERE hands IS NOT NULL
+            SELECT
+                ROUND(AVG((event_data->>'hands_played')::int), 1),
+                MIN((event_data->>'hands_played')::int),
+                MAX((event_data->>'hands_played')::int)
+            FROM twomanspades.game_events
+            WHERE event_type = 'game_completed'
+            AND event_data->>'hands_played' IS NOT NULL
         ''')
         row = cur.fetchone()
         stats['avg_game_length'] = row[0]
@@ -708,22 +706,24 @@ def get_fun_stats() -> Dict[str, Any]:
         return {}
 
 
-def get_player_achievements() -> List[Dict[str, Any]]:
-    """Get notable achievements for Google-logged players"""
+def get_player_achievements() -> Dict[str, Any]:
+    """Get notable achievements for all known players (Tom/Luke/Jon/Andy).
+    Uses vw_player_game_details view (based on game_completed events)."""
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # Bid accuracy
+        # Bid accuracy - uses player identity from view
         cur.execute('''
             WITH bid_data AS (
                 SELECT
-                    SPLIT_PART(p.google_name, ' ', 1) as player,
+                    v.player_name as player,
                     (ge.event_data->'action_data'->>'bid_amount')::int as bid,
                     ge.hand_id
                 FROM twomanspades.game_events ge
-                JOIN twomanspades.players p ON ge.google_email = p.google_email
-                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player' AND p.google_id IS NOT NULL
+                JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
+                AND v.player_name IS NOT NULL AND v.player_name != 'Other'
             ),
             tricks_data AS (
                 SELECT hand_id, COUNT(*) as player_tricks
@@ -747,11 +747,12 @@ def get_player_achievements() -> List[Dict[str, Any]]:
         # Nil stats
         cur.execute('''
             WITH nil_bids AS (
-                SELECT SPLIT_PART(p.google_name, ' ', 1) as player, ge.hand_id
+                SELECT v.player_name as player, ge.hand_id
                 FROM twomanspades.game_events ge
-                JOIN twomanspades.players p ON ge.google_email = p.google_email
+                JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
-                AND (ge.event_data->'action_data'->>'bid_amount') = '0' AND p.google_id IS NOT NULL
+                AND (ge.event_data->'action_data'->>'bid_amount') = '0'
+                AND v.player_name IS NOT NULL AND v.player_name != 'Other'
             ),
             nil_results AS (
                 SELECT n.player, n.hand_id, COALESCE(COUNT(t.*), 0) as tricks_taken
@@ -767,51 +768,42 @@ def get_player_achievements() -> List[Dict[str, Any]]:
         ''')
         nil_stats = [dict(row) for row in cur.fetchall()]
 
-        # Closest wins
+        # Closest wins - from vw_player_game_details (uses game_completed events)
         cur.execute('''
-            SELECT SPLIT_PART(p.google_name, ' ', 1) as player,
-                h.hand_player_score, h.hand_computer_score,
-                h.hand_player_score - h.hand_computer_score as margin
-            FROM twomanspades.hands h
-            JOIN twomanspades.players p ON h.player_id = p.player_id
-            WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
-            AND h.hand_player_score > h.hand_computer_score
-            AND h.hand_player_score >= 300
+            SELECT player_name as player, hand_player_score, hand_computer_score, margin
+            FROM twomanspades.vw_player_game_details
+            WHERE won = true AND player_name != 'Other'
+            AND hand_player_score IS NOT NULL
             ORDER BY margin ASC LIMIT 5
         ''')
         closest_wins = [dict(row) for row in cur.fetchall()]
 
-        # Biggest blowouts
+        # Biggest blowouts - from vw_player_game_details
         cur.execute('''
-            SELECT SPLIT_PART(p.google_name, ' ', 1) as player,
-                h.hand_player_score, h.hand_computer_score,
-                h.hand_player_score - h.hand_computer_score as margin
-            FROM twomanspades.hands h
-            JOIN twomanspades.players p ON h.player_id = p.player_id
-            WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
-            AND h.hand_player_score > h.hand_computer_score
+            SELECT player_name as player, hand_player_score, hand_computer_score, margin
+            FROM twomanspades.vw_player_game_details
+            WHERE won = true AND player_name != 'Other'
+            AND hand_player_score IS NOT NULL
             ORDER BY margin DESC LIMIT 5
         ''')
         biggest_wins = [dict(row) for row in cur.fetchall()]
 
-        # Current win streaks (consecutive recent wins)
+        # Current win streaks - from vw_player_game_details
         cur.execute('''
             WITH recent_games AS (
                 SELECT
-                    SPLIT_PART(p.google_name, ' ', 1) as player,
-                    h.completed_at,
-                    CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END as won,
-                    ROW_NUMBER() OVER (PARTITION BY p.google_email ORDER BY h.completed_at DESC) as rn
-                FROM twomanspades.hands h
-                JOIN twomanspades.players p ON h.player_id = p.player_id
-                WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
+                    player_name as player,
+                    completed_at,
+                    CASE WHEN won THEN 1 ELSE 0 END as won_int,
+                    ROW_NUMBER() OVER (PARTITION BY player_name ORDER BY completed_at DESC) as rn
+                FROM twomanspades.vw_player_game_details
+                WHERE player_name IS NOT NULL AND player_name != 'Other'
             ),
             streaks AS (
                 SELECT player,
-                    SUM(won) as streak,
-                    MIN(CASE WHEN won = 0 THEN rn ELSE 999 END) - 1 as current_streak
+                    MIN(CASE WHEN won_int = 0 THEN rn ELSE 999 END) - 1 as current_streak
                 FROM recent_games
-                WHERE rn <= 20
+                WHERE rn <= 30
                 GROUP BY player
             )
             SELECT player, GREATEST(current_streak, 0) as streak
@@ -823,14 +815,14 @@ def get_player_achievements() -> List[Dict[str, Any]]:
         # Total bags accumulated per player
         cur.execute('''
             SELECT
-                SPLIT_PART(p.google_name, ' ', 1) as player,
-                SUM(h.player_bags) as total_bags,
-                COUNT(DISTINCT h.hand_id) as games,
-                ROUND(AVG(h.player_bags)::numeric, 2) as avg_bags
-            FROM twomanspades.hands h
-            JOIN twomanspades.players p ON h.player_id = p.player_id
-            WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
-            GROUP BY SPLIT_PART(p.google_name, ' ', 1)
+                player_name as player,
+                SUM(player_bags) as total_bags,
+                COUNT(*) as games,
+                ROUND(AVG(player_bags)::numeric, 2) as avg_bags
+            FROM twomanspades.vw_player_game_details
+            WHERE player_name IS NOT NULL AND player_name != 'Other'
+            AND player_bags IS NOT NULL
+            GROUP BY player_name
             ORDER BY total_bags DESC
         ''')
         bag_stats = [dict(row) for row in cur.fetchall()]
@@ -839,13 +831,14 @@ def get_player_achievements() -> List[Dict[str, Any]]:
         cur.execute('''
             WITH bid_counts AS (
                 SELECT
-                    SPLIT_PART(p.google_name, ' ', 1) as player,
+                    v.player_name as player,
                     (ge.event_data->'action_data'->>'bid_amount')::int as bid,
                     COUNT(*) as times
                 FROM twomanspades.game_events ge
-                JOIN twomanspades.players p ON ge.google_email = p.google_email
-                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player' AND p.google_id IS NOT NULL
-                GROUP BY SPLIT_PART(p.google_name, ' ', 1), (ge.event_data->'action_data'->>'bid_amount')::int
+                JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
+                AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+                GROUP BY v.player_name, (ge.event_data->'action_data'->>'bid_amount')::int
             ),
             ranked AS (
                 SELECT player, bid, times,
@@ -858,16 +851,14 @@ def get_player_achievements() -> List[Dict[str, Any]]:
         ''')
         favorite_bids = [dict(row) for row in cur.fetchall()]
 
-        # Worst losses (for fun/competitive spirit)
+        # Worst losses - from vw_player_game_details
         cur.execute('''
-            SELECT SPLIT_PART(p.google_name, ' ', 1) as player,
-                h.hand_player_score, h.hand_computer_score,
-                h.hand_computer_score - h.hand_player_score as margin
-            FROM twomanspades.hands h
-            JOIN twomanspades.players p ON h.player_id = p.player_id
-            WHERE p.google_id IS NOT NULL AND h.completed_at IS NOT NULL
-            AND h.hand_player_score < h.hand_computer_score
-            ORDER BY margin DESC LIMIT 5
+            SELECT player_name as player, hand_player_score, hand_computer_score,
+                   hand_computer_score - hand_player_score as margin
+            FROM twomanspades.vw_player_game_details
+            WHERE won = false AND player_name != 'Other'
+            AND hand_player_score IS NOT NULL
+            ORDER BY (hand_computer_score - hand_player_score) DESC LIMIT 5
         ''')
         worst_losses = [dict(row) for row in cur.fetchall()]
 
@@ -891,7 +882,8 @@ def get_player_achievements() -> List[Dict[str, Any]]:
 
 
 def get_special_card_stats() -> Dict[str, Any]:
-    """Get stats about the special cards (10 of clubs, 7 of diamonds)"""
+    """Get stats about the special cards (10 of clubs, 7 of diamonds).
+    Uses vw_player_identity for consistent player mapping."""
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -912,44 +904,43 @@ def get_special_card_stats() -> Dict[str, Any]:
         ''')
         overall_captures = [dict(row) for row in cur.fetchall()]
 
-        # Special card captures by Google player
+        # Special card captures by player - uses vw_player_identity for unified mapping
         cur.execute('''
             SELECT
-                SPLIT_PART(p.google_name, ' ', 1) as player,
+                COALESCE(v.player_name, 'Other') as player,
                 SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%10%' THEN 1 ELSE 0 END) as ten_clubs,
                 SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%7%' THEN 1 ELSE 0 END) as seven_diamonds,
                 COUNT(*) as total_special,
                 SUM((ge.event_data->>'bag_reduction')::int) as total_bags_saved
             FROM twomanspades.game_events ge
-            JOIN twomanspades.players p ON ge.google_email = p.google_email
+            JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
             WHERE ge.event_type = 'special_card_effect'
             AND ge.event_data->>'beneficiary' = 'You'
-            AND p.google_id IS NOT NULL
-            GROUP BY SPLIT_PART(p.google_name, ' ', 1)
+            AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+            GROUP BY COALESCE(v.player_name, 'Other')
             ORDER BY total_special DESC
         ''')
         player_captures = [dict(row) for row in cur.fetchall()]
 
-        # Win rate when capturing special cards (Google players)
+        # Win rate when capturing special cards - uses game_completed events
         cur.execute('''
             WITH special_games AS (
-                SELECT DISTINCT ge.hand_id, p.google_email
+                SELECT DISTINCT ge.hand_id, v.player_name
                 FROM twomanspades.game_events ge
-                JOIN twomanspades.players p ON ge.google_email = p.google_email
+                JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
                 WHERE ge.event_type = 'special_card_effect'
                 AND ge.event_data->>'beneficiary' = 'You'
-                AND p.google_id IS NOT NULL
+                AND v.player_name IS NOT NULL AND v.player_name != 'Other'
             )
             SELECT
-                SPLIT_PART(p.google_name, ' ', 1) as player,
+                sg.player_name as player,
                 COUNT(*) as games_with_special,
-                SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) as wins,
-                ROUND(100.0 * SUM(CASE WHEN h.hand_player_score > h.hand_computer_score THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate
+                SUM(CASE WHEN gc.event_data->>'winner' = 'player' THEN 1 ELSE 0 END) as wins,
+                ROUND(100.0 * SUM(CASE WHEN gc.event_data->>'winner' = 'player' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate
             FROM special_games sg
-            JOIN twomanspades.hands h ON sg.hand_id = h.hand_id
-            JOIN twomanspades.players p ON sg.google_email = p.google_email
-            WHERE h.completed_at IS NOT NULL
-            GROUP BY SPLIT_PART(p.google_name, ' ', 1)
+            JOIN twomanspades.game_events gc ON sg.hand_id = gc.hand_id
+            WHERE gc.event_type = 'game_completed'
+            GROUP BY sg.player_name
             ORDER BY games_with_special DESC
         ''')
         win_rate_with_special = [dict(row) for row in cur.fetchall()]
@@ -987,4 +978,197 @@ def get_special_card_stats() -> Dict[str, Any]:
 
     except Exception as e:
         print(f"Failed to get special card stats: {e}")
+        return {}
+
+
+def get_overall_game_stats() -> Dict[str, Any]:
+    """Get fun overall game statistics across all players - big numbers and interesting data."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        stats = {}
+
+        # Total points scored ever (all completed hands)
+        cur.execute('''
+            SELECT
+                SUM(hand_player_score) as total_player_points,
+                SUM(hand_computer_score) as total_computer_points,
+                SUM(hand_player_score) + SUM(hand_computer_score) as grand_total_points
+            FROM twomanspades.hands
+            WHERE completed_at IS NOT NULL
+            AND hand_player_score IS NOT NULL
+        ''')
+        points = dict(cur.fetchone())
+        stats['total_player_points'] = points['total_player_points'] or 0
+        stats['total_computer_points'] = points['total_computer_points'] or 0
+        stats['grand_total_points'] = points['grand_total_points'] or 0
+
+        # Total bags accumulated
+        cur.execute('''
+            SELECT
+                SUM(player_bags) as total_player_bags,
+                SUM(computer_bags) as total_computer_bags
+            FROM twomanspades.hands
+            WHERE completed_at IS NOT NULL
+        ''')
+        bags = dict(cur.fetchone())
+        stats['total_player_bags'] = bags['total_player_bags'] or 0
+        stats['total_computer_bags'] = bags['total_computer_bags'] or 0
+
+        # Total cards played (13 cards per hand, 2 players)
+        cur.execute('SELECT COUNT(*) FROM twomanspades.game_events WHERE event_type = %s', ('trick_completed',))
+        tricks = cur.fetchone()['count']
+        stats['total_cards_played'] = tricks * 2  # 2 cards per trick
+
+        # Nil attempts and success rate overall
+        cur.execute('''
+            WITH nil_bids AS (
+                SELECT ge.hand_id
+                FROM twomanspades.game_events ge
+                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
+                AND (ge.event_data->'action_data'->>'bid_amount') = '0'
+            ),
+            nil_results AS (
+                SELECT n.hand_id, COALESCE(COUNT(t.*), 0) as tricks_taken
+                FROM nil_bids n
+                LEFT JOIN twomanspades.game_events t ON n.hand_id = t.hand_id
+                    AND t.event_type = 'trick_completed' AND t.event_data->>'winner' = 'player'
+                GROUP BY n.hand_id
+            )
+            SELECT
+                COUNT(*) as total_nil_attempts,
+                SUM(CASE WHEN tricks_taken = 0 THEN 1 ELSE 0 END) as successful_nils,
+                ROUND(100.0 * SUM(CASE WHEN tricks_taken = 0 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) as nil_success_rate
+            FROM nil_results
+        ''')
+        nil = dict(cur.fetchone())
+        stats['total_nil_attempts'] = nil['total_nil_attempts'] or 0
+        stats['successful_nils'] = nil['successful_nils'] or 0
+        stats['nil_success_rate'] = nil['nil_success_rate'] or 0
+
+        # Highest single game score ever
+        cur.execute('''
+            SELECT
+                MAX(hand_player_score) as highest_player_score,
+                MAX(hand_computer_score) as highest_computer_score
+            FROM twomanspades.hands
+            WHERE completed_at IS NOT NULL
+        ''')
+        highest = dict(cur.fetchone())
+        stats['highest_player_score_ever'] = highest['highest_player_score']
+        stats['highest_computer_score_ever'] = highest['highest_computer_score']
+
+        # Lowest winning score (closest game)
+        cur.execute('''
+            SELECT
+                v.hand_player_score,
+                v.hand_computer_score,
+                v.player_name
+            FROM twomanspades.vw_player_game_details v
+            WHERE v.won = true
+            ORDER BY v.hand_player_score ASC
+            LIMIT 1
+        ''')
+        lowest_win = cur.fetchone()
+        if lowest_win:
+            stats['lowest_winning_score'] = lowest_win['hand_player_score']
+            stats['lowest_win_opponent_score'] = lowest_win['hand_computer_score']
+
+        # Biggest comeback (largest negative to positive swing)
+        cur.execute('''
+            WITH game_scores AS (
+                SELECT
+                    hand_id,
+                    event_data->>'player_score' as player_score,
+                    event_data->>'computer_score' as computer_score,
+                    hand_number
+                FROM twomanspades.game_events
+                WHERE event_type = 'hand_complete'
+            )
+            SELECT
+                hand_id,
+                MIN((player_score)::int - (computer_score)::int) as worst_deficit
+            FROM game_scores
+            GROUP BY hand_id
+            HAVING MIN((player_score)::int - (computer_score)::int) < -100
+            ORDER BY worst_deficit ASC
+            LIMIT 1
+        ''')
+        comeback = cur.fetchone()
+        if comeback:
+            # Check if this game was won
+            cur.execute('''
+                SELECT event_data->>'winner' as winner
+                FROM twomanspades.game_events
+                WHERE hand_id = %s AND event_type = 'game_completed'
+            ''', (comeback['hand_id'],))
+            result = cur.fetchone()
+            if result and result['winner'] == 'player':
+                stats['biggest_comeback_deficit'] = abs(comeback['worst_deficit'])
+
+        # Spades broken stats
+        cur.execute('''
+            SELECT COUNT(*) as times_spades_broken
+            FROM twomanspades.game_events
+            WHERE event_type = 'spades_broken'
+        ''')
+        stats['times_spades_broken'] = cur.fetchone()['times_spades_broken']
+
+        # Average tricks per hand won by players vs Marta
+        cur.execute('''
+            SELECT
+                SUM(CASE WHEN event_data->>'winner' = 'player' THEN 1 ELSE 0 END) as player_tricks,
+                SUM(CASE WHEN event_data->>'winner' = 'computer' THEN 1 ELSE 0 END) as computer_tricks
+            FROM twomanspades.game_events
+            WHERE event_type = 'trick_completed'
+        ''')
+        trick_wins = dict(cur.fetchone())
+        stats['total_player_tricks'] = trick_wins['player_tricks'] or 0
+        stats['total_computer_tricks'] = trick_wins['computer_tricks'] or 0
+
+        # Most popular bid overall
+        cur.execute('''
+            SELECT
+                (event_data->'action_data'->>'bid_amount')::int as bid,
+                COUNT(*) as times
+            FROM twomanspades.game_events
+            WHERE event_type = 'action_regular_bid' AND player = 'player'
+            GROUP BY (event_data->'action_data'->>'bid_amount')::int
+            ORDER BY times DESC
+            LIMIT 1
+        ''')
+        popular = cur.fetchone()
+        if popular:
+            stats['most_popular_bid'] = popular['bid']
+            stats['most_popular_bid_times'] = popular['times']
+
+        # Blind nil stats
+        cur.execute('''
+            SELECT
+                COUNT(*) as blind_nil_attempts,
+                SUM(CASE WHEN event_data->>'result' = 'success' THEN 1 ELSE 0 END) as blind_nil_successes
+            FROM twomanspades.game_events
+            WHERE event_type = 'blind_nil_result'
+        ''')
+        blind = cur.fetchone()
+        if blind and blind['blind_nil_attempts']:
+            stats['blind_nil_attempts'] = blind['blind_nil_attempts']
+            stats['blind_nil_successes'] = blind['blind_nil_successes'] or 0
+
+        # First game ever date
+        cur.execute('''
+            SELECT MIN(started_at) as first_game
+            FROM twomanspades.hands
+        ''')
+        first = cur.fetchone()
+        if first and first['first_game']:
+            stats['first_game_date'] = first['first_game'].strftime('%B %d, %Y')
+
+        cur.close()
+        conn.close()
+        return stats
+
+    except Exception as e:
+        print(f"Failed to get overall game stats: {e}")
         return {}
