@@ -55,9 +55,14 @@
                     <div class="overall-value">{{ fun_stats.avg_game_length|default(0) }} hands</div>
                     <div class="overall-label">Avg Game Length</div>
                 </div>
+                <div class="overall-stat">
+                    <div class="overall-value">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</div>
+                    <div class="overall-label">Avg Game Time</div>
+                </div>
             </div>
             <div class="game-length-note">
-                Shortest game: {{ fun_stats.shortest_game|default(0) }} hands, longest: {{ fun_stats.longest_game|default(0) }} hands
+                Shortest: {{ fun_stats.shortest_game|default(0) }} hands ({{ fun_stats.min_game_duration_minutes|default(0) }} min),
+                Longest: {{ fun_stats.longest_game|default(0) }} hands ({{ fun_stats.max_game_duration_minutes|default(0) }} min)
             </div>
         </div>
         {% endif %}

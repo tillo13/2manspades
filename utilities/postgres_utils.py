@@ -697,6 +697,33 @@ def get_fun_stats() -> Dict[str, Any]:
         stats['shortest_game'] = row[1]
         stats['longest_game'] = row[2]
 
+        # Average game duration in minutes (time from first to last event)
+        cur.execute('''
+            WITH game_times AS (
+                SELECT
+                    hand_id,
+                    MIN(timestamp) as start_time,
+                    MAX(timestamp) as end_time
+                FROM twomanspades.game_events
+                WHERE hand_id IN (
+                    SELECT hand_id FROM twomanspades.game_events
+                    WHERE event_type = 'game_completed'
+                )
+                GROUP BY hand_id
+            )
+            SELECT
+                ROUND(AVG(EXTRACT(EPOCH FROM (end_time - start_time)) / 60)::numeric, 1) as avg_minutes,
+                ROUND(MIN(EXTRACT(EPOCH FROM (end_time - start_time)) / 60)::numeric, 1) as min_minutes,
+                ROUND(MAX(EXTRACT(EPOCH FROM (end_time - start_time)) / 60)::numeric, 1) as max_minutes
+            FROM game_times
+            WHERE end_time > start_time
+        ''')
+        duration = cur.fetchone()
+        if duration:
+            stats['avg_game_duration_minutes'] = duration[0]
+            stats['min_game_duration_minutes'] = duration[1]
+            stats['max_game_duration_minutes'] = duration[2]
+
         cur.close()
         conn.close()
         return stats
@@ -1586,28 +1613,29 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             hand = hands[hand_num]
 
             if etype == 'action_regular_bid':
-                player_name = 'You' if event['player'] == 'player' else 'Marta'
+                # Use actual player name instead of "You"
+                bid_player = summary['player_name'] if event['player'] == 'player' else 'Marta'
                 bid_amount = data['action_data']['bid_amount']
                 is_nil = data['action_data'].get('is_nil', False)
                 hand['bids'].append({
-                    'player': player_name,
+                    'player': bid_player,
                     'amount': bid_amount,
                     'is_nil': is_nil,
                     'is_blind': False
                 })
 
             elif etype == 'action_blind_bid':
-                player_name = 'You' if event['player'] == 'player' else 'Marta'
+                bid_player = summary['player_name'] if event['player'] == 'player' else 'Marta'
                 bid_amount = data['action_data']['bid_amount']
                 hand['bids'].append({
-                    'player': player_name,
+                    'player': bid_player,
                     'amount': bid_amount,
                     'is_nil': bid_amount == 0,
                     'is_blind': True
                 })
 
             elif etype == 'trick_completed':
-                winner = 'You' if data['winner'] == 'player' else 'Marta'
+                winner = summary['player_name'] if data['winner'] == 'player' else 'Marta'
                 hand['tricks'].append({
                     'number': data['trick_number'],
                     'winner': winner

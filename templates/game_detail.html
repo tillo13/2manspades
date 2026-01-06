@@ -29,8 +29,8 @@
             font-size: 1.8rem;
             margin: 1rem 0;
         }
-        .final-score .player-score { color: #60a5fa; }
-        .final-score .computer-score { color: #f472b6; }
+        .final-score .player-score { color: #3b82f6; }
+        .final-score .computer-score { color: #f59e0b; }
 
         .hand-card {
             background: #1e293b;
@@ -58,8 +58,8 @@
         .hand-score {
             font-size: 1.1rem;
         }
-        .hand-score .player { color: #60a5fa; }
-        .hand-score .computer { color: #f472b6; }
+        .hand-score .player { color: #3b82f6; }
+        .hand-score .computer { color: #f59e0b; }
 
         .bids-section {
             display: flex;
@@ -101,12 +101,14 @@
             font-size: 0.75rem;
         }
         .trick.player-won {
-            background: rgba(96, 165, 250, 0.2);
-            border: 1px solid #60a5fa;
+            background: rgba(59, 130, 246, 0.3);
+            border: 2px solid #3b82f6;
+            color: #93c5fd;
         }
         .trick.computer-won {
-            background: rgba(244, 114, 182, 0.2);
-            border: 1px solid #f472b6;
+            background: rgba(245, 158, 11, 0.3);
+            border: 2px solid #f59e0b;
+            color: #fcd34d;
         }
         .trick-number {
             font-weight: bold;
@@ -262,17 +264,17 @@
             <div class="trick-history" id="tricks-{{ hand.hand_number }}">
                 <div class="trick-detail">
                     {% for trick in hand.trick_history %}
-                    <div class="trick-detail-item {% if trick.winner == 'You' %}winner{% endif %}">
+                    <div class="trick-detail-item {% if trick.winner != 'Marta' %}winner{% endif %}">
                         <div>
                             <strong>Trick {{ trick.number }}</strong><br>
                             <span class="card-played">
-                                You: <span class="{{ trick.player_card[-1]|lower }}s">{{ trick.player_card }}</span>
+                                {{ game.summary.player_name }}: <span class="{{ trick.player_card[-1]|lower }}s">{{ trick.player_card }}</span>
                             </span><br>
                             <span class="card-played">
                                 Marta: <span class="{{ trick.computer_card[-1]|lower }}s">{{ trick.computer_card }}</span>
                             </span>
                         </div>
-                        <div style="font-size: 0.85rem; color: {% if trick.winner == 'You' %}#4ade80{% else %}#f472b6{% endif %};">
+                        <div style="font-size: 0.85rem; color: {% if trick.winner != 'Marta' %}#3b82f6{% else %}#f59e0b{% endif %};">
                             {{ trick.winner }}
                         </div>
                     </div>
