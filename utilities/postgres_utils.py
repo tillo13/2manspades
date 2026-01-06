@@ -790,7 +790,7 @@ def get_player_achievements() -> Dict[str, Any]:
         ''')
         biggest_wins = [dict(row) for row in cur.fetchall()]
 
-        # Current streaks - both wins AND losses (actual counts, not capped)
+        # Current streaks - show every player's current streak (win or loss)
         cur.execute('''
             WITH recent_games AS (
                 SELECT
@@ -801,28 +801,28 @@ def get_player_achievements() -> Dict[str, Any]:
                 FROM twomanspades.vw_player_game_details
                 WHERE player_name IS NOT NULL AND player_name != 'Other'
             ),
-            win_streaks AS (
-                SELECT player,
-                    MIN(CASE WHEN NOT won THEN rn ELSE 9999 END) - 1 as streak
-                FROM recent_games
-                GROUP BY player
-                HAVING MIN(CASE WHEN NOT won THEN rn ELSE 9999 END) > 1
+            first_result AS (
+                SELECT player, won as on_win_streak
+                FROM recent_games WHERE rn = 1
             ),
-            loss_streaks AS (
-                SELECT player,
-                    MIN(CASE WHEN won THEN rn ELSE 9999 END) - 1 as streak
-                FROM recent_games
-                GROUP BY player
-                HAVING MIN(CASE WHEN won THEN rn ELSE 9999 END) > 1
+            streak_calc AS (
+                SELECT
+                    r.player,
+                    f.on_win_streak,
+                    MIN(CASE WHEN r.won != f.on_win_streak THEN r.rn ELSE 9999 END) - 1 as streak
+                FROM recent_games r
+                JOIN first_result f ON r.player = f.player
+                GROUP BY r.player, f.on_win_streak
             )
-            SELECT 'win' as streak_type, player, streak FROM win_streaks WHERE streak > 0
-            UNION ALL
-            SELECT 'loss' as streak_type, player, streak FROM loss_streaks WHERE streak > 1
+            SELECT
+                player,
+                CASE WHEN on_win_streak THEN 'win' ELSE 'loss' END as streak_type,
+                streak
+            FROM streak_calc
+            WHERE streak > 0
             ORDER BY streak DESC
         ''')
-        all_streaks = [dict(row) for row in cur.fetchall()]
-        # Combined streaks list - sorted by streak length, includes both wins and losses
-        streaks = all_streaks
+        streaks = [dict(row) for row in cur.fetchall()]
 
         # Overbid stats (bags per hand) - bags = overbidding penalty
         cur.execute('''
@@ -874,6 +874,39 @@ def get_player_achievements() -> Dict[str, Any]:
             ORDER BY (final_computer_score - final_player_score) DESC LIMIT 5
         ''')
         worst_losses = [dict(row) for row in cur.fetchall()]
+
+        # Biggest comebacks - games where player was furthest behind but won
+        cur.execute('''
+            WITH game_scores AS (
+                SELECT
+                    ge.hand_id,
+                    ge.hand_number,
+                    (ge.event_data->'final_scores'->>'player_score')::int -
+                    (ge.event_data->'final_scores'->>'computer_score')::int as deficit
+                FROM twomanspades.game_events ge
+                WHERE ge.event_type = 'hand_scoring'
+            ),
+            worst_deficits AS (
+                SELECT hand_id, MIN(deficit) as worst_deficit
+                FROM game_scores
+                GROUP BY hand_id
+                HAVING MIN(deficit) < -50
+            )
+            SELECT
+                v.player_name as player,
+                v.completed_at,
+                v.final_player_score,
+                v.final_computer_score,
+                ABS(wd.worst_deficit) as points_behind,
+                v.player_bags,
+                v.hands_played
+            FROM worst_deficits wd
+            JOIN twomanspades.vw_player_game_details v ON wd.hand_id = v.hand_id
+            WHERE v.won = true AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+            ORDER BY ABS(wd.worst_deficit) DESC
+            LIMIT 5
+        ''')
+        biggest_comebacks = [dict(row) for row in cur.fetchall()]
 
         # Blind bid stats - when offered blind (down 100+), did they take it and succeed?
         cur.execute('''
@@ -971,6 +1004,7 @@ def get_player_achievements() -> Dict[str, Any]:
             'bag_stats': bag_stats,
             'favorite_bids': favorite_bids,
             'worst_losses': worst_losses,
+            'biggest_comebacks': biggest_comebacks,
             'blind_stats': blind_stats,
             'blind_by_level': blind_by_level  # Blind bids broken down by level 5-10
         }
@@ -1004,20 +1038,39 @@ def get_special_card_stats() -> Dict[str, Any]:
         overall_captures = [dict(row) for row in cur.fetchall()]
 
         # Special card captures by player - uses vw_player_identity for unified mapping
+        # Includes per-game rate for fair comparison across players
         cur.execute('''
+            WITH player_games AS (
+                SELECT player_name, COUNT(*) as games_played
+                FROM twomanspades.vw_player_game_details
+                WHERE player_name IS NOT NULL AND player_name != 'Other'
+                GROUP BY player_name
+            ),
+            captures AS (
+                SELECT
+                    COALESCE(v.player_name, 'Other') as player,
+                    SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%10%' THEN 1 ELSE 0 END) as ten_clubs,
+                    SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%7%' THEN 1 ELSE 0 END) as seven_diamonds,
+                    COUNT(*) as total_special,
+                    SUM((ge.event_data->>'bag_reduction')::int) as total_bags_saved
+                FROM twomanspades.game_events ge
+                JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+                WHERE ge.event_type = 'special_card_effect'
+                AND ge.event_data->>'beneficiary' = 'You'
+                AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+                GROUP BY COALESCE(v.player_name, 'Other')
+            )
             SELECT
-                COALESCE(v.player_name, 'Other') as player,
-                SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%10%' THEN 1 ELSE 0 END) as ten_clubs,
-                SUM(CASE WHEN ge.event_data->>'explanation' LIKE '%7%' THEN 1 ELSE 0 END) as seven_diamonds,
-                COUNT(*) as total_special,
-                SUM((ge.event_data->>'bag_reduction')::int) as total_bags_saved
-            FROM twomanspades.game_events ge
-            JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
-            WHERE ge.event_type = 'special_card_effect'
-            AND ge.event_data->>'beneficiary' = 'You'
-            AND v.player_name IS NOT NULL AND v.player_name != 'Other'
-            GROUP BY COALESCE(v.player_name, 'Other')
-            ORDER BY total_special DESC
+                c.player,
+                c.ten_clubs,
+                c.seven_diamonds,
+                c.total_special,
+                c.total_bags_saved,
+                pg.games_played,
+                ROUND(c.total_bags_saved::numeric / NULLIF(pg.games_played, 0), 2) as bags_saved_per_game
+            FROM captures c
+            JOIN player_games pg ON c.player = pg.player_name
+            ORDER BY bags_saved_per_game DESC
         ''')
         player_captures = [dict(row) for row in cur.fetchall()]
 
@@ -1146,24 +1199,38 @@ def get_overall_game_stats() -> Dict[str, Any]:
         stats['successful_nils'] = nil['successful_nils'] or 0
         stats['nil_success_rate'] = nil['nil_success_rate'] or 0
 
-        # Highest single game score ever
+        # Highest single game score ever (with bags)
         cur.execute('''
-            SELECT
-                MAX(hand_player_score) as highest_player_score,
-                MAX(hand_computer_score) as highest_computer_score
-            FROM twomanspades.hands
-            WHERE completed_at IS NOT NULL
+            SELECT final_player_score, player_bags, player_name
+            FROM twomanspades.vw_player_game_details
+            WHERE final_player_score IS NOT NULL
+            ORDER BY final_player_score DESC
+            LIMIT 1
         ''')
-        highest = dict(cur.fetchone())
-        stats['highest_player_score_ever'] = highest['highest_player_score']
-        stats['highest_computer_score_ever'] = highest['highest_computer_score']
+        highest_player = cur.fetchone()
+        if highest_player:
+            stats['highest_player_score_ever'] = highest_player['final_player_score']
+            stats['highest_player_score_bags'] = highest_player['player_bags']
+            stats['highest_player_score_player'] = highest_player['player_name']
 
-        # Lowest winning score (closest game)
+        cur.execute('''
+            SELECT final_computer_score
+            FROM twomanspades.vw_player_game_details
+            WHERE final_computer_score IS NOT NULL
+            ORDER BY final_computer_score DESC
+            LIMIT 1
+        ''')
+        highest_computer = cur.fetchone()
+        if highest_computer:
+            stats['highest_computer_score_ever'] = highest_computer['final_computer_score']
+
+        # Lowest winning score (closest game) with bags
         cur.execute('''
             SELECT
                 v.final_player_score,
                 v.final_computer_score,
-                v.player_name
+                v.player_name,
+                v.player_bags
             FROM twomanspades.vw_player_game_details v
             WHERE v.won = true
             ORDER BY v.final_player_score ASC
@@ -1173,6 +1240,7 @@ def get_overall_game_stats() -> Dict[str, Any]:
         if lowest_win:
             stats['lowest_winning_score'] = lowest_win['final_player_score']
             stats['lowest_win_opponent_score'] = lowest_win['final_computer_score']
+            stats['lowest_win_bags'] = lowest_win['player_bags']
 
         # Biggest comeback (largest negative to positive swing)
         cur.execute('''
@@ -1206,13 +1274,19 @@ def get_overall_game_stats() -> Dict[str, Any]:
             if result and result['winner'] == 'player':
                 stats['biggest_comeback_deficit'] = abs(comeback['worst_deficit'])
 
-        # Spades broken stats
+        # Spades broken stats - average hand number when spades break
         cur.execute('''
-            SELECT COUNT(*) as times_spades_broken
+            SELECT
+                ROUND(AVG(hand_number), 1) as avg_hand_spades_broken,
+                MIN(hand_number) as earliest_spades_broken,
+                MAX(hand_number) as latest_spades_broken
             FROM twomanspades.game_events
-            WHERE event_type = 'spades_broken'
+            WHERE event_type = 'spades_broken' AND hand_number IS NOT NULL
         ''')
-        stats['times_spades_broken'] = cur.fetchone()['times_spades_broken']
+        spades_broken = cur.fetchone()
+        stats['avg_hand_spades_broken'] = spades_broken['avg_hand_spades_broken']
+        stats['earliest_spades_broken'] = spades_broken['earliest_spades_broken']
+        stats['latest_spades_broken'] = spades_broken['latest_spades_broken']
 
         # Average tricks per hand won by players vs Marta
         cur.execute('''

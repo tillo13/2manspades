@@ -292,6 +292,19 @@
                 </div>
                 {% endif %}
 
+                <!-- Biggest Comebacks -->
+                {% if achievements.biggest_comebacks %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Biggest Comebacks</div>
+                    {% for g in achievements.biggest_comebacks %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ g.player }}</span>
+                        <span class="achievement-value streak-value">Down {{ g.points_behind }}, won {{ g.final_player_score }}-{{ g.final_computer_score }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <!-- Blind Bid Stats -->
                 {% if achievements.blind_stats %}
                 <div class="achievement-card">
@@ -362,7 +375,7 @@
                         <span class="ten-capture">10♣: {{ p.ten_clubs }}</span>
                         <span class="seven-capture">7♦: {{ p.seven_diamonds }}</span>
                     </span>
-                    <span class="bags-saved">{{ p.total_bags_saved }} bags saved</span>
+                    <span class="bags-saved">{{ p.bags_saved_per_game }} bags/game ({{ p.total_bags_saved }} total)</span>
                 </div>
                 {% endfor %}
             </div>
@@ -483,7 +496,7 @@
                 {% if overall_stats.highest_player_score_ever %}
                 <div class="record-item">
                     <span class="record-label">Highest Player Score</span>
-                    <span class="record-value highlight-value">{{ overall_stats.highest_player_score_ever }}</span>
+                    <span class="record-value highlight-value">{{ overall_stats.highest_player_score_ever }}{% if overall_stats.highest_player_score_bags %} ({{ overall_stats.highest_player_score_bags }} bags){% endif %}</span>
                 </div>
                 {% endif %}
 
@@ -498,7 +511,7 @@
                 {% if overall_stats.lowest_winning_score %}
                 <div class="record-item">
                     <span class="record-label">Lowest Winning Score</span>
-                    <span class="record-value">{{ overall_stats.lowest_winning_score }} to {{ overall_stats.lowest_win_opponent_score }}</span>
+                    <span class="record-value">{{ overall_stats.lowest_winning_score }} to {{ overall_stats.lowest_win_opponent_score }}{% if overall_stats.lowest_win_bags %} ({{ overall_stats.lowest_win_bags }} bags){% endif %}</span>
                 </div>
                 {% endif %}
 
@@ -535,10 +548,10 @@
                 {% endif %}
 
                 <!-- Spades Broken -->
-                {% if overall_stats.times_spades_broken %}
+                {% if overall_stats.avg_hand_spades_broken %}
                 <div class="record-item">
-                    <span class="record-label">Times Spades Broken</span>
-                    <span class="record-value">{{ "{:,}".format(overall_stats.times_spades_broken) }}</span>
+                    <span class="record-label">Avg Hand Spades Break</span>
+                    <span class="record-value">Hand {{ overall_stats.avg_hand_spades_broken }}</span>
                 </div>
                 {% endif %}
             </div>
