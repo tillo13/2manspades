@@ -997,19 +997,30 @@ body {
 
 @media (max-width: 480px) {
     .overall-records-section {
-        padding: 20px 15px;
+        padding: 20px 12px;
+    }
+
+    .big-numbers-grid {
+        gap: 10px;
+    }
+
+    .big-number-card {
+        padding: 15px 10px;
     }
 
     .big-number {
-        font-size: 22px;
+        font-size: 20px;
+        word-break: break-word;
     }
 
     .big-label {
-        font-size: 11px;
+        font-size: 10px;
+        line-height: 1.2;
     }
 
     .big-detail {
-        font-size: 10px;
+        font-size: 9px;
+        line-height: 1.3;
     }
 
     .record-item {
@@ -1022,6 +1033,29 @@ body {
 
     .record-value {
         font-size: 13px;
+    }
+}
+
+@media (max-width: 360px) {
+    .big-numbers-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .big-number-card {
+        padding: 12px;
+    }
+
+    .big-number {
+        font-size: 24px;
+    }
+
+    .big-label {
+        font-size: 12px;
+    }
+
+    .big-detail {
+        font-size: 11px;
     }
 }
 
