@@ -83,6 +83,13 @@
             background: #f8d7da;
             color: #721c24;
         }
+        .game-result.abandoned {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+        .game-row.abandoned {
+            opacity: 0.7;
+        }
         .game-score {
             font-size: 1rem;
             min-width: 80px;
@@ -135,8 +142,14 @@
                 </div>
                 <div class="summary-stat">
                     <div class="summary-value">{{ player.summary.total_games }}</div>
-                    <div class="summary-label">Games</div>
+                    <div class="summary-label">Completed</div>
                 </div>
+                {% if player.summary.abandoned %}
+                <div class="summary-stat">
+                    <div class="summary-value">{{ player.summary.abandoned }}</div>
+                    <div class="summary-label">Abandoned</div>
+                </div>
+                {% endif %}
                 <div class="summary-stat">
                     <div class="summary-value">{{ player.summary.highest_score }}</div>
                     <div class="summary-label">High Score</div>
@@ -152,23 +165,23 @@
             <div class="section-title">Game History</div>
             <div class="games-list">
                 {% for game in player.games %}
-                <div class="game-row">
+                <div class="game-row {% if game.is_abandoned %}abandoned{% endif %}">
                     <div class="game-date">
-                        <a href="/game/{{ game.hand_id }}">{{ game.completed_at.strftime('%b %-d, %Y') }}</a>
+                        <a href="/game/{{ game.hand_id }}">{{ game.game_time.strftime('%b %-d, %Y') }}</a>
                     </div>
-                    <div class="game-result {{ 'won' if game.won else 'lost' }}">
-                        {{ 'WIN' if game.won else 'LOSS' }}
+                    <div class="game-result {% if game.is_abandoned %}abandoned{% elif game.won %}won{% else %}lost{% endif %}">
+                        {% if game.is_abandoned %}DNF{% elif game.won %}WIN{% else %}LOSS{% endif %}
                     </div>
                     <div class="game-score">
-                        <span class="player-score">{{ game.final_player_score }}</span>
+                        <span class="player-score">{{ game.final_player_score or 0 }}</span>
                         <span style="color: #999;"> - </span>
-                        <span class="computer-score">{{ game.final_computer_score }}</span>
+                        <span class="computer-score">{{ game.final_computer_score or 0 }}</span>
                     </div>
                     <div class="game-meta">
-                        {{ game.hands_played }} hands
+                        {{ game.hands_played or 0 }} hands
                         {% if game.player_bags %}· {{ game.player_bags }} bags{% endif %}
                     </div>
-                    {% if game.game_end_reason and game.game_end_reason != 'normal' %}
+                    {% if game.game_end_reason and game.game_end_reason not in ['normal', 'abandoned'] %}
                     <div class="game-reason">{{ game.game_end_reason }}</div>
                     {% endif %}
                 </div>

@@ -1907,14 +1907,15 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         print(f"Failed to get game details: {e}")
         return None
 def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
-    """Get all games for a specific player, sorted by date descending."""
+    """Get all games for a specific player, sorted by date descending.
+    Includes both completed and abandoned games."""
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        # Get player stats summary
+
+        # Get player stats summary (completed games only)
         cur.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_games,
                 SUM(CASE WHEN won THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN NOT won THEN 1 ELSE 0 END) as losses,
@@ -1926,36 +1927,68 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
             WHERE player_name = %s
         ''', (player_name,))
         summary = dict(cur.fetchone())
-        
-        # Get all games
+
+        # Get all games (completed + abandoned) using UNION
         cur.execute('''
-            SELECT 
-                v.hand_id,
-                v.won,
-                v.final_player_score,
-                v.final_computer_score,
-                v.margin,
-                v.player_bags,
-                v.hands_played,
-                ge.timestamp as completed_at,
-                v.game_end_reason
-            FROM twomanspades.vw_player_game_details v
-            JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
-                AND ge.event_type = 'game_completed'
-            WHERE v.player_name = %s
-            ORDER BY ge.timestamp DESC
-        ''', (player_name,))
+            WITH completed_games AS (
+                SELECT
+                    v.hand_id,
+                    v.won,
+                    v.final_player_score,
+                    v.final_computer_score,
+                    v.margin,
+                    v.player_bags,
+                    v.hands_played,
+                    ge.timestamp as game_time,
+                    v.game_end_reason,
+                    false as is_abandoned
+                FROM twomanspades.vw_player_game_details v
+                JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
+                    AND ge.event_type = 'game_completed'
+                WHERE v.player_name = %s
+            ),
+            abandoned_games AS (
+                SELECT
+                    h.hand_id,
+                    NULL::boolean as won,
+                    h.hand_player_score as final_player_score,
+                    h.hand_computer_score as final_computer_score,
+                    NULL::int as margin,
+                    h.player_bags,
+                    (SELECT COUNT(DISTINCT hand_number) FROM twomanspades.game_events
+                     WHERE hand_id = h.hand_id AND hand_number > 0) as hands_played,
+                    h.started_at as game_time,
+                    'abandoned' as game_end_reason,
+                    true as is_abandoned
+                FROM twomanspades.hands h
+                JOIN twomanspades.vw_player_identity v ON h.hand_id = v.hand_id
+                WHERE v.player_name = %s
+                AND h.completed_at IS NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM twomanspades.game_events ge
+                    WHERE ge.hand_id = h.hand_id AND ge.event_type = 'game_completed'
+                )
+            )
+            SELECT * FROM completed_games
+            UNION ALL
+            SELECT * FROM abandoned_games
+            ORDER BY game_time DESC
+        ''', (player_name, player_name))
         games = [dict(row) for row in cur.fetchall()]
-        
+
+        # Add abandoned count to summary
+        abandoned_count = sum(1 for g in games if g.get('is_abandoned'))
+        summary['abandoned'] = abandoned_count
+
         cur.close()
         conn.close()
-        
+
         return {
             'player_name': player_name,
             'summary': summary,
             'games': games
         }
-        
+
     except Exception as e:
         print(f"Failed to get player games: {e}")
         return None
