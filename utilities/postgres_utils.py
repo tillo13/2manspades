@@ -1958,8 +1958,8 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
                     h.hand_computer_score as final_computer_score,
                     NULL::int as margin,
                     h.player_bags,
-                    (SELECT COUNT(DISTINCT hand_number) FROM twomanspades.game_events
-                     WHERE hand_id = h.hand_id AND hand_number > 0) as hands_played,
+                    (SELECT COUNT(*) FROM twomanspades.game_events
+                     WHERE hand_id = h.hand_id AND event_type = 'hand_completed') as hands_played,
                     h.started_at as game_time,
                     'abandoned' as game_end_reason,
                     true as is_abandoned
@@ -1971,10 +1971,15 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
                     SELECT 1 FROM twomanspades.game_events ge
                     WHERE ge.hand_id = h.hand_id AND ge.event_type = 'game_completed'
                 )
-                AND EXISTS (
-                    -- Must have at least 1 hand played to count as abandoned
-                    SELECT 1 FROM twomanspades.game_events ge
-                    WHERE ge.hand_id = h.hand_id AND ge.hand_number > 0
+                AND (
+                    -- Must have actual progress to count as abandoned:
+                    -- Either a non-zero score OR a completed hand event
+                    (h.hand_player_score IS NOT NULL AND h.hand_player_score != 0)
+                    OR (h.hand_computer_score IS NOT NULL AND h.hand_computer_score != 0)
+                    OR EXISTS (
+                        SELECT 1 FROM twomanspades.game_events ge
+                        WHERE ge.hand_id = h.hand_id AND ge.event_type = 'hand_completed'
+                    )
                 )
             )
             SELECT * FROM completed_games
