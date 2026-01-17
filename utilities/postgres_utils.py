@@ -1971,6 +1971,11 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
                     SELECT 1 FROM twomanspades.game_events ge
                     WHERE ge.hand_id = h.hand_id AND ge.event_type = 'game_completed'
                 )
+                AND EXISTS (
+                    -- Must have at least 1 hand played to count as abandoned
+                    SELECT 1 FROM twomanspades.game_events ge
+                    WHERE ge.hand_id = h.hand_id AND ge.hand_number > 0
+                )
             )
             SELECT * FROM completed_games
             UNION ALL

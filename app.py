@@ -617,7 +617,7 @@ def game_detail(hand_id):
     from utilities.postgres_utils import get_game_details
     game = get_game_details(hand_id)
     if not game:
-        return render_template('404.html', message="Game not found"), 404
+        return render_template('404.html', message=f"Game not found: {hand_id}"), 404
     return render_template('game_detail.html', game=game)
 
 
