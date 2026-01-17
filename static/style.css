@@ -26,6 +26,62 @@ body:not(.instructions-page) {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+/* LOGIN PROMPT BANNER for suspected players */
+.login-prompt-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    padding: 8px 15px;
+    text-align: center;
+    font-size: 14px;
+    z-index: 1001;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.login-prompt-banner .login-prompt-link {
+    color: white;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.login-prompt-banner .login-prompt-link:hover {
+    color: #e8f5e9;
+}
+
+.login-prompt-dismiss {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 5px;
+    opacity: 0.8;
+}
+
+.login-prompt-dismiss:hover {
+    opacity: 1;
+}
+
+/* Adjust body padding when banner is shown */
+body:has(.login-prompt-banner) {
+    padding-top: 175px !important;
+}
+
+body:has(.login-prompt-banner) .floating-game-score {
+    top: 45px;
+}
+
+body:has(.login-prompt-banner) .floating-hand-score {
+    top: 115px;
+}
+
 /* FLOATING HEADERS (GAME ONLY) */
 .floating-game-score {
     position: fixed;

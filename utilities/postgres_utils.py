@@ -132,6 +132,37 @@ def test_connection():
         print(f"Database connection failed: {e}")
         return False
 
+def get_suspected_player_from_ip(ip_address: str) -> Optional[str]:
+    """Get suspected player name based on IP location mapping.
+    Returns player name (Tom, Luke, Jon, Andy) or None if unknown."""
+    if not ip_address:
+        return None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                CASE
+                    WHEN city IN ('Missoula', 'Blackfoot', 'Elliston') AND region = 'Montana' THEN 'Jon'
+                    WHEN city = 'Helena' AND region = 'Montana' THEN 'Tom'
+                    WHEN region = 'Montana' THEN 'Tom'
+                    WHEN city IN ('Rocklin', 'Sacramento', 'Florin', 'Elk Grove', 'Roseville', 'Folsom', 'Citrus Heights')
+                         AND region = 'California' THEN 'Luke'
+                    WHEN region = 'Virginia' THEN 'Luke'
+                    WHEN region = 'Washington' THEN 'Andy'
+                    ELSE NULL
+                END as player_name
+            FROM twomanspades.ip_location_data
+            WHERE ip_address = %s
+        """, (ip_address,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else None
+    except Exception as e:
+        print(f"[DB] Error getting suspected player: {e}")
+        return None
+
 def insert_hand(hand_data: Dict[str, Any]) -> bool:
     """Insert new hand record"""
     try:

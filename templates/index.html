@@ -26,6 +26,14 @@
 </head>
 
 <body>
+    {% if suspected_player %}
+    <!-- Login prompt for suspected known player -->
+    <div id="loginPromptBanner" class="login-prompt-banner">
+        <span>Hey {{ suspected_player }}! <a href="/login" class="login-prompt-link">Login</a> to track your stats</span>
+        <button class="login-prompt-dismiss" onclick="dismissLoginPrompt()">&times;</button>
+    </div>
+    {% endif %}
+
     <!-- Floating score headers -->
     <div class="floating-game-score" id="floatingGameScore">
         <div class="game-score-item">

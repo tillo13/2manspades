@@ -19,7 +19,7 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats, get_per_hand_stats
+from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats, get_per_hand_stats, get_suspected_player_from_ip
 from utilities.gmail_utils import send_simple_email
 
 from utilities.google_auth_utils import SimpleGoogleAuth
@@ -30,6 +30,13 @@ app = Flask(__name__)
 google_auth = SimpleGoogleAuth(app)
 
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
+
+# Session configuration - keep users logged in for 30 days
+from datetime import timedelta
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_COOKIE_SECURE'] = True  # Only send over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JS access
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 
 
 # Initialize async logging for production immediately when module loads
@@ -58,8 +65,10 @@ def login():
 def auth_callback():
     """Handle OAuth callback"""
     if google_auth.handle_callback():
+        # Make session permanent so it persists across browser closes (30 days)
+        session.permanent = True
         print(f"[AUTH] User logged in: {session.get('user')}")
-        
+
         # CRITICAL: Update game client_info with Google auth
         if 'game' in session:
             if not session['game'].get('client_info'):
@@ -67,7 +76,7 @@ def auth_callback():
             session['game']['client_info']['google_auth'] = session['user']
             session.modified = True
             print(f"[AUTH] Updated game client_info with Google auth")
-        
+
         return redirect('/')
     else:
         print(f"[AUTH] Login failed")
@@ -178,17 +187,29 @@ def debug_async_logging():
 @app.route('/')
 def index():
     force_new = request.args.get('new', '').lower() == 'true'
-    
+
     if force_new or 'game' not in session:
+        # CRITICAL: Preserve user login when clearing game session
+        user = session.get('user')
         session.clear()
+        if user:
+            session['user'] = user
+            session.permanent = True  # Keep them logged in
         session['game'] = initialize_new_game_session(request)
-        
+
         # ADD THIS: Trigger geolocation for new visitors
         client_info = track_request_session(session, request)
         if client_info and client_info.get('ip_address'):
             process_ip_geolocation(client_info['ip_address'])
-    
-    return render_template('index.html')
+
+    # Check if we should show "We think you're X" prompt
+    suspected_player = None
+    if not session.get('user'):  # Not logged in
+        client_ip = get_client_ip(request)
+        if client_ip and IS_PRODUCTION:
+            suspected_player = get_suspected_player_from_ip(client_ip)
+
+    return render_template('index.html', suspected_player=suspected_player)
 
 @app.route('/new_game', methods=['POST'])
 def new_game():

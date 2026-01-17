@@ -16,6 +16,29 @@ let unreadMessages = 0;
 let chatInitialized = false;
 
 // =============================================================================
+// LOGIN PROMPT BANNER
+// =============================================================================
+
+function dismissLoginPrompt() {
+    const banner = document.getElementById('loginPromptBanner');
+    if (banner) {
+        banner.style.display = 'none';
+        // Remember dismissal for this session
+        sessionStorage.setItem('loginPromptDismissed', 'true');
+    }
+}
+
+// Check if banner was already dismissed this session
+document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('loginPromptDismissed') === 'true') {
+        const banner = document.getElementById('loginPromptBanner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+    }
+});
+
+// =============================================================================
 // USER-ONLY CLAUDE CHAT SYSTEM
 // =============================================================================
 
