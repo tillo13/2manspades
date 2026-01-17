@@ -847,22 +847,26 @@ def get_player_achievements() -> Dict[str, Any]:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         # Bid accuracy - uses player identity from view
+        # Must join by BOTH hand_id AND hand_number to compare per-round bids to per-round tricks
         cur.execute('''
             WITH bid_data AS (
                 SELECT
                     v.player_name as player,
                     (ge.event_data->'action_data'->>'bid_amount')::int as bid,
-                    ge.hand_id
+                    ge.hand_id,
+                    ge.hand_number
                 FROM twomanspades.game_events ge
                 JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+                AND ge.hand_number IS NOT NULL
             ),
             tricks_data AS (
-                SELECT hand_id, COUNT(*) as player_tricks
+                SELECT hand_id, hand_number, COUNT(*) as player_tricks
                 FROM twomanspades.game_events
                 WHERE event_type = 'trick_completed' AND event_data->>'winner' = 'player'
-                GROUP BY hand_id
+                AND hand_number IS NOT NULL
+                GROUP BY hand_id, hand_number
             )
             SELECT
                 b.player,
@@ -872,27 +876,29 @@ def get_player_achievements() -> Dict[str, Any]:
                 SUM(CASE WHEN COALESCE(t.player_tricks, 0) = b.bid THEN 1 ELSE 0 END) as exact_bids,
                 ROUND(100.0 * SUM(CASE WHEN COALESCE(t.player_tricks, 0) = b.bid THEN 1 ELSE 0 END) / COUNT(*), 1) as exact_pct
             FROM bid_data b
-            LEFT JOIN tricks_data t ON b.hand_id = t.hand_id
+            LEFT JOIN tricks_data t ON b.hand_id = t.hand_id AND b.hand_number = t.hand_number
             GROUP BY b.player ORDER BY exact_pct DESC
         ''')
         bid_accuracy = [dict(row) for row in cur.fetchall()]
 
-        # Nil stats
+        # Nil stats - must join by hand_number to count tricks only in the nil round
         cur.execute('''
             WITH nil_bids AS (
-                SELECT v.player_name as player, ge.hand_id
+                SELECT v.player_name as player, ge.hand_id, ge.hand_number
                 FROM twomanspades.game_events ge
                 JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND (ge.event_data->'action_data'->>'bid_amount') = '0'
                 AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+                AND ge.hand_number IS NOT NULL
             ),
             nil_results AS (
-                SELECT n.player, n.hand_id, COALESCE(COUNT(t.*), 0) as tricks_taken
+                SELECT n.player, n.hand_id, n.hand_number, COALESCE(COUNT(t.*), 0) as tricks_taken
                 FROM nil_bids n
                 LEFT JOIN twomanspades.game_events t ON n.hand_id = t.hand_id
+                    AND n.hand_number = t.hand_number
                     AND t.event_type = 'trick_completed' AND t.event_data->>'winner' = 'player'
-                GROUP BY n.player, n.hand_id
+                GROUP BY n.player, n.hand_id, n.hand_number
             )
             SELECT player, COUNT(*) as attempts,
                 SUM(CASE WHEN tricks_taken = 0 THEN 1 ELSE 0 END) as successful,
@@ -926,28 +932,41 @@ def get_player_achievements() -> Dict[str, Any]:
         biggest_wins = [dict(row) for row in cur.fetchall()]
 
         # Current streaks - show every player's current streak (win or loss)
+        # Uses game_events timestamp (always populated) instead of completed_at (can be NULL)
         cur.execute('''
             WITH recent_games AS (
                 SELECT
-                    player_name as player,
-                    completed_at,
-                    won,
-                    ROW_NUMBER() OVER (PARTITION BY player_name ORDER BY completed_at DESC) as rn
-                FROM twomanspades.vw_player_game_details
-                WHERE player_name IS NOT NULL AND player_name != 'Other'
+                    v.player_name as player,
+                    ge.timestamp as game_time,
+                    v.won,
+                    ROW_NUMBER() OVER (PARTITION BY v.player_name ORDER BY ge.timestamp DESC) as rn
+                FROM twomanspades.vw_player_game_details v
+                JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
+                    AND ge.event_type = 'game_completed'
+                WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
             ),
             first_result AS (
                 SELECT player, won as on_win_streak
                 FROM recent_games WHERE rn = 1
             ),
+            player_counts AS (
+                SELECT player, MAX(rn) as total_games
+                FROM recent_games
+                GROUP BY player
+            ),
             streak_calc AS (
                 SELECT
                     r.player,
                     f.on_win_streak,
-                    MIN(CASE WHEN r.won != f.on_win_streak THEN r.rn ELSE 9999 END) - 1 as streak
+                    -- If no streak-breaking game found, streak = total games
+                    COALESCE(
+                        MIN(CASE WHEN r.won != f.on_win_streak THEN r.rn ELSE NULL END) - 1,
+                        pc.total_games
+                    ) as streak
                 FROM recent_games r
                 JOIN first_result f ON r.player = f.player
-                GROUP BY r.player, f.on_win_streak
+                JOIN player_counts pc ON r.player = pc.player
+                GROUP BY r.player, f.on_win_streak, pc.total_games
             )
             SELECT
                 player,
@@ -1312,20 +1331,22 @@ def get_overall_game_stats() -> Dict[str, Any]:
         tricks = cur.fetchone()['count']
         stats['total_cards_played'] = tricks * 2  # 2 cards per trick
 
-        # Nil attempts and success rate overall
+        # Nil attempts and success rate overall - must join by hand_number
         cur.execute('''
             WITH nil_bids AS (
-                SELECT ge.hand_id
+                SELECT ge.hand_id, ge.hand_number
                 FROM twomanspades.game_events ge
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND (ge.event_data->'action_data'->>'bid_amount') = '0'
+                AND ge.hand_number IS NOT NULL
             ),
             nil_results AS (
-                SELECT n.hand_id, COALESCE(COUNT(t.*), 0) as tricks_taken
+                SELECT n.hand_id, n.hand_number, COALESCE(COUNT(t.*), 0) as tricks_taken
                 FROM nil_bids n
                 LEFT JOIN twomanspades.game_events t ON n.hand_id = t.hand_id
+                    AND n.hand_number = t.hand_number
                     AND t.event_type = 'trick_completed' AND t.event_data->>'winner' = 'player'
-                GROUP BY n.hand_id
+                GROUP BY n.hand_id, n.hand_number
             )
             SELECT
                 COUNT(*) as total_nil_attempts,
