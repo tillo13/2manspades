@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ player.player_name }} - Game History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}">
+    <style>
+        .player-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+        }
+        .player-header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+        }
+        .player-summary {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .summary-stat {
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .summary-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .games-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .game-row {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            gap: 1rem;
+            transition: background 0.15s;
+        }
+        .game-row:hover {
+            background: #f8f9fa;
+        }
+        .game-date {
+            min-width: 100px;
+            font-size: 0.9rem;
+        }
+        .game-date a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .game-date a:hover {
+            text-decoration: underline;
+        }
+        .game-result {
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .game-result.won {
+            background: #d4edda;
+            color: #155724;
+        }
+        .game-result.lost {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .game-score {
+            font-size: 1rem;
+            min-width: 80px;
+        }
+        .game-score .player-score { color: #667eea; font-weight: 600; }
+        .game-score .computer-score { color: #fd7e14; font-weight: 600; }
+        .game-meta {
+            color: #666;
+            font-size: 0.85rem;
+            flex: 1;
+        }
+        .game-reason {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        @media (max-width: 600px) {
+            .game-row {
+                flex-wrap: wrap;
+            }
+            .game-date {
+                min-width: auto;
+                flex: 1;
+            }
+            .game-meta {
+                width: 100%;
+                margin-top: 0.25rem;
+            }
+            .player-summary {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/stats" class="back-button">&larr; Back to Stats</a>
+
+    <div class="container">
+        <div class="player-header">
+            <h1>{{ player.player_name }}</h1>
+            <div class="player-summary">
+                <div class="summary-stat">
+                    <div class="summary-value">{{ player.summary.wins }}-{{ player.summary.losses }}</div>
+                    <div class="summary-label">W-L Record</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="summary-value">{{ player.summary.win_rate or 0 }}%</div>
+                    <div class="summary-label">Win Rate</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="summary-value">{{ player.summary.total_games }}</div>
+                    <div class="summary-label">Games</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="summary-value">{{ player.summary.highest_score }}</div>
+                    <div class="summary-label">High Score</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="summary-value">{{ player.summary.avg_score|int }}</div>
+                    <div class="summary-label">Avg Score</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <div class="section-title">Game History</div>
+            <div class="games-list">
+                {% for game in player.games %}
+                <div class="game-row">
+                    <div class="game-date">
+                        <a href="/game/{{ game.hand_id }}">{{ game.completed_at.strftime('%b %-d, %Y') }}</a>
+                    </div>
+                    <div class="game-result {{ 'won' if game.won else 'lost' }}">
+                        {{ 'WIN' if game.won else 'LOSS' }}
+                    </div>
+                    <div class="game-score">
+                        <span class="player-score">{{ game.final_player_score }}</span>
+                        <span style="color: #999;"> - </span>
+                        <span class="computer-score">{{ game.final_computer_score }}</span>
+                    </div>
+                    <div class="game-meta">
+                        {{ game.hands_played }} hands
+                        {% if game.player_bags %}· {{ game.player_bags }} bags{% endif %}
+                    </div>
+                    {% if game.game_end_reason and game.game_end_reason != 'normal' %}
+                    <div class="game-reason">{{ game.game_end_reason }}</div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="no-stats">No games found for this player.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

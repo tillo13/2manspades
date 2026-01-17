@@ -964,12 +964,15 @@ def get_player_achievements() -> Dict[str, Any]:
 
         # Current streaks - show every player's current streak (win or loss)
         # Uses game_events timestamp (always populated) instead of completed_at (can be NULL)
+        # Also includes the date of the last opposite result (last loss for win streaks, etc.)
         cur.execute('''
             WITH recent_games AS (
                 SELECT
                     v.player_name as player,
                     ge.timestamp as game_time,
                     v.won,
+                    v.final_player_score,
+                    v.final_computer_score,
                     ROW_NUMBER() OVER (PARTITION BY v.player_name ORDER BY ge.timestamp DESC) as rn
                 FROM twomanspades.vw_player_game_details v
                 JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
@@ -998,14 +1001,30 @@ def get_player_achievements() -> Dict[str, Any]:
                 JOIN first_result f ON r.player = f.player
                 JOIN player_counts pc ON r.player = pc.player
                 GROUP BY r.player, f.on_win_streak, pc.total_games
+            ),
+            last_opposite AS (
+                -- Find the most recent game that was the opposite of current streak
+                SELECT DISTINCT ON (r.player)
+                    r.player,
+                    r.game_time as last_opposite_date,
+                    r.final_player_score as last_opposite_player_score,
+                    r.final_computer_score as last_opposite_computer_score
+                FROM recent_games r
+                JOIN first_result f ON r.player = f.player
+                WHERE r.won != f.on_win_streak
+                ORDER BY r.player, r.game_time DESC
             )
             SELECT
-                player,
-                CASE WHEN on_win_streak THEN 'win' ELSE 'loss' END as streak_type,
-                streak
-            FROM streak_calc
-            WHERE streak > 0
-            ORDER BY streak DESC
+                s.player,
+                CASE WHEN s.on_win_streak THEN 'win' ELSE 'loss' END as streak_type,
+                s.streak,
+                lo.last_opposite_date,
+                lo.last_opposite_player_score,
+                lo.last_opposite_computer_score
+            FROM streak_calc s
+            LEFT JOIN last_opposite lo ON s.player = lo.player
+            WHERE s.streak > 0
+            ORDER BY s.streak DESC
         ''')
         streaks = [dict(row) for row in cur.fetchall()]
 
@@ -1886,4 +1905,57 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
 
     except Exception as e:
         print(f"Failed to get game details: {e}")
+        return None
+def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
+    """Get all games for a specific player, sorted by date descending."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Get player stats summary
+        cur.execute('''
+            SELECT 
+                COUNT(*) as total_games,
+                SUM(CASE WHEN won THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN NOT won THEN 1 ELSE 0 END) as losses,
+                ROUND(100.0 * SUM(CASE WHEN won THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) as win_rate,
+                MAX(final_player_score) as highest_score,
+                MIN(final_player_score) as lowest_score,
+                ROUND(AVG(final_player_score)::numeric, 0) as avg_score
+            FROM twomanspades.vw_player_game_details
+            WHERE player_name = %s
+        ''', (player_name,))
+        summary = dict(cur.fetchone())
+        
+        # Get all games
+        cur.execute('''
+            SELECT 
+                v.hand_id,
+                v.won,
+                v.final_player_score,
+                v.final_computer_score,
+                v.margin,
+                v.player_bags,
+                v.hands_played,
+                ge.timestamp as completed_at,
+                v.game_end_reason
+            FROM twomanspades.vw_player_game_details v
+            JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
+                AND ge.event_type = 'game_completed'
+            WHERE v.player_name = %s
+            ORDER BY ge.timestamp DESC
+        ''', (player_name,))
+        games = [dict(row) for row in cur.fetchall()]
+        
+        cur.close()
+        conn.close()
+        
+        return {
+            'player_name': player_name,
+            'summary': summary,
+            'games': games
+        }
+        
+    except Exception as e:
+        print(f"Failed to get player games: {e}")
         return None

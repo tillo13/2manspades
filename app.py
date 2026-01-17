@@ -601,6 +601,16 @@ def stats():
                         per_hand_stats=per_hand_stats)
 
 
+@app.route('/player/<name>')
+def player_profile(name):
+    """Show all games for a specific player."""
+    from utilities.postgres_utils import get_player_games
+    player_data = get_player_games(name)
+    if not player_data:
+        return render_template('404.html', message=f"Player '{name}' not found"), 404
+    return render_template('player.html', player=player_data)
+
+
 @app.route('/game/<hand_id>')
 def game_detail(hand_id):
     """Show detailed breakdown of a specific game."""

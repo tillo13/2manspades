@@ -285,6 +285,16 @@ body {
     background: #f8f9fa;
 }
 
+.player-link {
+    color: #667eea;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.player-link:hover {
+    color: #764ba2;
+    text-decoration: underline;
+}
+
 .player-card {
     background: white;
     border-radius: 8px;

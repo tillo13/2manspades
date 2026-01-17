@@ -121,7 +121,7 @@
                         {% for player in google_leaders %}
                         <tr class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
                             <td>{{ loop.index }}</td>
-                            <td><strong>{{ player.player_name }}</strong></td>
+                            <td><strong><a href="/player/{{ player.player_name }}" class="player-link">{{ player.player_name }}</a></strong></td>
                             <td class="win-loss-stat">{{ player.wins }}-{{ player.losses }}</td>
                             <td class="percentage">{{ player.win_rate or 0 }}%</td>
                             <td>{{ player.total_games }}</td>
@@ -139,7 +139,7 @@
                 <div class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
                     <div class="player-header">
                         <div class="player-rank">#{{ loop.index }}</div>
-                        <div class="player-name">{{ player.player_name }}</div>
+                        <div class="player-name"><a href="/player/{{ player.player_name }}" class="player-link">{{ player.player_name }}</a></div>
                         <div class="win-loss-record">{{ player.wins }}-{{ player.losses }} ({{ player.win_rate or 0 }}%)</div>
                     </div>
                     <div class="competitive-stats">
@@ -240,8 +240,10 @@
                         <span class="achievement-player">{{ p.player }}</span>
                         {% if p.streak_type == 'win' %}
                         <span class="achievement-value streak-value">{{ p.streak }} wins in a row</span>
+                        <span class="achievement-detail">(last loss: {% if p.last_opposite_date %}{{ p.last_opposite_date.strftime('%b %-d') }}, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %})</span>
                         {% else %}
                         <span class="achievement-value loss-value">{{ p.streak }} losses in a row</span>
+                        <span class="achievement-detail">(last win: {% if p.last_opposite_date %}{{ p.last_opposite_date.strftime('%b %-d') }}, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %})</span>
                         {% endif %}
                     </div>
                     {% endfor %}
