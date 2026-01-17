@@ -1529,3 +1529,94 @@ button:disabled {
 .login-pulse {
     animation: gentlePulse 2s ease-in-out 3;
 }
+
+/* DIFFICULTY SELECTOR */
+.difficulty-gear {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 0.9em;
+    transition: opacity 0.2s;
+}
+.difficulty-gear:hover {
+    opacity: 1;
+}
+
+.difficulty-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+.difficulty-modal.show {
+    display: flex;
+}
+
+.difficulty-content {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 280px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.difficulty-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.difficulty-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.difficulty-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.difficulty-option:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+.difficulty-option:has(input:checked) {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.difficulty-option input {
+    margin: 0;
+}
+
+.difficulty-label {
+    font-weight: 600;
+    color: #333;
+}
+
+.difficulty-desc {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: auto;
+}
+
+.difficulty-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 1rem;
+}

@@ -12,6 +12,17 @@ from .custom_rules import (
 
 from .logging_utils import log_game_event
 
+# DIFFICULTY SYSTEM
+def get_difficulty_params(difficulty='easy'):
+    """Returns parameter adjustments based on difficulty level.
+    Easy = current behavior, Medium = smarter, Ruthless = optimal play"""
+    if difficulty == 'medium':
+        return {'bid_boost': 0.5, 'bag_avoid': 0.95, 'max_bid': 7, 'mistake_chance': 0}
+    elif difficulty == 'ruthless':
+        return {'bid_boost': 0.7, 'bag_avoid': 0.98, 'max_bid': 8, 'mistake_chance': 0}
+    # easy (default) - current behavior
+    return {'bid_boost': 0.3, 'bag_avoid': 0.92, 'max_bid': 6, 'mistake_chance': 0}
+
 # GLOBAL AI DIFFICULTY SETTINGS
 
 # Discard Strategy Settings
@@ -305,37 +316,41 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     Main computer bidding function
     Returns tuple: (bid_amount, is_blind)
     """
+    # Get difficulty from game_state (defaults to 'easy')
+    difficulty = game_state.get('difficulty', 'easy')
+    diff_params = get_difficulty_params(difficulty)
+
     player_score = game_state.get('player_score', 0)
     computer_score = game_state.get('computer_score', 0)
     computer_bags = game_state.get('computer_bags', 0)
-    
+
     # Check for nil opportunity first
     if should_bid_nil(computer_hand, game_state):
         return 0, False
-    
+
     # Check for blind bidding opportunity
     should_blind, blind_amount = should_bid_blind(computer_hand, game_state)
     if should_blind:
         return blind_amount, True
-    
+
     # Regular bidding logic
     sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(computer_hand)
     base_expectation = sure_tricks + probable_tricks + special_bonus
-    
-    # Apply configurable accuracy boost
-    base_expectation += BID_ACCURACY_BOOST
-    
+
+    # Apply difficulty-based accuracy boost
+    base_expectation += diff_params['bid_boost']
+
     # Score-based adjustments
     score_diff = computer_score - player_score
     if score_diff > 30:  # Ahead - be slightly conservative
         base_expectation *= (1 - SCORE_BASED_ADJUSTMENT)
     elif score_diff < -30:  # Behind - be slightly aggressive
         base_expectation *= (1 + SCORE_BASED_ADJUSTMENT)
-    
-    # Bag avoidance when close to penalty
+
+    # Bag avoidance when close to penalty (difficulty-adjusted)
     if computer_bags >= 5:
-        base_expectation *= BAG_AVOIDANCE_STRENGTH
-    
+        base_expectation *= diff_params['bag_avoid']
+
     # Strategic response to player's bid
     if player_bid is not None:
         if player_bid == 0:  # Player nil - be aggressive to set them
@@ -348,8 +363,9 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     # Convert to bid
     raw_bid = max(0, min(10, round(base_expectation)))
 
-    # Apply maximum reasonable bid cap
-    raw_bid = min(raw_bid, MAX_REASONABLE_BID)
+    # Apply difficulty-based maximum bid cap
+    max_bid = diff_params['max_bid']
+    raw_bid = min(raw_bid, max_bid)
 
     # Bid range preferences
     if 2.5 <= base_expectation <= 5.5:
@@ -362,11 +378,10 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     if player_bid is not None and abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
         if raw_bid > 3:
             raw_bid -= 1
-        # Remove the elif raw_bid < 7 clause since we're capping at 6
 
-    # Final bounds check with new maximum
-    raw_bid = max(1, min(MAX_REASONABLE_BID, raw_bid))
-    
+    # Final bounds check with difficulty max
+    raw_bid = max(1, min(max_bid, raw_bid))
+
     return raw_bid, False
 
 # PLAYING STRATEGY

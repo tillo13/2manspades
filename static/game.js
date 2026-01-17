@@ -1186,3 +1186,30 @@ window.addEventListener('orientationchange', function () {
         updatePlayArea();
     }, 100);
 });
+
+// DIFFICULTY SETTINGS
+function openDifficultyModal() {
+    fetch('/get_difficulty')
+        .then(r => r.json())
+        .then(data => {
+            const current = data.difficulty || 'easy';
+            document.querySelector(`input[name="difficulty"][value="${current}"]`).checked = true;
+            document.getElementById('difficultyModal').classList.add('show');
+        });
+}
+
+function closeDifficultyModal(event) {
+    if (!event || event.target.id === 'difficultyModal') {
+        document.getElementById('difficultyModal').classList.remove('show');
+    }
+}
+
+function setDifficulty(level) {
+    fetch('/set_difficulty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ difficulty: level })
+    }).then(() => {
+        setTimeout(() => closeDifficultyModal(), 300);
+    });
+}

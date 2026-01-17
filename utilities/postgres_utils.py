@@ -173,17 +173,18 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         print(f"Attempting to insert hand: {hand_data.get('hand_id')}")
         
         cur.execute("""
-            INSERT INTO twomanspades.hands 
-            (hand_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO twomanspades.hands
+            (hand_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent, difficulty)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             hand_data['hand_id'],
             datetime.fromtimestamp(hand_data['game_started_at']),  # Still using game_started_at from session
             hand_data['player_parity'],
-            hand_data['computer_parity'], 
+            hand_data['computer_parity'],
             hand_data['first_leader'],
             hand_data.get('client_info', {}).get('ip_address'),
-            hand_data.get('client_info', {}).get('user_agent')
+            hand_data.get('client_info', {}).get('user_agent'),
+            hand_data.get('difficulty', 'easy')
         ))
         
         conn.commit()
@@ -394,21 +395,22 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
         
         # Insert hand record WITH google_email and google_id
         cur.execute("""
-            INSERT INTO twomanspades.hands 
-            (hand_id, started_at, player_parity, computer_parity, first_leader, 
-             client_ip, user_agent, player_id, google_email, google_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO twomanspades.hands
+            (hand_id, started_at, player_parity, computer_parity, first_leader,
+             client_ip, user_agent, player_id, google_email, google_id, difficulty)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             hand_data['current_hand_id'],
             datetime.fromtimestamp(hand_data['game_started_at']),
             hand_data['player_parity'],
-            hand_data['computer_parity'], 
+            hand_data['computer_parity'],
             hand_data['first_leader'],
             client_info.get('ip_address') if client_info else None,
             client_info.get('user_agent') if client_info else None,
             player_id,
-            google_email,  # Add this
-            google_id      # Add this
+            google_email,
+            google_id,
+            hand_data.get('difficulty', 'easy')
         ))
         
         conn.commit()

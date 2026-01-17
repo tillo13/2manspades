@@ -189,13 +189,15 @@ def index():
     force_new = request.args.get('new', '').lower() == 'true'
 
     if force_new or 'game' not in session:
-        # CRITICAL: Preserve user login when clearing game session
+        # CRITICAL: Preserve user login and difficulty when clearing game session
         user = session.get('user')
+        difficulty = session.get('difficulty', 'easy')
         session.clear()
         if user:
             session['user'] = user
             session.permanent = True  # Keep them logged in
-        session['game'] = initialize_new_game_session(request)
+        session['difficulty'] = difficulty
+        session['game'] = initialize_new_game_session(request, difficulty)
 
         # ADD THIS: Trigger geolocation for new visitors
         client_info = track_request_session(session, request)
@@ -285,6 +287,25 @@ def get_state():
     safe_state = build_safe_game_state(game, DEBUG_MODE)
     
     return jsonify(safe_state)
+
+@app.route('/set_difficulty', methods=['POST'])
+def set_difficulty():
+    """Set Marta's difficulty level"""
+    data = request.get_json() or {}
+    difficulty = data.get('difficulty', 'easy')
+    if difficulty not in ('easy', 'medium', 'ruthless'):
+        return jsonify({'error': 'Invalid difficulty'}), 400
+    session['difficulty'] = difficulty
+    # Update current game if exists
+    if 'game' in session:
+        session['game']['difficulty'] = difficulty
+        session.modified = True
+    return jsonify({'success': True, 'difficulty': difficulty})
+
+@app.route('/get_difficulty')
+def get_difficulty():
+    """Get current difficulty setting"""
+    return jsonify({'difficulty': session.get('difficulty', 'easy')})
 
 @app.route('/toggle_computer_hand', methods=['POST'])
 def toggle_computer_hand():

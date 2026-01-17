@@ -46,7 +46,7 @@
             <div class="game-score-label">Hand #<span id="floatingHandNumber">1</span></div>
         </div>
         <div class="game-score-item">
-            <div class="game-score-label">Marta</div>
+            <div class="game-score-label">Marta <span class="difficulty-gear" onclick="openDifficultyModal()" title="Adjust difficulty">&#9881;</span></div>
             <div class="game-score-parity" id="floatingComputerParity">(ODD)</div>
             <div class="game-score-value" id="floatingComputerScore">0</div>
         </div>
@@ -259,6 +259,31 @@
         <div class="chat-input-area">
             <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
             <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <!-- Difficulty Modal -->
+    <div id="difficultyModal" class="difficulty-modal" onclick="closeDifficultyModal(event)">
+        <div class="difficulty-content" onclick="event.stopPropagation()">
+            <div class="difficulty-title">Marta's Difficulty</div>
+            <div class="difficulty-options">
+                <label class="difficulty-option">
+                    <input type="radio" name="difficulty" value="easy" onchange="setDifficulty('easy')">
+                    <span class="difficulty-label">Easy</span>
+                    <span class="difficulty-desc">Current Marta</span>
+                </label>
+                <label class="difficulty-option">
+                    <input type="radio" name="difficulty" value="medium" onchange="setDifficulty('medium')">
+                    <span class="difficulty-label">Medium</span>
+                    <span class="difficulty-desc">Smarter bidding</span>
+                </label>
+                <label class="difficulty-option">
+                    <input type="radio" name="difficulty" value="ruthless" onchange="setDifficulty('ruthless')">
+                    <span class="difficulty-label">Ruthless</span>
+                    <span class="difficulty-desc">No mercy</span>
+                </label>
+            </div>
+            <div class="difficulty-note">Takes effect next game</div>
         </div>
     </div>
 

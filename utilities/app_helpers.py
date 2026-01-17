@@ -289,21 +289,23 @@ def track_request_session(session, request):
 
 # GAME INITIALIZATION
 
-def initialize_new_game_session(request):
+def initialize_new_game_session(request, difficulty='easy'):
     """Initialize a new game session with logging"""
     player_parity, computer_parity, first_player = assign_even_odd_at_game_start()
     game = init_game(player_parity, computer_parity, first_player)
+    game['difficulty'] = difficulty  # Store difficulty in game state
     game = initialize_game_logging_with_client(game, request)
     return game
 
 def process_new_game_request(session, request):
     """Process new game request with logging cleanup"""
     client_info = track_request_session(session, request)
-    
+    difficulty = session.get('difficulty', 'easy')
+
     if 'game' in session:
         finalize_game_logging(session['game'])
-    
-    game = initialize_new_game_session(request)
+
+    game = initialize_new_game_session(request, difficulty)
     
     # UNCOMMENT THIS LINE:
     if client_info and client_info.get('ip_address'):
