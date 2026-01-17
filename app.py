@@ -19,7 +19,7 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats, get_per_hand_stats, get_suspected_player_from_ip
+from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats, get_per_hand_stats, get_suspected_player_from_ip, get_user_difficulty, save_user_difficulty
 from utilities.gmail_utils import send_simple_email
 
 from utilities.google_auth_utils import SimpleGoogleAuth
@@ -68,6 +68,16 @@ def auth_callback():
         # Make session permanent so it persists across browser closes (30 days)
         session.permanent = True
         print(f"[AUTH] User logged in: {session.get('user')}")
+
+        # Load user's saved difficulty preference
+        user_email = session.get('user', {}).get('email')
+        if user_email:
+            saved_difficulty = get_user_difficulty(user_email)
+            if saved_difficulty:
+                session['difficulty'] = saved_difficulty
+                if 'game' in session:
+                    session['game']['difficulty'] = saved_difficulty
+                print(f"[AUTH] Loaded difficulty preference: {saved_difficulty}")
 
         # CRITICAL: Update game client_info with Google auth
         if 'game' in session:
@@ -300,6 +310,10 @@ def set_difficulty():
     if 'game' in session:
         session['game']['difficulty'] = difficulty
         session.modified = True
+    # Save to user profile if logged in
+    user_email = session.get('user', {}).get('email')
+    if user_email:
+        save_user_difficulty(user_email, difficulty)
     return jsonify({'success': True, 'difficulty': difficulty})
 
 @app.route('/get_difficulty')

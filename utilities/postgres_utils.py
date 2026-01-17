@@ -163,6 +163,44 @@ def get_suspected_player_from_ip(ip_address: str) -> Optional[str]:
         print(f"[DB] Error getting suspected player: {e}")
         return None
 
+def get_user_difficulty(google_email: str) -> Optional[str]:
+    """Get user's saved difficulty preference by email."""
+    if not google_email:
+        return None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT difficulty FROM twomanspades.players
+            WHERE google_email = %s
+        """, (google_email,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else None
+    except Exception as e:
+        print(f"[DB] Error getting user difficulty: {e}")
+        return None
+
+def save_user_difficulty(google_email: str, difficulty: str) -> bool:
+    """Save user's difficulty preference."""
+    if not google_email or difficulty not in ('easy', 'medium', 'ruthless'):
+        return False
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE twomanspades.players SET difficulty = %s
+            WHERE google_email = %s
+        """, (difficulty, google_email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[DB] Error saving user difficulty: {e}")
+        return False
+
 def insert_hand(hand_data: Dict[str, Any]) -> bool:
     """Insert new hand record"""
     try:
