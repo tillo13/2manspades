@@ -969,6 +969,7 @@ def get_player_achievements() -> Dict[str, Any]:
             WITH recent_games AS (
                 SELECT
                     v.player_name as player,
+                    v.hand_id,
                     ge.timestamp as game_time,
                     v.won,
                     v.final_player_score,
@@ -1006,6 +1007,7 @@ def get_player_achievements() -> Dict[str, Any]:
                 -- Find the most recent game that was the opposite of current streak
                 SELECT DISTINCT ON (r.player)
                     r.player,
+                    r.hand_id as last_opposite_hand_id,
                     r.game_time as last_opposite_date,
                     r.final_player_score as last_opposite_player_score,
                     r.final_computer_score as last_opposite_computer_score
@@ -1018,6 +1020,7 @@ def get_player_achievements() -> Dict[str, Any]:
                 s.player,
                 CASE WHEN s.on_win_streak THEN 'win' ELSE 'loss' END as streak_type,
                 s.streak,
+                lo.last_opposite_hand_id,
                 lo.last_opposite_date,
                 lo.last_opposite_player_score,
                 lo.last_opposite_computer_score

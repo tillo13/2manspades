@@ -706,6 +706,14 @@ body {
     color: #666;
 }
 
+.streak-game-link {
+    color: #667eea;
+    text-decoration: none;
+}
+.streak-game-link:hover {
+    text-decoration: underline;
+}
+
 @media (min-width: 768px) {
     .overall-stats-grid {
         grid-template-columns: repeat(6, 1fr);

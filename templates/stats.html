@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Statistics - Two-Player Spades</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
@@ -240,10 +241,10 @@
                         <span class="achievement-player">{{ p.player }}</span>
                         {% if p.streak_type == 'win' %}
                         <span class="achievement-value streak-value">{{ p.streak }} wins in a row</span>
-                        <span class="achievement-detail">(last loss: {% if p.last_opposite_date %}{{ p.last_opposite_date.strftime('%b %-d') }}, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %})</span>
+                        <span class="achievement-detail">(last loss: {% if p.last_opposite_date %}<a href="/game/{{ p.last_opposite_hand_id }}" class="streak-game-link">{{ p.last_opposite_date.strftime('%b %-d') }}</a>, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %})</span>
                         {% else %}
                         <span class="achievement-value loss-value">{{ p.streak }} losses in a row</span>
-                        <span class="achievement-detail">(last win: {% if p.last_opposite_date %}{{ p.last_opposite_date.strftime('%b %-d') }}, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %})</span>
+                        <span class="achievement-detail">(last win: {% if p.last_opposite_date %}<a href="/game/{{ p.last_opposite_hand_id }}" class="streak-game-link">{{ p.last_opposite_date.strftime('%b %-d') }}</a>, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %})</span>
                         {% endif %}
                     </div>
                     {% endfor %}
