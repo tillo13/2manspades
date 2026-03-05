@@ -3,11 +3,18 @@ Two-Man Spades PostgreSQL Utilities - Updated for Hands Table
 """
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 import json
 import os
+import threading
 from datetime import datetime
 from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
+
+# Connection pool - shared across all requests (fast!)
+# Budget: 50 max_connections shared across 8+ apps on db-f1-micro
+_pool = None
+_pool_lock = threading.Lock()
 
 def get_monthly_stats_by_location():
     """Get monthly statistics grouped by family member location"""
@@ -83,39 +90,63 @@ def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
     response = client.access_secret_version(request={"name": name})
     return response.payload.data.decode('UTF-8')
 
+def _get_pool():
+    """Get or create the connection pool (singleton)."""
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
+                if is_gcp:
+                    connection_name = get_secret('TWOMANSPADES_POSTGRES_CONNECTION_NAME')
+                    host = f"/cloudsql/{connection_name}"
+                else:
+                    try:
+                        host = get_secret('TWOMANSPADES_POSTGRES_IP')
+                    except:
+                        host = os.getenv('DB_HOST', 'localhost')
+                try:
+                    dbname = get_secret('TWOMANSPADES_POSTGRES_DB_NAME')
+                    user = get_secret('TWOMANSPADES_POSTGRES_USERNAME')
+                    password = get_secret('TWOMANSPADES_POSTGRES_PASSWORD')
+                except:
+                    dbname = os.getenv('DB_NAME', 'twomanspades_dev')
+                    user = os.getenv('DB_USER', 'postgres')
+                    password = os.getenv('DB_PASSWORD', 'password')
+                _pool = psycopg2.pool.ThreadedConnectionPool(
+                    1, 2, host=host, database=dbname,
+                    user=user, password=password, connect_timeout=10
+                )
+    return _pool
+
+
 def get_db_connection():
-    """Create database connection using TWOMANSPADES secrets"""
-    is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
-    
-    if is_gcp:
-        # Production - use secrets and Cloud SQL socket
-        connection_name = get_secret('TWOMANSPADES_POSTGRES_CONNECTION_NAME')
-        host = f"/cloudsql/{connection_name}"
-        dbname = get_secret('TWOMANSPADES_POSTGRES_DB_NAME') 
-        user = get_secret('TWOMANSPADES_POSTGRES_USERNAME')
-        password = get_secret('TWOMANSPADES_POSTGRES_PASSWORD')
-    else:
-        # Local development - use environment variables or direct secrets
-        try:
-            # Try secrets first (in case you want to test with real DB locally)
+    """Get a connection from the pool (fast!)."""
+    try:
+        return _get_pool().getconn()
+    except Exception:
+        # Fallback to direct if pool fails
+        is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
+        if is_gcp:
+            host = f"/cloudsql/{get_secret('TWOMANSPADES_POSTGRES_CONNECTION_NAME')}"
+        else:
             host = get_secret('TWOMANSPADES_POSTGRES_IP')
-            dbname = get_secret('TWOMANSPADES_POSTGRES_DB_NAME')
-            user = get_secret('TWOMANSPADES_POSTGRES_USERNAME')
-            password = get_secret('TWOMANSPADES_POSTGRES_PASSWORD')
+        return psycopg2.connect(
+            host=host, database=get_secret('TWOMANSPADES_POSTGRES_DB_NAME'),
+            user=get_secret('TWOMANSPADES_POSTGRES_USERNAME'),
+            password=get_secret('TWOMANSPADES_POSTGRES_PASSWORD'), connect_timeout=10
+        )
+
+
+def return_db_connection(conn):
+    """Return a connection to the pool."""
+    try:
+        _get_pool().putconn(conn)
+    except Exception:
+        try:
+            conn.close()
         except:
-            # Fallback to env vars for local dev
-            host = os.getenv('DB_HOST', 'localhost')
-            dbname = os.getenv('DB_NAME', 'twomanspades_dev')
-            user = os.getenv('DB_USER', 'postgres') 
-            password = os.getenv('DB_PASSWORD', 'password')
-    
-    return psycopg2.connect(
-        host=host,
-        database=dbname,
-        user=user,
-        password=password,
-        connect_timeout=10
-    )
+            pass
 
 def test_connection():
     """Test database connection"""

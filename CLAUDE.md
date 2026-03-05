@@ -6,16 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Two-Man Spades is a web-based card game where a human player (Tom) plays against an AI opponent (Marta). It's a Flask application deployed to Google App Engine with a vanilla JavaScript frontend.
+Two-Man Spades is a web-based card game where a human player plays against an AI opponent (Marta). Flask application deployed to Google App Engine with vanilla JavaScript frontend.
 
 ## Development Commands
 
 ```bash
-# Deploy to Google App Engine (production)
-python gcloud_deploy.py
+# Deploy to Google App Engine (commits, pushes, and deploys)
+./git_push.sh "commit message here"
 
 # Activate virtual environment
 source venv_2man/bin/activate
+
+# Run database queries (requires venv)
+python3 -c "from utilities.postgres_utils import get_db_connection; ..."
 ```
 
 ## Architecture
@@ -25,31 +28,46 @@ source venv_2man/bin/activate
 **Main entry point:** `app.py` - Flask routes, uses `utilities/app_helpers.py` for logic
 
 **Core game logic in `utilities/`:**
-- `app_helpers.py` - Refactored helper functions (game state, trick resolution, etc.)
-- `gameplay_logic.py` - Deck creation, hand initialization, card validation, trick resolution
-- `computer_logic.py` - AI decision-making for bidding, discarding, and play strategy (tunable difficulty parameters at top)
-- `custom_rules.py` - Special scoring rules: parity system, bags, blind bidding, special cards (7♦, 10♣)
-- `claude_utils.py` - Claude API integration for Marta's chat responses
-- `logging_utils.py` - Game logging and async DB operations
-- `postgres_utils.py` - Database queries for stats/leaderboards
-- `gmail_utils.py` - Error notification emails
+- `app_helpers.py` - Game initialization, phase processing, trick resolution
+- `gameplay_logic.py` - Deck creation, hand initialization, card validation
+- `computer_logic.py` - AI bidding/playing with difficulty system (`get_difficulty_params()`)
+- `custom_rules.py` - Parity system, bags, blind bidding, special cards (7♦, 10♣)
+- `postgres_utils.py` - All database queries for stats/leaderboards/player profiles
+- `logging_utils.py` - Game event logging with async DB operations
 - `google_auth_utils.py` - Google OAuth for login
 
 **Key game state stored in Flask session:**
 - Phase flow: `blind_decision` → `discard` → `bidding` → `playing`
-- Scores use display score (base + bags in ones column) vs base score internally
+- `session['difficulty']` - AI difficulty (easy/medium/ruthless), persists across games
+- `session['user']` - Google auth info if logged in
 
 ### Frontend
 
-- `static/game.js` - Game state polling, card interactions, UI updates
+- `static/game.js` - Game state polling, card interactions, difficulty modal
 - `static/style.css` - Responsive design
 - `templates/index.html` - Main game template
+- `templates/stats.html` - Leaderboards and player achievements
+- `templates/player.html` - Individual player game history
+- `templates/game_detail.html` - Detailed breakdown of a specific game
+
+### Database
+
+PostgreSQL on Google Cloud. Key tables:
+- `hands` - Each game session (includes `difficulty` column)
+- `game_events` - All game actions with timestamps
+- `players` - Player profiles with Google auth and preferences
+
+Key views (in `twomanspades` schema):
+- `vw_player_game_details` - Completed games with player identity
+- `vw_player_identity` - Maps hand_id to player name (Tom/Luke/Jon/Andy)
+- `vw_unified_leaderboard` - Aggregated player stats
 
 ### Deployment
 
 - `app.yaml` - Google App Engine config (Python 3.12, gunicorn)
-- Production URL: https://2manspades.com (twomanspades.appspot.com)
+- Production URL: https://2manspades.com
 - Uses Google Secret Manager for ANTHROPIC_API_KEY
+- `./git_push.sh` handles commit + push + deploy + old version cleanup
 
 ## Game Rules Summary
 
@@ -60,11 +78,12 @@ source venv_2man/bin/activate
 - Blind bidding: available when 100+ points behind, doubles points/penalties
 - Win condition: 300 points or 300+ point lead (mercy rule)
 
-## AI Tuning
+## AI Difficulty System
 
-Computer strategy parameters in `utilities/computer_logic.py`:
+Difficulty stored in session and user profile. Parameters in `computer_logic.py`:
 ```python
-MAX_REASONABLE_BID = 6          # Cap on Marta's bids
-BAG_AVOIDANCE_STRENGTH = 0.92   # How aggressively to avoid bags
-NIL_STRICTNESS = 0.8            # Threshold for nil attempts
+def get_difficulty_params(difficulty='easy'):
+    # easy: bid_boost=0.3, bag_avoid=0.92, max_bid=6
+    # medium: bid_boost=0.5, bag_avoid=0.95, max_bid=7
+    # ruthless: bid_boost=0.7, bag_avoid=0.98, max_bid=8
 ```
