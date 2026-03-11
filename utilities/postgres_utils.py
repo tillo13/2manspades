@@ -83,12 +83,22 @@ def get_monthly_stats_by_location():
     
     return organized
 
+_secrets_cache = {}
+_sm_client = None
+
 def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
-    """Get secret from Google Secret Manager"""
-    client = secretmanager.SecretManagerServiceClient()
+    """Get secret from Google Secret Manager (cached)"""
+    cache_key = f"{project_id}:{secret_id}"
+    if cache_key in _secrets_cache:
+        return _secrets_cache[cache_key]
+    global _sm_client
+    if _sm_client is None:
+        _sm_client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
-    return response.payload.data.decode('UTF-8')
+    response = _sm_client.access_secret_version(request={"name": name})
+    val = response.payload.data.decode('UTF-8')
+    _secrets_cache[cache_key] = val
+    return val
 
 def _get_pool():
     """Get or create the connection pool (singleton)."""

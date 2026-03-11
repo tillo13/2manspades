@@ -31,12 +31,22 @@ EMAIL_DEFAULTS = {
 
 # CORE FUNCTIONS
 
+_secrets_cache = {}
+_sm_client = None
+
 def get_secret_version(project_id: str, secret_id: str, version_id: str = "latest") -> str:
-    """Get secret from Google Cloud Secret Manager."""
-    client = secretmanager.SecretManagerServiceClient()
+    """Get secret from Google Cloud Secret Manager (cached)."""
+    cache_key = f"{project_id}:{secret_id}:{version_id}"
+    if cache_key in _secrets_cache:
+        return _secrets_cache[cache_key]
+    global _sm_client
+    if _sm_client is None:
+        _sm_client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-    response = client.access_secret_version(request={"name": name})
-    return response.payload.data.decode('UTF-8')
+    response = _sm_client.access_secret_version(request={"name": name})
+    val = response.payload.data.decode('UTF-8')
+    _secrets_cache[cache_key] = val
+    return val
 
 def get_gmail_credentials() -> Dict[str, str]:
     """Get Gmail credentials from Google Cloud Secret Manager."""

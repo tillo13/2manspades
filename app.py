@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, jsonify, redirect
+from flask import Flask, render_template, request, session, jsonify, redirect, Response
 import sys
 import os
 import time
@@ -193,6 +193,21 @@ def debug_async_logging():
         'operations_failed': stats['operations_failed'],
         'queue_max_size': 1000
     })
+
+@app.route('/sitemap.xml')
+def sitemap():
+    xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://2manspades.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://2manspades.com/instructions</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://2manspades.com/stats</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+</urlset>'''
+    return Response(xml, mimetype='application/xml')
+
+@app.route('/robots.txt')
+def robots():
+    content = 'User-agent: *\nAllow: /\nSitemap: https://2manspades.com/sitemap.xml\n'
+    return Response(content, mimetype='text/plain')
 
 @app.route('/')
 def index():
