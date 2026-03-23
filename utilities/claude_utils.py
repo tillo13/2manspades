@@ -14,6 +14,70 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+APP_NAME = 'twomanspades'
+
+_PRICING = {
+    'haiku-4-5': {'input': 0.000001, 'output': 0.000005},
+    'haiku-3': {'input': 0.00000025, 'output': 0.00000125},
+    'sonnet-4': {'input': 0.000003, 'output': 0.000015},
+    'sonnet-4-5': {'input': 0.000003, 'output': 0.000015},
+    'opus-4-5': {'input': 0.000005, 'output': 0.000025},
+    'opus-4-6': {'input': 0.000005, 'output': 0.000025},
+}
+
+def _get_pricing(model):
+    m = model.lower()
+    for k, v in _PRICING.items():
+        if k in m:
+            return v
+    return {'input': 0.000003, 'output': 0.000015}
+
+
+def log_api_usage(model, usage, feature=None, streaming=False,
+                  image_count=0, user_id=None, duration_ms=None):
+    """Log an API call to kumori_api_usage in a background thread.
+    Never blocks the caller. Never raises."""
+    import threading
+
+    def _do_log():
+        try:
+            from utilities.postgres_utils import get_db_connection, return_db_connection
+            pricing = _get_pricing(model)
+
+            input_tokens = getattr(usage, 'input_tokens', None) or 0
+            output_tokens = getattr(usage, 'output_tokens', None) or 0
+            cache_creation = getattr(usage, 'cache_creation_input_tokens', None) or 0
+            cache_read = getattr(usage, 'cache_read_input_tokens', None) or 0
+
+            cost = (
+                input_tokens * pricing['input']
+                + output_tokens * pricing['output']
+                + cache_creation * pricing['input'] * 1.25
+                + cache_read * pricing['input'] * 0.1
+            )
+
+            conn = get_db_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO kumori_api_usage
+                    (app_name, feature, model, input_tokens, output_tokens,
+                     cache_creation_tokens, cache_read_tokens, thinking_tokens,
+                     web_search_requests, web_fetch_requests, code_execution_requests,
+                     image_count, estimated_cost_usd, streaming, user_id, duration_ms)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (APP_NAME, feature, model, input_tokens, output_tokens,
+                      cache_creation, cache_read, 0,
+                      0, 0, 0,
+                      image_count, cost, streaming, user_id, duration_ms))
+                conn.commit()
+            finally:
+                return_db_connection(conn)
+        except Exception as e:
+            logger.warning(f"Failed to log API usage: {e}")
+
+    threading.Thread(target=_do_log, daemon=True).start()
+
 # For production Secret Manager
 try:
     from google.cloud import secretmanager
@@ -164,7 +228,8 @@ class ClaudeGameChat:
             )
             
             print(f"[CLAUDE] API call successful!")
-            
+            log_api_usage(self.model, response.usage, feature='marta_chat')
+
             api_response = response.content[0].text.strip()
             print(f"[CLAUDE] Raw API response: '{api_response}'")
             print(f"[CLAUDE] Response length: {len(api_response)} chars")

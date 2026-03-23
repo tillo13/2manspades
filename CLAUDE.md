@@ -8,12 +8,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two-Man Spades is a web-based card game where a human player plays against an AI opponent (Marta). Flask application deployed to Google App Engine with vanilla JavaScript frontend.
 
+## Deployment
+
+```bash
+# ALWAYS use the centralized deploy tool (git push + GCP deploy in one command)
+deploy "commit message"
+```
+- NEVER use raw `git push`, `gcloud app deploy`, or old `git_push.sh`/`git_push.bat` scripts
+- `deploy` always does BOTH git push and GCP deploy — that is the default and expected behavior
+- See `~/.claude/skills/deploy-to-gcp.md` for flags like `--git-only` or `--gcp-only` (only if explicitly needed)
+- Config: `deploy.json` in project root | Tool: `~/Desktop/code/master_gcp_deploy/deploy.py`
+
 ## Development Commands
 
 ```bash
-# Deploy to Google App Engine (commits, pushes, and deploys)
-./git_push.sh "commit message here"
-
 # Activate virtual environment
 source venv_2man/bin/activate
 
@@ -62,12 +70,11 @@ Key views (in `twomanspades` schema):
 - `vw_player_identity` - Maps hand_id to player name (Tom/Luke/Jon/Andy)
 - `vw_unified_leaderboard` - Aggregated player stats
 
-### Deployment
+### Infrastructure
 
 - `app.yaml` - Google App Engine config (Python 3.12, gunicorn)
 - Production URL: https://2manspades.com
 - Uses Google Secret Manager for ANTHROPIC_API_KEY
-- `./git_push.sh` handles commit + push + deploy + old version cleanup
 
 ## Game Rules Summary
 
