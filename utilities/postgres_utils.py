@@ -71,7 +71,7 @@ def get_monthly_stats_by_location():
     cur.execute(query)
     results = cur.fetchall()
     cur.close()
-    conn.close()
+    return_db_connection(conn)
     
     # Organize by family member with current month first
     organized = {}
@@ -125,7 +125,9 @@ def _get_pool():
                     password = os.getenv('DB_PASSWORD', 'password')
                 _pool = psycopg2.pool.ThreadedConnectionPool(
                     1, 2, host=host, database=dbname,
-                    user=user, password=password, connect_timeout=10
+                    user=user, password=password,
+                    connect_timeout=10,
+                    options='-c statement_timeout=30000'
                 )
     return _pool
 
@@ -149,7 +151,11 @@ def get_db_connection():
 
 
 def return_db_connection(conn):
-    """Return a connection to the pool."""
+    """Return a connection to the pool (with rollback to clear any aborted txn)."""
+    try:
+        conn.rollback()
+    except Exception:
+        pass
     try:
         _get_pool().putconn(conn)
     except Exception:
@@ -167,7 +173,7 @@ def test_connection():
         version = cur.fetchone()
         print(f"PostgreSQL connection successful: {version[0]}")
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
     except Exception as e:
         print(f"Database connection failed: {e}")
@@ -198,7 +204,7 @@ def get_suspected_player_from_ip(ip_address: str) -> Optional[str]:
         """, (ip_address,))
         result = cur.fetchone()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return result[0] if result else None
     except Exception as e:
         print(f"[DB] Error getting suspected player: {e}")
@@ -217,7 +223,7 @@ def get_user_difficulty(google_email: str) -> Optional[str]:
         """, (google_email,))
         result = cur.fetchone()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return result[0] if result else None
     except Exception as e:
         print(f"[DB] Error getting user difficulty: {e}")
@@ -236,7 +242,7 @@ def save_user_difficulty(google_email: str, difficulty: str) -> bool:
         """, (difficulty, google_email))
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
     except Exception as e:
         print(f"[DB] Error saving user difficulty: {e}")
@@ -268,7 +274,7 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         print(f"Hand {hand_data.get('hand_id')} successfully inserted")
         return True
     except Exception as e:
@@ -276,7 +282,7 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
         # Try to close connection if it exists
         try:
             if 'conn' in locals():
-                conn.close()
+                return_db_connection(conn)
         except:
             pass
         return False
@@ -306,7 +312,7 @@ def log_game_event_to_db(hand_id: str, event_type: str, event_data: Dict, **kwar
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
     except Exception as e:
         print(f"Failed to log event: {e}")
@@ -337,7 +343,7 @@ def finalize_hand(hand_id: str, final_data: Dict[str, Any]) -> bool:
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
     except Exception as e:
         print(f"Failed to finalize hand: {e}")
@@ -361,7 +367,7 @@ def upsert_player(ip_address: str, user_agent: str = None) -> Optional[int]:
         player_id = cur.fetchone()[0]
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return player_id
     except Exception as e:
         print(f"Failed to upsert player: {e}")
@@ -400,14 +406,14 @@ def batch_log_events(hand_id: str, events: List[Dict]) -> bool:
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
     except Exception as e:
         print(f"Batch event logging failed: {e}")
         try:
             if 'conn' in locals():
                 conn.rollback()
-                conn.close()
+                return_db_connection(conn)
         except:
             pass
         return False
@@ -494,14 +500,14 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
     except Exception as e:
         print(f"Failed to create hand with player: {e}")
         try:
             if 'conn' in locals():
                 conn.rollback()
-                conn.close()
+                return_db_connection(conn)
         except:
             pass
         return False
@@ -539,7 +545,7 @@ def get_ip_address_game_stats(client_ip: str = None) -> List[Dict[str, Any]]:
         
         results = cur.fetchall()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         
         # Convert to list of dicts for easier handling
         return [dict(row) for row in results]
@@ -591,7 +597,7 @@ def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> boo
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
         
     except Exception as e:
@@ -599,7 +605,7 @@ def save_ip_location_data(ip_address: str, location_data: Dict[str, Any]) -> boo
         try:
             if 'conn' in locals():
                 conn.rollback()
-                conn.close()
+                return_db_connection(conn)
         except:
             pass
         return False
@@ -620,7 +626,7 @@ def save_failed_ip_lookup(ip_address: str) -> bool:
         
         conn.commit()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return True
         
     except Exception as e:
@@ -641,7 +647,7 @@ def get_player_city_membership(client_ip):
         
         result = cur.fetchone()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         
         if not result:
             return 'Other'
@@ -683,7 +689,7 @@ def get_unified_leaderboard() -> List[Dict[str, Any]]:
 
         results = cur.fetchall()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
 
         return [dict(row) for row in results]
 
@@ -712,7 +718,7 @@ def get_competitive_leaders_stats() -> List[Dict[str, Any]]:
         
         results = cur.fetchall()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         
         return [dict(row) for row in results]
         
@@ -739,7 +745,7 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
         
         results = cur.fetchall()
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         
         return [dict(row) for row in results]
         
@@ -943,7 +949,7 @@ def get_fun_stats() -> Dict[str, Any]:
             stats['max_hand_duration_minutes'] = hand_duration[2]
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return stats
 
     except Exception as e:
@@ -1285,7 +1291,7 @@ def get_player_achievements() -> Dict[str, Any]:
         blind_by_level = [dict(row) for row in cur.fetchall()]
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
 
         return {
             'bid_accuracy': bid_accuracy,
@@ -1410,7 +1416,7 @@ def get_special_card_stats() -> Dict[str, Any]:
         total = cur.fetchone()['total_appearances']
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
 
         return {
             'overall_captures': overall_captures,
@@ -1633,7 +1639,7 @@ def get_overall_game_stats() -> Dict[str, Any]:
             stats['first_game_date'] = first['first_game'].strftime('%B %d, %Y')
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return stats
 
     except Exception as e:
@@ -1806,7 +1812,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
         stats['player_tricks_per_hand'] = [dict(row) for row in cur.fetchall()]
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         return stats
 
     except Exception as e:
@@ -1832,7 +1838,7 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
 
         if not summary:
             cur.close()
-            conn.close()
+            return_db_connection(conn)
             return None
 
         # Get all events for this game
@@ -1978,7 +1984,7 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         hands_list = sorted(hands.values(), key=lambda h: h['hand_number'])
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
 
         return {
             'hand_id': hand_id,
@@ -2075,7 +2081,7 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
         summary['abandoned'] = abandoned_count
 
         cur.close()
-        conn.close()
+        return_db_connection(conn)
 
         return {
             'player_name': player_name,
