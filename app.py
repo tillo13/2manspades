@@ -197,16 +197,14 @@ def debug_async_logging():
 @app.route('/sitemap.xml')
 def sitemap():
     host = request.host_url.rstrip('/')
-    skip = {'api', 'admin', 'auth', 'login', 'logout', 'callback', 'health', 'sitemap', 'robots', 'tasks', 'cron', 'debug', 'mimic'}
+    # Only include actual user-facing pages in the sitemap
+    allowed = {'/', '/instructions', '/stats'}
     urls = []
     for rule in app.url_map.iter_rules():
         if 'GET' not in rule.methods or rule.arguments:
             continue
         path = rule.rule
-        parts = path.strip('/').split('/')
-        if any(p in skip for p in parts):
-            continue
-        if path.startswith('/api/') or path.startswith('/admin') or path.startswith('/static'):
+        if path not in allowed:
             continue
         priority = '1.0' if path == '/' else '0.6'
         urls.append(f'  <url><loc>{host}{path}</loc><priority>{priority}</priority></url>')
