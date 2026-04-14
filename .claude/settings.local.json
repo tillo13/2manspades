@@ -22,7 +22,9 @@
       "Bash(cat:*)",
       "Bash(timeout 15 python3:*)",
       "Bash(timeout 30 python3:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(curl -sS -o /tmp/home.html -w \"HTTP %{http_code}\\\\nsize %{size_download}\\\\n\" https://2manspades.com/)",
+      "Bash(deploy:*)"
     ]
   }
 }
