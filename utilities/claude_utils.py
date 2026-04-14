@@ -122,6 +122,7 @@ class ClaudeGameChat:
         self.model = "claude-3-5-haiku-20241022"
         self.max_tokens = 150
         self.temperature = 0.8
+        self.user_id = None
         
         self.system_prompt = (
             "You are Marta, playing Two-Man Spades against a human opponent. "
@@ -228,7 +229,7 @@ class ClaudeGameChat:
             )
             
             print(f"[CLAUDE] API call successful!")
-            log_api_usage(self.model, response.usage, feature='marta_chat')
+            log_api_usage(self.model, response.usage, feature='marta_chat', user_id=self.user_id)
 
             api_response = response.content[0].text.strip()
             print(f"[CLAUDE] Raw API response: '{api_response}'")
@@ -639,13 +640,14 @@ def get_claude_chat() -> ClaudeGameChat:
         print("[CLAUDE] Using existing ClaudeGameChat singleton (Marta as player)")
     return _claude_chat
 
-def get_smart_marta_response(player_message: str, game_state: Dict[str, Any]) -> str:
+def get_smart_marta_response(player_message: str, game_state: Dict[str, Any], user_id: str = None) -> str:
     """Convenience function to get Marta's response as active player"""
     print(f"[CLAUDE] get_smart_marta_response called (Marta as active player)")
     print(f"[CLAUDE] Opponent message: '{player_message}'")
     print(f"[CLAUDE] Game state keys: {list(game_state.keys()) if game_state else 'None'}")
-    
+
     claude = get_claude_chat()
+    claude.user_id = user_id
     response = claude.get_marta_response(player_message, game_state)
     
     print(f"[CLAUDE] Final Marta response: '{response}'")

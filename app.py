@@ -277,7 +277,8 @@ def chat_response():
             from utilities.claude_utils import get_smart_marta_response
             
             print("[CHAT] Calling Claude...")
-            response = get_smart_marta_response(player_message, game_state)
+            response = get_smart_marta_response(player_message, game_state,
+                                                user_id=session.get('user', {}).get('email'))
             print(f"[CHAT] Final response: '{response}'")
             
             return jsonify({'response': response})
