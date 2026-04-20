@@ -210,3 +210,4 @@ logging/
 *.flac
 *.ogg
 *.opus
+.env.bak-*

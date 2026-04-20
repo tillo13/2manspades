@@ -119,7 +119,7 @@ class ClaudeGameChat:
             print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
             raise e
         
-        self.model = "claude-3-5-haiku-20241022"
+        self.model = "claude-haiku-4-5-20251001"
         self.max_tokens = 150
         self.temperature = 0.8
         self.user_id = None
