@@ -599,17 +599,10 @@ class ClaudeGameChat:
             return None
         
         try:
-            project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
-            print(f"[CLAUDE] Project ID: {project_id}")
-            
-            if not project_id:
-                print(f"[CLAUDE] ERROR: GOOGLE_CLOUD_PROJECT not set")
-                return None
-            
             print(f"[CLAUDE] Creating Secret Manager client...")
             client = secretmanager.SecretManagerServiceClient()
-            
-            secret_name = f"projects/{project_id}/secrets/ANTHROPIC_API_KEY/versions/latest"
+
+            secret_name = "projects/kumori-404602/secrets/KUMORI_ANTHROPIC_API_KEY/versions/latest"
             print(f"[CLAUDE] Secret path: {secret_name}")
             
             print(f"[CLAUDE] Accessing secret...")
