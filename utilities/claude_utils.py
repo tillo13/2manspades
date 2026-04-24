@@ -5,7 +5,7 @@ Marta responds to direct user chat messages as an active player in the game
 """
 
 import os
-import anthropic
+from utilities.anthropic_logger import new_client, APIError, RateLimitError, APIConnectionError
 from typing import Dict, Optional, Any
 import logging
 import json
@@ -108,12 +108,8 @@ class ClaudeGameChat:
         print(f"[CLAUDE] API key found: {self.api_key[:10]}...{self.api_key[-4:] if len(self.api_key) > 14 else 'SHORT'}")
         
         try:
-            # FIXED: More aggressive timeout and better error handling
-            self.client = anthropic.Anthropic(
-                api_key=self.api_key,
-                max_retries=1,  # Only retry once to fail faster
-                timeout=10.0,   # 10 second timeout to avoid hanging
-            )
+            # Fast-fail config: one retry, 10s timeout
+            self.client = new_client(max_retries=1, timeout=10.0)
             print("[CLAUDE] Anthropic client initialized successfully with fast-fail config")
         except Exception as e:
             print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
@@ -251,7 +247,7 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Using timeout fallback: '{fallback}'")
             return fallback
             
-        except anthropic.RateLimitError as e:
+        except RateLimitError as e:
             print(f"[CLAUDE] Rate Limit Error: {e}")
             retry_after = getattr(e.response, 'headers', {}).get('retry-after', 'unknown')
             print(f"[CLAUDE] Retry-after header: {retry_after}")
@@ -259,13 +255,13 @@ class ClaudeGameChat:
             print(f"[CLAUDE] Using rate limit fallback: '{fallback}'")
             return fallback
             
-        except anthropic.APIConnectionError as e:
+        except APIConnectionError as e:
             print(f"[CLAUDE] Connection Error: {e}")
             fallback = self._fallback_marta_response(game_context)
             print(f"[CLAUDE] Using connection error fallback: '{fallback}'")
             return fallback
             
-        except anthropic.APIError as e:
+        except APIError as e:
             print(f"[CLAUDE] General API Error: {e}")
             print(f"[CLAUDE] Error type: {type(e)}")
             if hasattr(e, 'status_code'):

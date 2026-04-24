@@ -1,5 +1,11 @@
 {
-    "project_id": "twomanspades",
-    "app_name": "2ManSpades",
-    "github_repo": "https://github.com/tillo13/2manspades.git"
+  "project_id": "twomanspades",
+  "app_name": "2ManSpades",
+  "github_repo": "https://github.com/tillo13/2manspades.git",
+  "shared_files": [
+    {
+      "src": "anthropic_logger/anthropic_logger.py",
+      "dst": "utilities/anthropic_logger.py"
+    }
+  ]
 }
