@@ -27,6 +27,13 @@ from utilities.google_auth_utils import SimpleGoogleAuth
 
 
 app = Flask(__name__)
+
+# GA4 tag injection — registers `ga_snippet(slug)` for use in base.html
+try:
+    from utilities.gtag import snippet as _ga_snippet
+    app.jinja_env.globals['ga_snippet'] = _ga_snippet
+except Exception:
+    pass
 google_auth = SimpleGoogleAuth(app)
 
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
