@@ -1,0 +1,15 @@
+{
+  "name": "2manspades",
+  "baseUrl": "https://2manspades.com",
+  "routes": [
+    "/"
+  ],
+  "checks": {
+    "noBrokenImages": true,
+    "noConsoleErrors": true,
+    "no5xx": true,
+    "no4xx": false
+  },
+  "viewport": { "width": 1440, "height": 900 },
+  "screenshots": false
+}

@@ -127,15 +127,45 @@ def _get_pool():
                     1, 2, host=host, database=dbname,
                     user=user, password=password,
                     connect_timeout=10,
-                    options='-c statement_timeout=30000'
+                    # idle_in_transaction backstop: many helpers only return
+                    # the pooled conn on the happy path, so an exception can
+                    # strand a conn mid-transaction holding locks (7/15+7/17
+                    # DB alerts: 37-55min idle-in-transaction). The server now
+                    # kills those after 2min; the pool ping replaces them.
+                    options='-c statement_timeout=30000 '
+                            '-c idle_in_transaction_session_timeout=120000'
                 )
     return _pool
 
 
 def get_db_connection():
-    """Get a connection from the pool (fast!)."""
+    """Get a connection from the pool (fast!), pinging out stale conns.
+
+    Cloud SQL reaps idle conns (~10min) and the idle_in_transaction timeout
+    kills stranded ones; without the ping the pool hands those corpses to the
+    next request, which dies with OperationalError on its first execute.
+    """
+    global _pool
     try:
-        return _get_pool().getconn()
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            if conn.info.transaction_status != psycopg2.extensions.TRANSACTION_STATUS_IDLE:
+                conn.rollback()
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            conn.rollback()   # don't hand out an open txn from the ping
+            return conn
+        except psycopg2.Error:
+            try:
+                pool.putconn(conn, close=True)
+            except Exception:
+                pass
+            with _pool_lock:
+                _pool = None
+            conn = _get_pool().getconn()
+            return conn
     except Exception:
         # Fallback to direct if pool fails
         is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
@@ -1822,6 +1852,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
 
 def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
     """Get full game details for a specific hand_id including all events."""
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1837,8 +1868,6 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         summary = cur.fetchone()
 
         if not summary:
-            cur.close()
-            return_db_connection(conn)
             return None
 
         # Get all events for this game
@@ -1983,9 +2012,6 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         # Convert to sorted list
         hands_list = sorted(hands.values(), key=lambda h: h['hand_number'])
 
-        cur.close()
-        return_db_connection(conn)
-
         return {
             'hand_id': hand_id,
             'summary': dict(summary),
@@ -1996,9 +2022,15 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         print(f"Failed to get game details: {e}")
         return None
+    finally:
+        # Release on EVERY path — a statement-timeout here used to leak the
+        # pooled conn idle-in-transaction (55min lock-holder, 7/17 DB alert).
+        if conn is not None:
+            return_db_connection(conn)
 def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
     """Get all games for a specific player, sorted by date descending.
     Includes both completed and abandoned games."""
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -2080,9 +2112,6 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
         abandoned_count = sum(1 for g in games if g.get('is_abandoned'))
         summary['abandoned'] = abandoned_count
 
-        cur.close()
-        return_db_connection(conn)
-
         return {
             'player_name': player_name,
             'summary': summary,
@@ -2092,3 +2121,6 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         print(f"Failed to get player games: {e}")
         return None
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
