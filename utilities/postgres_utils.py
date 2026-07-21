@@ -1955,54 +1955,52 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
                         trick_history.append(t)
                     hand['trick_history'] = trick_history
 
-        # Get timing data for the game
-        cur.execute('''
-            SELECT
-                MIN(timestamp) as game_start,
-                MAX(timestamp) as game_end,
-                EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 as total_minutes
-            FROM twomanspades.game_events
-            WHERE hand_id = %s
-        ''', (hand_id,))
-        timing = cur.fetchone()
-        if timing and timing['game_start']:
-            summary['game_start'] = timing['game_start']
-            summary['game_end'] = timing['game_end']
-            summary['total_minutes'] = round(timing['total_minutes'], 1) if timing['total_minutes'] else None
+        # Timing data — computed from `events` (already the full set, sorted by
+        # timestamp). The old MIN/MAX aggregate queries hit a planner pathology
+        # (backward timestamp-index walk, 30s statement timeouts on bot traffic).
+        if events:
+            game_start = events[0]['timestamp']
+            game_end = events[-1]['timestamp']
+            total_minutes = (game_end - game_start).total_seconds() / 60
+            summary['game_start'] = game_start
+            summary['game_end'] = game_end
+            summary['total_minutes'] = round(total_minutes, 1) if total_minutes else None
 
-        # Get per-hand timing
-        cur.execute('''
-            SELECT
-                hand_number,
-                MIN(timestamp) as hand_start,
-                MAX(timestamp) as hand_end,
-                EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 as hand_minutes
-            FROM twomanspades.game_events
-            WHERE hand_id = %s AND hand_number > 0
-            GROUP BY hand_number
-            ORDER BY hand_number
-        ''', (hand_id,))
+        # Per-hand timing from the same in-memory list (events sorted ascending,
+        # so first/last occurrence per hand = min/max timestamp)
+        hand_spans = {}
+        for event in events:
+            hn = event['hand_number']
+            if not hn or hn <= 0:
+                continue
+            if hn not in hand_spans:
+                hand_spans[hn] = [event['timestamp'], event['timestamp']]
+            else:
+                hand_spans[hn][1] = event['timestamp']
+
         hand_timings = {}
         prev_hand_end = None
-        for row in cur.fetchall():
+        for hn in sorted(hand_spans):
+            hand_start, hand_end = hand_spans[hn]
             # Calculate duration relative to previous hand end (not absolute timestamps)
-            if prev_hand_end and row['hand_end']:
-                duration = round((row['hand_end'] - prev_hand_end).total_seconds() / 60, 1)
+            if prev_hand_end and hand_end:
+                duration = round((hand_end - prev_hand_end).total_seconds() / 60, 1)
             else:
                 # First hand: use its own start to end
-                duration = round(row['hand_minutes'], 1) if row['hand_minutes'] else None
+                hand_minutes = (hand_end - hand_start).total_seconds() / 60
+                duration = round(hand_minutes, 1) if hand_minutes else None
 
             gap_minutes = None
-            if prev_hand_end and row['hand_start']:
-                gap_minutes = round((row['hand_start'] - prev_hand_end).total_seconds() / 60, 1)
+            if prev_hand_end and hand_start:
+                gap_minutes = round((hand_start - prev_hand_end).total_seconds() / 60, 1)
 
-            hand_timings[row['hand_number']] = {
-                'start': row['hand_start'],
-                'end': row['hand_end'],
+            hand_timings[hn] = {
+                'start': hand_start,
+                'end': hand_end,
                 'duration_minutes': duration,
                 'gap_from_previous': gap_minutes
             }
-            prev_hand_end = row['hand_end']
+            prev_hand_end = hand_end
 
         # Add timing to hands
         for h in hands.values():
