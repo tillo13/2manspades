@@ -43,3 +43,6 @@ logging/
 # Dev tools not needed on server
 gcloud_deploy.py
 *.md
+
+# Scratch — never ship (2026-09-02 fleet fix: _oneoff/ may hold ingested data with secrets)
+_oneoff/
