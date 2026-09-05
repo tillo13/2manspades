@@ -96,3 +96,5 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 #jbMiniNext { background: #444; color: #fff; }
 .jb-mini[hidden] { display: none; }
 @media (min-width: 1150px) { .jb-mini { display: none !important; } }
+
+.jb-controls .jb-big.needs-tap { animation: jbPulse 1.2s ease-in-out infinite; }

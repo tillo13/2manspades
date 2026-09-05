@@ -69,7 +69,7 @@
     }
     function toggle() {
         if (!state.album) return play(neighbor(+1));
-        if (audio.paused) { state.playing = true; audio.play().catch(() => setResumePrompt(true)); }
+        if (audio.paused) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true)); }
         else { state.playing = false; audio.pause(); }
         saveState(); render();
     }
@@ -82,6 +82,7 @@
     function setResumePrompt(on) {
         const b = $('jbBubble'); if (!b) return; b.classList.toggle('needs-tap', on);
         $('jbBubbleLabel').textContent = on ? 'Tap to resume' : '';
+        $('jbPlay').classList.toggle('needs-tap', on);
     }
     function fmt(sec) { sec = Math.floor(sec || 0); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
     function render() {
@@ -165,7 +166,14 @@
         });
         audio.addEventListener('error', () => { setTimeout(next, 800); });   // skip a bad object rather than stall
         audio.addEventListener('play', () => { render(); renderPills(); }); audio.addEventListener('pause', () => { render(); renderPills(); });
-        $('jbBubble').onclick = () => { if ($('jbBubble').classList.contains('needs-tap')) { toggle(); return; } if (!state.album) { toggle(); return; } openPanel(!panelOpen); };
+        // the bubble ALWAYS opens the panel (never a dead end); on a blocked resume it also
+        // retries play inside this tap gesture, which is what Safari needs. An empty player
+        // starts the shuffle and opens the panel so he sees what happened.
+        $('jbBubble').onclick = () => {
+            if ($('jbBubble').classList.contains('needs-tap')) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => {}); }
+            else if (!state.album) toggle();
+            openPanel(true);
+        };
         $('jbClose').onclick = () => openPanel(false);
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
         if ($('jbMini')) {
