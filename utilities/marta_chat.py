@@ -150,6 +150,10 @@ class MartaChat:
         except Exception as e:
             print(f"[MARTA] Unexpected error: {e}")
             print(f"[MARTA] Error type: {type(e)}")
+            if now_playing and now_playing.get('title'):
+                # a card quip in reply to a song question reads as broken; say what happened instead
+                return ("Give me a second on \"%s\" - my music brain is buffering. Ask me again in a moment."
+                        % str(now_playing.get('title'))[:80])
             fallback = self._fallback_marta_response(game_context)
             print(f"[MARTA] Using general error fallback: '{fallback}'")
             return fallback

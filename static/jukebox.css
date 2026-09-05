@@ -80,3 +80,6 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 .chat-pills { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 12px 0; }
 .chat-pill { background: #fff7dd; color: #333; border: 1px solid #f6c453; border-radius: 16px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
 .chat-pill:hover { background: #f6c453; }
+
+.jb-all-tile { width: 100%; aspect-ratio: 1; border-radius: 6px; background: #222; color: #f6c453; font-size: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.jb-album.current .jb-all-tile { outline: 3px solid #f6c453; }

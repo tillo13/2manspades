@@ -94,15 +94,20 @@
         $('jbAlbum').textContent = a ? `${a.title} · ${a.year}` : 'Tap play for some Hoyt';
         $('jbPlay').textContent = playing ? '❚❚' : '▶';
         $('jbPlay').setAttribute('aria-label', playing ? 'Pause' : 'Play');
-        $('jbMode').textContent = state.mode === 'shuffle' ? 'Shuffle: all the records' : 'Playing this record';
+        $('jbMode').textContent = state.mode === 'shuffle' ? 'All the records, shuffled' : 'Playing this record';
         const toast = $('jbToast'); if (t && toast.dataset.last !== `${cur.album}/${cur.n}`) {
             toast.textContent = `${t.title} — ${a.title}`; toast.dataset.last = `${cur.album}/${cur.n}`;
             toast.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
         }
-        document.querySelectorAll('#jbAlbums .jb-album').forEach(el => el.classList.toggle('current', !!a && el.dataset.id === a.id));
+        document.querySelectorAll('#jbAlbums .jb-album').forEach(el => el.classList.toggle('current', el.dataset.id === '__all__' ? (state.mode === 'shuffle' && !!a) : (!!a && state.mode === 'album' && el.dataset.id === a.id)));
     }
     function renderAlbums(filter) {
         const q = (filter || '').trim().toLowerCase(), wrap = $('jbAlbums'); wrap.innerHTML = '';
+        if (!q) {
+            const all = document.createElement('div'); all.className = 'jb-album jb-album-all' + (state.mode === 'shuffle' ? ' current' : ''); all.dataset.id = '__all__';
+            all.innerHTML = `<div class="jb-all-tile">⤮</div><div class="jb-album-title">All the records</div><div class="jb-album-year">shuffle</div>`;
+            all.onclick = () => { shuffleAll(); showPanel('now'); }; wrap.appendChild(all);
+        }
         for (const a of PL.albums) {
             const hits = q ? a.tracks.filter(t => t.title.toLowerCase().includes(q)) : [];
             if (q && !hits.length && !a.title.toLowerCase().includes(q)) continue;
@@ -128,7 +133,7 @@
             b.onclick = () => { const i = $('chatInput'); if (!i) return; i.value = q; if (typeof sendMessage === 'function') sendMessage(); }; wrap.appendChild(b); }
     }
     function nowPlaying() {
-        const cur = current(); if (!cur || !state.playing) return null;
+        const cur = current(); if (!cur) return null;   // paused still counts: the song on the turntable is the song he is asking about
         const a = albumById(cur.album), t = trackOf(cur); if (!a || !t) return null;
         return { title: t.title, album: a.title, year: a.year, n: t.n };
     }
@@ -157,7 +162,6 @@
         $('jbBubble').onclick = () => { if ($('jbBubble').classList.contains('needs-tap')) { toggle(); return; } if (!state.album) { toggle(); return; } openPanel(!panelOpen); };
         $('jbClose').onclick = () => openPanel(false);
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
-        $('jbShuffle').onclick = shuffleAll;
         $('jbTabNow').onclick = () => showPanel('now'); $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };
         $('jbSearch').oninput = (e) => renderAlbums(e.target.value);
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
