@@ -64,3 +64,80 @@ def stream_track(album_id, n):
     data = blob.download_as_bytes()
     headers['Content-Length'] = str(len(data))
     return Response(data, status=200, headers=headers)
+
+
+# ─── play logging ────────────────────────────────────────────────────────────
+# One row per play, keyed by a client-generated play_id, upserted as the track
+# progresses. Writes go through logging_utils' async queue (fire-and-forget, prod
+# only) so the audio path never waits on the database.
+_SCHEMA_OK = False
+
+
+def _ensure_schema(cur):
+    global _SCHEMA_OK
+    if _SCHEMA_OK:
+        return
+    from utilities.schema_guard import table_exists, create_index_if_missing
+    if not table_exists(cur, 'twomanspades', 'jukebox_plays'):
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS twomanspades.jukebox_plays (
+                play_id        UUID PRIMARY KEY,
+                user_email     TEXT,
+                user_name      TEXT,
+                ip_address     TEXT,
+                album_id       TEXT NOT NULL,
+                track_n        SMALLINT NOT NULL,
+                title          TEXT,
+                album_title    TEXT,
+                year           TEXT,
+                source         TEXT,                      -- shuffle | album | search | resume
+                started_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_seen_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                seconds_played REAL NOT NULL DEFAULT 0,
+                duration       REAL,
+                completed      BOOLEAN NOT NULL DEFAULT FALSE
+            )
+        """)
+    create_index_if_missing(cur, 'twomanspades', 'idx_jukebox_plays_user_started', 'jukebox_plays', '(user_email, started_at DESC)')
+    create_index_if_missing(cur, 'twomanspades', 'idx_jukebox_plays_track', 'jukebox_plays', '(album_id, track_n)')
+    _SCHEMA_OK = True
+
+
+def record_play_event(ev):
+    """Runs on the async DB worker. ev: dict from POST /jukebox/event."""
+    from utilities.postgres_utils import get_db_connection, return_db_connection
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        _ensure_schema(cur)
+        cur.execute("""
+            INSERT INTO twomanspades.jukebox_plays
+                (play_id, user_email, user_name, ip_address, album_id, track_n, title, album_title, year,
+                 source, seconds_played, duration, completed)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (play_id) DO UPDATE SET
+                seconds_played = GREATEST(twomanspades.jukebox_plays.seconds_played, EXCLUDED.seconds_played),
+                duration       = COALESCE(EXCLUDED.duration, twomanspades.jukebox_plays.duration),
+                completed      = twomanspades.jukebox_plays.completed OR EXCLUDED.completed,
+                last_seen_at   = NOW()
+        """, (ev['play_id'], ev.get('user_email'), ev.get('user_name'), ev.get('ip'), ev['album_id'], int(ev['n']),
+              ev.get('title'), ev.get('album_title'), ev.get('year'), ev.get('source'),
+              float(ev.get('seconds') or 0), ev.get('duration'), bool(ev.get('completed'))))
+        conn.commit()
+        cur.close()
+    finally:
+        return_db_connection(conn)
+
+
+def queue_play_event(ev, session, ip):
+    """Validate + enrich a client event, then hand it to the async worker."""
+    from utilities.logging_utils import queue_db_operation
+    if not re.fullmatch(r'[0-9a-f-]{36}', str(ev.get('play_id', ''))): return False
+    if not _known(str(ev.get('album_id', '')), int(ev.get('n') or 0)): return False
+    if ev.get('source') not in ('shuffle', 'album', 'search', 'resume'): ev['source'] = 'unknown'
+    user = (session.get('user') or {})
+    ev['user_email'] = user.get('email'); ev['user_name'] = user.get('name'); ev['ip'] = ip
+    for k in ('title', 'album_title', 'year'):
+        ev[k] = str(ev.get(k) or '')[:200]
+    queue_db_operation(record_play_event, ev)
+    return True

@@ -296,7 +296,8 @@ def chat_response():
             
             print("[CHAT] Calling Marta via kumori...")
             response = get_smart_marta_response(player_message, game_state,
-                                                user_id=session.get('user', {}).get('email'))
+                                                user_id=session.get('user', {}).get('email'),
+                                                now_playing=data.get('now_playing'))
             print(f"[CHAT] Final response: '{response}'")
             
             return jsonify({'response': response})
@@ -322,6 +323,13 @@ def chat_response():
 def jukebox_audio(album_id, n):
     from utilities.jukebox import stream_track
     return stream_track(album_id, n)
+
+@app.route('/jukebox/event', methods=['POST'])
+def jukebox_event():
+    from utilities.jukebox import queue_play_event
+    ev = request.get_json(silent=True) or {}
+    ok = queue_play_event(ev, session, get_client_ip(request))
+    return jsonify({'ok': ok})
 
 @app.route('/state')
 def get_state():

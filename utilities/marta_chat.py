@@ -44,14 +44,20 @@ class MartaChat:
             "bidding accuracy, your own strategic decisions, bag situations and trick results. "
             "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
             "Speak as an active player in the match, not as an outside observer. "
-            "You only respond when your opponent directly talks to you - never initiate conversation."
+            "You only respond when your opponent directly talks to you - never initiate conversation. "
+            "MUSIC: the table has a Hoyt Axton jukebox. When a NOW_PLAYING block is present and the opponent asks "
+            "about the song, the record, or Hoyt Axton, drop the snark and answer warmly and plainly in 2-4 sentences, "
+            "like a friend who loves his music. Use only the NOW_PLAYING facts (title, record, year, track number) plus "
+            "what you genuinely know about Hoyt Axton; if you do not know a fact, say so rather than inventing lyrics, "
+            "dates, studios or stories. Then you may add one short game aside."
         )
         
         print(f"[MARTA] kumori tier={self.min_quality_tier} max_tokens={self.max_tokens} temp={self.temperature}")
 
     def get_marta_response(self, 
                         player_message: str, 
-                        game_context: Optional[Dict[str, Any]] = None) -> str:
+                        game_context: Optional[Dict[str, Any]] = None,
+                        now_playing: Optional[Dict[str, Any]] = None) -> str:
         """Get a response from Marta as an active player in the game"""
         print(f"\n[MARTA] === MARTA CHAT REQUEST ===")
         print(f"[MARTA] Opponent message: '{player_message}'")
@@ -101,8 +107,13 @@ class MartaChat:
                 )
                 print(f"[MARTA] Using SECRET REVEAL prompt mode")
             else:
+                np_block = ''
+                if now_playing and now_playing.get('title'):
+                    np_block = ("[NOW_PLAYING: song '%s' from the record '%s' (%s), track %s] "
+                                % (str(now_playing.get('title'))[:120], str(now_playing.get('album'))[:120],
+                                   str(now_playing.get('year'))[:8], str(now_playing.get('n'))[:4]))
                 user_prompt = (
-                    f"{context_str}"
+                    f"{context_str}{np_block}"
                     f"My opponent said: '{player_message}'\n\n"
                     f"Respond as Marta with a competitive, game-aware comment (2-3 sentences) that references specific details "
                     f"from what I can legitimately see in the current game state. Mention relevant aspects like scores, "
@@ -419,12 +430,12 @@ def get_marta_chat() -> MartaChat:
         _marta_chat = MartaChat()
     return _marta_chat
 
-def get_smart_marta_response(player_message: str, game_state: Dict[str, Any], user_id: str = None) -> str:
+def get_smart_marta_response(player_message: str, game_state: Dict[str, Any], user_id: str = None, now_playing: Dict[str, Any] = None) -> str:
     """Convenience function to get Marta's response as active player"""
     print(f"[MARTA] get_smart_marta_response: '{player_message}'")
     marta = get_marta_chat()
     marta.user_id = user_id
-    response = marta.get_marta_response(player_message, game_state)
+    response = marta.get_marta_response(player_message, game_state, now_playing=now_playing)
     print(f"[MARTA] Final Marta response: '{response}'")
     return response
 

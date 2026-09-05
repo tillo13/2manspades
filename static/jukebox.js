@@ -6,6 +6,8 @@
     const KEY = 'hoyt_jukebox_v1';
     const $ = (id) => document.getElementById(id);
     let PL = null, audio = null, state = null, order = [], panelOpen = false, lastPanel = 'now';
+    let playId = null, lastSource = 'shuffle', lastBeat = 0;
+    const PILLS = ["What's this song about?", "When did Hoyt record this?", "Tell me about this record", "Play something like this"];
 
     const norm = (s) => s.toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
     const albumById = (id) => PL.albums.find(a => a.id === id);
@@ -46,13 +48,24 @@
         return order[i];
     }
 
-    function play(ref, pos) {
+    function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })); }
+    function beat(completed, useBeacon) {
+        if (!playId || !state.album) return;
+        const a = albumById(state.album), t = trackOf(current()); if (!a || !t) return;
+        const body = JSON.stringify({ play_id: playId, album_id: a.id, n: t.n, title: t.title, album_title: a.title, year: a.year,
+            source: lastSource, seconds: audio ? audio.currentTime : 0, duration: audio && audio.duration ? audio.duration : null, completed: !!completed });
+        if (useBeacon && navigator.sendBeacon) { navigator.sendBeacon('/jukebox/event', new Blob([body], { type: 'application/json' })); return; }
+        fetch('/jukebox/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    }
+    function play(ref, pos, source) {
         const t = trackOf(ref); if (!t) return;
+        if (playId) beat(false);                       // close out the previous play
+        playId = uuid(); lastSource = source || (pos ? 'resume' : (state.mode === 'album' ? 'album' : 'shuffle')); lastBeat = 0;
         state.album = ref.album; state.n = ref.n; state.pos = pos || 0; state.playing = true; saveState();
         audio.src = `/jukebox/audio/${ref.album}/${ref.n}`;
         if (pos) audio.currentTime = pos;
-        audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true));
-        render();
+        audio.play().then(() => { setResumePrompt(false); beat(false); }).catch(() => setResumePrompt(true));
+        render(); renderPills();
     }
     function toggle() {
         if (!state.album) return play(neighbor(+1));
@@ -60,9 +73,9 @@
         else { state.playing = false; audio.pause(); }
         saveState(); render();
     }
-    function next() { play(neighbor(+1)); }
+    function next(fromEnded) { if (fromEnded === true) beat(true); play(neighbor(+1)); }
     function prev() { if (audio.currentTime > 4) { audio.currentTime = 0; return; } play(neighbor(-1)); }
-    function playAlbum(id, n) { state.mode = 'album'; play({ album: id, n: n || 1 }); }
+    function playAlbum(id, n, source) { state.mode = 'album'; play({ album: id, n: n || 1 }, 0, source || 'album'); }
     function shuffleAll() { state.mode = 'shuffle'; state.seed = Date.now(); buildOrder(); play(order[0]); }
 
     // ---------- UI ----------
@@ -95,16 +108,32 @@
             if (q && !hits.length && !a.title.toLowerCase().includes(q)) continue;
             const el = document.createElement('div'); el.className = 'jb-album'; el.dataset.id = a.id;
             el.innerHTML = `<img src="/static/jukebox/covers/${a.id}.jpg" alt="" loading="lazy"><div class="jb-album-title">${a.title}</div><div class="jb-album-year">${a.year}</div>`;
-            el.onclick = () => { if (q && hits.length) playAlbum(a.id, hits[0].n); else playAlbum(a.id, 1); showPanel('now'); };
+            el.onclick = () => { if (q && hits.length) playAlbum(a.id, hits[0].n, 'search'); else playAlbum(a.id, 1); showPanel('now'); };
             if (q && hits.length) {
                 const ul = document.createElement('div'); ul.className = 'jb-hits';
-                for (const t of hits.slice(0, 6)) { const li = document.createElement('div'); li.textContent = t.title; li.onclick = (e) => { e.stopPropagation(); playAlbum(a.id, t.n); showPanel('now'); }; ul.appendChild(li); }
+                for (const t of hits.slice(0, 6)) { const li = document.createElement('div'); li.textContent = t.title; li.onclick = (e) => { e.stopPropagation(); playAlbum(a.id, t.n, 'search'); showPanel('now'); }; ul.appendChild(li); }
                 el.appendChild(ul);
             }
             wrap.appendChild(el);
         }
         render();
     }
+    function renderPills() {
+        const wrap = $('chatPills'); if (!wrap) return;
+        const np = nowPlaying(); wrap.hidden = !np;
+        if (!np) { wrap.innerHTML = ''; return; }
+        if (wrap.dataset.for === np.album + '/' + np.n) return;
+        wrap.dataset.for = np.album + '/' + np.n; wrap.innerHTML = '';
+        for (const q of PILLS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chat-pill'; b.textContent = q;
+            b.onclick = () => { const i = $('chatInput'); if (!i) return; i.value = q; if (typeof sendMessage === 'function') sendMessage(); }; wrap.appendChild(b); }
+    }
+    function nowPlaying() {
+        const cur = current(); if (!cur || !state.playing) return null;
+        const a = albumById(cur.album), t = trackOf(cur); if (!a || !t) return null;
+        return { title: t.title, album: a.title, year: a.year, n: t.n };
+    }
+    window.HoytJukebox = { nowPlaying, next: () => next(), prev, toggle };
+
     function showPanel(which) {
         lastPanel = which;
         $('jbNow').hidden = which !== 'now'; $('jbBrowse').hidden = which !== 'browse';
@@ -116,14 +145,15 @@
 
     function wire() {
         audio = new Audio(); audio.preload = 'auto';
-        audio.addEventListener('ended', next);
+        audio.addEventListener('ended', () => next(true));
         audio.addEventListener('timeupdate', () => {
             state.pos = audio.currentTime; if (!audio.paused && (audio.currentTime | 0) % 5 === 0) saveState();
+            if (!audio.paused && audio.currentTime - lastBeat >= 20) { lastBeat = audio.currentTime; beat(false); }
             $('jbTime').textContent = `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`;
             const p = audio.duration ? audio.currentTime / audio.duration : 0; $('jbBar').style.width = `${p * 100}%`;
         });
         audio.addEventListener('error', () => { setTimeout(next, 800); });   // skip a bad object rather than stall
-        audio.addEventListener('play', render); audio.addEventListener('pause', render);
+        audio.addEventListener('play', () => { render(); renderPills(); }); audio.addEventListener('pause', () => { render(); renderPills(); });
         $('jbBubble').onclick = () => { if ($('jbBubble').classList.contains('needs-tap')) { toggle(); return; } if (!state.album) { toggle(); return; } openPanel(!panelOpen); };
         $('jbClose').onclick = () => openPanel(false);
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
@@ -131,7 +161,7 @@
         $('jbTabNow').onclick = () => showPanel('now'); $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };
         $('jbSearch').oninput = (e) => renderAlbums(e.target.value);
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
-        window.addEventListener('pagehide', saveState);
+        window.addEventListener('pagehide', () => { saveState(); beat(false, true); });
         // one sheet at a time on narrow layouts: the jukebox already closes the chat when it
         // opens; this makes the chat bubble close the jukebox too (game.js owns toggleChat,
         // and the onclick resolves through window, so the wrap takes effect everywhere)

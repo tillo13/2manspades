@@ -84,7 +84,7 @@ function sendMessage() {
     fetch('/chat_response', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, now_playing: (window.HoytJukebox ? HoytJukebox.nowPlaying() : null) })
     })
         .then(response => response.json())
         .then(data => {

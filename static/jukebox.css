@@ -75,3 +75,8 @@
 
 /* while a sheet is open on a narrow layout, both floating bubbles get out of its way */
 body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon, body.chat-open .jb-bubble { display: none !important; }   /* !important: game.js sets the chat bubble's display inline */
+
+/* song-question pills above Marta's input while Hoyt is playing */
+.chat-pills { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 12px 0; }
+.chat-pill { background: #fff7dd; color: #333; border: 1px solid #f6c453; border-radius: 16px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.chat-pill:hover { background: #f6c453; }
