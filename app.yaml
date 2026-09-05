@@ -1,7 +1,9 @@
 runtime: python312
 instance_class: F1
 
-entrypoint: gunicorn -b :$PORT app:app
+# 2026-09-05: threaded worker. One sync worker meant a 10 s Marta/router call (or an audio
+# range fetch) blocked every card play behind it (/play p-max 8 s in the request log).
+entrypoint: gunicorn -b :$PORT --workers 1 --threads 8 --timeout 60 app:app
 
 automatic_scaling:
   min_instances: 0

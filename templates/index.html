@@ -325,6 +325,12 @@
     <!-- Hoyt Axton jukebox pane (inside the table sheet) -->
     <div class="jb-panel" id="jbPanel">
         <div class="jb-header"><span>Hoyt Axton</span></div>
+        <div class="jb-locked" id="jbLocked" hidden>
+            <img src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
+            <div class="jb-title">Hoyt plays for players</div>
+            <div class="jb-album">Log in and the jukebox is yours: 43 records, 667 songs.</div>
+            <button class="jb-pill" onclick="handleLoginClick()">Log in</button>
+        </div>
         <div class="jb-now" id="jbNow">
             <img id="jbCover" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
             <div class="jb-title" id="jbTitle">Hoyt Axton</div>
@@ -390,6 +396,7 @@
         <p>&copy; 2026 <a href="https://2manspades.com">2manspades.com</a></p>
     </footer>
 
+    <script>window.JB_LOGGED_IN = {{ 'true' if session.get('user') else 'false' }};</script>
     <script src="{{ url_for('static', filename='game.js') }}"></script>
     <script src="{{ url_for('static', filename='jukebox.js') }}"></script>
 </body>

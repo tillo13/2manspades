@@ -41,7 +41,11 @@ def _bucket():
 
 
 def stream_track(album_id, n):
-    """Proxy one m4a from the private bucket. Honors a single-range Range header."""
+    """Proxy one m4a from the private bucket. Honors a single-range Range header.
+    Signed-in players only: the catalogue is Andy's, the table is public."""
+    from flask import session
+    if not session.get('user'):
+        abort(401)
     if not re.fullmatch(r'[a-z0-9-]{4,80}', album_id) or not _known(album_id, n):
         abort(404)
     blob = _bucket().get_blob(f'hoyt/{album_id}/{n:02d}.m4a')

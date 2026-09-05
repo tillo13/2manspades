@@ -223,6 +223,19 @@
         if (state.album && state.playing) play(current(), state.pos);
     }
 
+    if (!window.JB_LOGGED_IN) {
+        // logged out: the sheet still opens (Marta works), the Hoyt tab shows the login card,
+        // nothing is fetched or resumed, and the bubble is Marta's speech icon until they sign in
+        const lock = () => { const l = $('jbLocked'); if (l) l.hidden = false; document.body.classList.add('jb-locked-mode');
+            $('tsClose').onclick = () => { $('tableSheet').classList.remove('open'); document.body.classList.remove('sheet-open'); if (typeof onChatVisibility === 'function') onChatVisibility(false); };
+            const open = (tab) => { $('tableSheet').classList.add('open'); document.body.classList.add('sheet-open'); $('tableSheet').dataset.tab = tab; if (typeof onChatVisibility === 'function') onChatVisibility(tab === 'marta'); };
+            $('tsTabMarta').onclick = () => open('marta'); $('tsTabHoyt').onclick = () => open('hoyt');
+            $('chatBubbleIcon').onclick = () => { if ($('tableSheet').classList.contains('open')) $('tsClose').onclick(); else open('marta'); };
+            window.TableSheet = { open, close: $('tsClose').onclick, tab: open, toggle: (tab) => { const sh = $('tableSheet'); if (sh.classList.contains('open') && sh.dataset.tab === tab) $('tsClose').onclick(); else open(tab); } };
+            window.HoytJukebox = { nowPlaying: () => null }; };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lock); else lock();
+        return;
+    }
     fetch('/static/jukebox/playlist.json').then(r => r.json()).then(pl => { PL = pl; loadState(); buildOrder(); wire(); })
         .catch(e => console.warn('[jukebox] playlist failed', e));
 })();
