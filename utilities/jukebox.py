@@ -6,6 +6,10 @@ to the browser with HTTP Range support so <audio> can seek. Object layout:
     hoyt/<album_id>/<NN>.m4a      hoyt/<album_id>/cover.jpg (covers also ship in static/)
 Only ids present in static/jukebox/playlist.json are served, so the route cannot
 be used to read arbitrary objects.
+
+Play events land in twomanspades.jukebox_plays keyed by a client-minted UUID play_id (the
+browser upserts the same row across page reloads, so the id has to leave the server): this is
+the documented exception to the fleet SERIAL default (decided 2026-09-05).
 """
 import json
 import os

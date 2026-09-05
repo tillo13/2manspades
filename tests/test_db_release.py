@@ -13,7 +13,7 @@ from tests.support import load_app
 load_app()
 from utilities.postgres_utils import connection
 from utilities import postgres_utils as db
-from utilities import app_helpers, jukebox
+from utilities import session_helpers, jukebox
 
 
 def fake_pool(fail_after_ping=True):
@@ -51,7 +51,7 @@ HELPERS = [
     (db.finalize_hand, ('h1', {})), (db.batch_log_events, ('h1', [{'event_type': 'e', 'event_data': {}}])),
     (db.create_hand_with_player, ({'hand_id': 'h1'}, {'ip_address': '1.2.3.4'})),
     (jukebox.jukebox_stats, ()), (jukebox.record_play_event, ({'play_id': 'p', 'album_id': 'a', 'track_n': 1},)),
-    (app_helpers._check_and_perform_ip_geolocation, ('1.2.3.4',)),
+    (session_helpers._check_and_perform_ip_geolocation, ('1.2.3.4',)),
 ]
 
 
@@ -60,7 +60,7 @@ class ReleaseTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(redirect_stdout(StringIO()))
-        self.stack.enter_context(patch.object(app_helpers, '_perform_ip_geolocation_lookup', return_value=False))
+        self.stack.enter_context(patch.object(session_helpers, '_perform_ip_geolocation_lookup', return_value=False))
 
     def run_helper(self, helper, args, fail):
         connection._slots = threading.BoundedSemaphore(2)

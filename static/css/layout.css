@@ -291,6 +291,7 @@
     .floating-hand-score { top: 46px; }
     body:not(.instructions-page) { padding-top: 92px; }
     body:has(.login-prompt-banner) { padding-top: 127px; }
+    body:has(.login-prompt-banner) .floating-game-score { top: 45px; }   /* under the banner, not behind it */
     body:has(.login-prompt-banner) .floating-hand-score { top: 81px; }
 }
 @media (min-width: 768px) {
