@@ -33,7 +33,10 @@
       "Bash(curl -s https://2manspades.com/health)",
       "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_ui.log)",
       "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_css.log)",
-      "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_hoyt_login.log)"
+      "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_hoyt_login.log)",
+      "Bash(sed -n 27p utilities/marta_chat.py)",
+      "Bash(python3 -)",
+      "Bash(KUMORI_API_KEY=x venv_2man/bin/python -m unittest discover -s tests -q)"
     ]
   }
 }

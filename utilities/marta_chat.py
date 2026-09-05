@@ -24,7 +24,11 @@ APP_NAME = 'twomanspades'
 
 class MartaChat:
     def __init__(self):
-        self.min_quality_tier = 'high'   # Pro tier: frontier has 2 free lanes, both pacing-throttled 2026-09-05 (24 s then 502); Pro answered in 2.5 s
+        # 'medium' (2026-09-05 evening): kumori's high tier resolves to two lanes graded unfit over
+        # 14 days (36%/44% success, p50 >= 25 s) and degrade never fires because the tier isn't
+        # empty, so every high call burned the 8 s budget and 504'd. groq-gptoss-20b tops medium:
+        # 100% / p50 2.6 s. Caller-side workaround; the real fix is budget-aware eligibility in kumori.
+        self.min_quality_tier = 'medium'
         self.budget_ms = 8000   # a failing cascade must return the canned fallback fast, not stall the table
         self.max_tokens = 200
         self.temperature = 0.8
