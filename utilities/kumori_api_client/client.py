@@ -321,7 +321,7 @@ def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=Non
 def llm_chat_resilient(backends=None, messages=None, max_tokens=500, temperature=0.3,
                        system=None, min_chars=1, debug=False, app_name=None,
                        min_quality_tier=None, require_capabilities=None,
-                       budget_ms=None, allow_degrade=None):
+                       budget_ms=None, allow_degrade=None, retry_on_5xx=True):
     """Server-side fallback chat. Returns (text, winning_backend,
     attempt_log_list, debug_info). Pick models ONE of two ways:
 
@@ -331,6 +331,8 @@ def llm_chat_resilient(backends=None, messages=None, max_tokens=500, temperature
             (storefront: Frontier / Pro / Standard / Fast — capability classes)
         require_capabilities: optional list, e.g. ['reasoning'] (thinking models)
         budget_ms: hard wall-clock cap for the whole cascade (never hangs past it)
+        retry_on_5xx: one client-side retry on 5xx/timeout (default True); pass False for
+            interactive chat where a canned fallback beats a doubled wait
         allow_degrade: True → drop below the tier if it's exhausted rather than fail
 
     EXPLICIT MODE — pin the exact fallback order yourself:
@@ -358,7 +360,11 @@ def llm_chat_resilient(backends=None, messages=None, max_tokens=500, temperature
         body['debug'] = True
     if app_name:
         body['app_name'] = app_name
-    data = _request('POST', '/api/v1/llm/chat-resilient', body, timeout=(5, 120))
+    # retry_on_5xx=False for interactive chat: the router already cascaded every
+    # eligible lane inside budget_ms, so a client-side second try just doubles the
+    # user-facing stall (2manspades Marta 2026-09-05: 8 s budget became 20 s).
+    data = _request('POST', '/api/v1/llm/chat-resilient', body, timeout=(5, 120),
+                    retry_on_5xx=retry_on_5xx)
     return data.get('text'), data.get('backend'), data.get('attempts', []), data.get('_debug')
 
 

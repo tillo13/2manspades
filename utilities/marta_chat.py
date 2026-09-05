@@ -119,6 +119,7 @@ class MartaChat:
                 max_tokens=self.max_tokens, temperature=self.temperature,
                 min_quality_tier=self.min_quality_tier, allow_degrade=True,
                 budget_ms=self.budget_ms, min_chars=5, app_name=APP_NAME,
+                retry_on_5xx=False,   # router already cascaded; a second try only doubles the stall
             )
             print(f"[MARTA] backend={backend} attempts={len(attempts or [])}")
             api_response = (text or '').strip()
