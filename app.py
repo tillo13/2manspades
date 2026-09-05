@@ -765,14 +765,14 @@ def debug_game_creation():
     
     # Try to create the game synchronously to see the error
     try:
-        from utilities.postgres_utils import create_game_with_player, get_db_connection
+        from utilities.postgres_utils import create_game_with_player, get_db_connection, return_db_connection
         
         # First test database connection
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT 1")
         cur.close()
-        conn.close()
+        return_db_connection(conn)
         db_connection_ok = True
     except Exception as e:
         db_connection_ok = False

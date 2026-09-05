@@ -152,3 +152,82 @@ deploy "msg"                          # only ship path
 ```
 
 Related memory/state from 2026-09-05: kumori API key row 64 (`TWOMANSPADES_KUMORI_API_KEY`), bucket `twomanspades-hoyt` (private, us-central1, 667 tracks + 43 covers), table `twomanspades.jukebox_plays`, the Hoyt source library is in `~/Downloads/_antiquated/20260905_Hoyt Axton/` pending Andy's decision, kumori router lanes returning `empty` without tripping the breaker is the open kumori-side issue behind Marta's "still looking" retries.
+
+---
+
+## 5. Handoff after the 2026-09-05 implementation pause
+
+Andy asked to stop work because the session had approximately 5% credit remaining. No further implementation or deployment should be started from this session.
+
+### Completed and deployed
+
+- The jukebox/table-sheet CSS fix is deployed. The closed sheet is `visibility: hidden` and the desktop closed transform uses `translateX(100vw)`, eliminating the right-edge peek.
+- `walk.json` now covers desktop, laptop, tablet, and mobile profiles; game-sheet open/close, Marta/Hoyt tabs, difficulty modal, instructions, stats, horizontal overflow, broken images, console errors, and 5xx checks.
+- The walk was run locally and passed for the home route at all four viewports. Production was run before the fix and correctly failed on the known peeking-sheet defect.
+- The hardcoded Flask signing key was replaced with `TWOMANSPADES_FLASK_SECRET` from `kumori-404602` Secret Manager, with an environment override for local development. A random secret version was created; the App Engine service account already had `roles/secretmanager.secretAccessor`.
+- `/debug_async_logging` and `/debug_game_creation` now return 404. `/health` returns JSON and the new `VERSION` file reports `2026.09.05.1`.
+- `deploy.json` runs the smoke tests and canonical Anthropic check before deploy, then checks `/health` after deploy.
+- The first release went through the master wrapper (`~/.local/bin/deploy` → `_local_infrastructure/deploy/deploy.py`), exited 0, and version `version-n1zr0hm3az` serves 100% of traffic. `/health` was verified in production.
+- Seven offline regression tests were added in `tests/test_smoke.py`; all pass. They cover a full hand, next hand, nil/blind paths, invalid input, chat retry behavior, jukebox auth/range behavior, debug boundaries, and login persistence across a new game.
+
+### Completed locally but not deployed
+
+- `utilities/postgres_utils.py` was mechanically split into `utilities/postgres_utils/` modules (`connection`, `stats`, `achievements`, `records`, `players`, `game_store`) with a public `__init__.py`. The original file was moved, recoverably, to `_antiquated/20260905_retrofit/utilities/postgres_utils.py`.
+- The split imports cleanly and the seven tests still pass, but it has not been committed, deployed, or walked in production.
+- The new connection module adds a bounded pool checkout gate, rejects the `postgres` role, supports environment secret overrides, requires loopback DB access for local development, and removes the direct-connection fallback. These changes need review and testing before release; they may need adjustment for the app's current local proxy port and production credentials.
+- A read-only stats baseline was started through a loopback Cloud SQL Auth Proxy. It measured 53 application queries plus seven connection pings per `/stats` load; warm helper timings were roughly 1.7–5.8 seconds from this machine. The baseline artifacts are in `_oneoff/stats_baseline_timings.json` and `_oneoff/stats_baseline_payload.json` if present.
+- The extra visible launcher used for the first release was moved to `_antiquated/20260905_retrofit/_oneoff/deploy_release.sh`. Continue with the master `deploy "message"` command directly; do not recreate that launcher.
+
+### Continue here next session
+
+1. Inspect `git status --short` and review the uncommitted backend split/connection changes. Run `python -m unittest tests.test_smoke -q` and `python -c "import app"` before touching them.
+2. Run the stats baseline to completion through the loopback Auth Proxy, then optimize only after capturing executed query counts and response equivalence. Add a 60-second cache around the complete stats payload if appropriate.
+3. Measure the actual `Set-Cookie` size on `/state` and verify that the game cookie contains the opponent hand. Move game state server-side before optimizing further; the cookie-size theory alone was not proven.
+4. Walk the split backend locally and in production before deploying it. Use the direct master wrapper and wait for its zero exit status plus version/health verification.
+5. Consolidate templates/static assets incrementally after backend behavior is covered. Preserve the current screenshots as the visual baseline. Do not add fleet hooks such as `visitor_logging` or a QA robot without a separate measured reason.
+6. Keep the UUID jukebox `play_id`: it is client-generated and crosses the server boundary, which is the documented exception to the SERIAL default.
+
+### Current repository state
+
+The first security release is committed and deployed. The working tree also contains the plan itself, the tests, the `VERSION` file, the current walk/CSS edits, the uncommitted backend split and connection changes, and ignored `_oneoff` scratch artifacts. Nothing was permanently deleted; archived source and the launcher remain recoverable under `_antiquated/20260905_retrofit/`.
+
+---
+
+## 6. 2026-09-05 afternoon session — backend split reviewed and hardened (NOT deployed)
+
+Picked up from §5. Everything below is in the working tree, uncommitted, undeployed.
+
+### Found
+
+- The new `connection.py` checkout gate (`BoundedSemaphore(2)`) was a wedge waiting to happen:
+  20 helpers released the pooled conn only on the happy path, `app_helpers._check_and_perform_ip_geolocation`
+  called `conn.close()` on a pooled conn (every new game), and the old code only survived this because its
+  public-IP direct-connect fallback masked pool exhaustion. With the fallback gone, two leaks = every DB call
+  blocks 10 s then raises, per worker, until restart.
+- Proven with a canary first: `tests/test_db_release.py` drives all 27 helpers through a fake pool that
+  fails after the ping and asserts the gate is back at 2. Against the unfixed tree: 24 failures + 1 error
+  (double return raised `ValueError`). After the fix: green.
+
+### Changed
+
+- `connection.py`: `return_db_connection` is idempotent (tracks `id(conn)` of checked-out conns), so a
+  `finally` release is safe alongside the existing happy-path releases.
+- 22 helpers in `stats.py`, `achievements.py`, `players.py`, `game_store.py`: `conn = None` before the
+  `try`, `finally: if conn is not None: return_db_connection(conn)` — the pattern `records.py` already used
+  (script that did it: `_oneoff/add_finally_release.py`).
+- `app_helpers._check_and_perform_ip_geolocation` and the 404'd debug route in `app.py`: `conn.close()` →
+  `return_db_connection(conn)`.
+
+### Verified
+
+- `python -m unittest discover -s tests`: 10 tests, OK (7 smoke + 3 release).
+- Real DB through a loopback Auth Proxy on 5433 (`~/cloud-sql-proxy kumori-404602:us-central1:kumori --port 5433`):
+  `test_connection` True as role `twomanspades_app`, leaderboard 5 rows, difficulty lookup works, gate at 2 after.
+- `walk --base http://127.0.0.1:5077`: `/` and `/instructions` clean at all 4 viewports. `/stats` 200 but
+  27.5 s locally (53 queries × UK→us-central1) vs 5.0–5.7 s in prod, so the walk's 30 s navigation timeout
+  trips only from here. Not a split regression; it is §2.4's speed item.
+
+### Next
+
+1. `deploy "..."` the split (needs Andy's go). Expect `/health` 200 and `walk` against prod green including `/stats`.
+2. Then §5 step 2 (stats speed) and step 3 (cookie size measurement).

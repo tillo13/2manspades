@@ -57,15 +57,17 @@ def _finalize_game_async(hand_id, game):
 def _check_and_perform_ip_geolocation(ip_address: str):
     """Check if IP exists in database, only call API if missing"""
     try:
-        from .postgres_utils import get_db_connection
+        from .postgres_utils import get_db_connection, return_db_connection
         
         # Check if we already have data for this IP
         conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT ip_address FROM twomanspades.ip_location_data WHERE ip_address = %s", (ip_address,))
-        existing = cur.fetchone()
-        cur.close()
-        conn.close()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT ip_address FROM twomanspades.ip_location_data WHERE ip_address = %s", (ip_address,))
+            existing = cur.fetchone()
+            cur.close()
+        finally:
+            return_db_connection(conn)
         
         if existing:
             print(f"[GEO] IP {ip_address} already in database, skipping API call")

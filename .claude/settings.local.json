@@ -22,7 +22,10 @@
       "Bash(timeout 15 python3:*)",
       "Bash(timeout 30 python3:*)",
       "Bash(source:*)",
-      "Bash(deploy:*)"
+      "Bash(deploy:*)",
+      "Bash(lsof -iTCP:5433 -sTCP:LISTEN)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(grep -E \"FAIL|❌|Pre-Deploy|Live at|version|health|Ran|OK\" _oneoff/deploy_split.log)"
     ]
   }
 }
