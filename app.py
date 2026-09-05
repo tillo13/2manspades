@@ -685,8 +685,11 @@ def stats():
     special_cards = get_special_card_stats()
     overall_stats = get_overall_game_stats()
     per_hand_stats = get_per_hand_stats()
+    from utilities.jukebox import jukebox_stats
+    hoyt = jukebox_stats()
 
     return render_template('stats.html',
+                        hoyt=hoyt,
                         google_leaders=google_leaders,
                         fun_stats=fun_stats,
                         achievements=achievements,

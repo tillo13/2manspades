@@ -501,6 +501,70 @@
         </div>
         {% endif %}
 
+        <!-- Hoyt Axton jukebox: what gets played at the table -->
+        {% if hoyt and hoyt.totals and hoyt.totals.plays %}
+        <div class="stats-section hoyt-section">
+            <div class="section-title">Hoyt Axton Jukebox</div>
+            <div class="overall-stats-grid">
+                <div class="overall-stat"><div class="overall-value">{{ "{:,}".format(hoyt.totals.plays|int) }}</div><div class="overall-label">Songs Played</div></div>
+                <div class="overall-stat"><div class="overall-value">{{ hoyt.totals.hours }}</div><div class="overall-label">Hours of Hoyt</div></div>
+                <div class="overall-stat"><div class="overall-value">{{ hoyt.totals.songs }}</div><div class="overall-label">Different Songs</div></div>
+                <div class="overall-stat"><div class="overall-value">{{ hoyt.totals.albums }}</div><div class="overall-label">Records Spun</div></div>
+                <div class="overall-stat"><div class="overall-value">{{ hoyt.totals.listeners }}</div><div class="overall-label">Listeners</div></div>
+            </div>
+            <div class="achievements-grid">
+                {% if hoyt.top_songs %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Most Played Songs</div>
+                    {% for s in hoyt.top_songs %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ s.title }}</span>
+                        <span class="achievement-value">{{ s.plays }} plays</span>
+                        <span class="achievement-detail">({{ s.album_title }}, {{ s.year }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if hoyt.top_albums %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Favorite Records</div>
+                    {% for a in hoyt.top_albums %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ a.album_title }}</span>
+                        <span class="achievement-value">{{ a.minutes|int }} min</span>
+                        <span class="achievement-detail">({{ a.year }}, {{ a.plays }} plays)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if hoyt.listeners %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Who's Listening</div>
+                    {% for l in hoyt.listeners %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ l.listener }}</span>
+                        <span class="achievement-value">{{ l.minutes|int }} min</span>
+                        <span class="achievement-detail">({{ l.plays }} plays, last {{ l.last_play.strftime('%Y%b%-d') if l.last_play else '' }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if hoyt.recent %}
+                <div class="achievement-card">
+                    <div class="achievement-title">Recently Played</div>
+                    {% for r in hoyt.recent %}
+                    <div class="achievement-row">
+                        <span class="achievement-player">{{ r.title }}</span>
+                        <span class="achievement-value">{{ (r.seconds_played / 60)|round(1) }} min{% if r.completed %} ✓{% endif %}</span>
+                        <span class="achievement-detail">({{ r.album_title }}, {{ r.started_at.strftime('%b %-d %H:%M') if r.started_at else '' }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- All-Time Records Section -->
         {% if overall_stats %}
         <div class="stats-section overall-records-section">

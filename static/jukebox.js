@@ -164,7 +164,9 @@
         $('jbBubble').onclick = () => { if ($('jbBubble').classList.contains('needs-tap')) { toggle(); return; } if (!state.album) { toggle(); return; } openPanel(!panelOpen); };
         $('jbClose').onclick = () => openPanel(false);
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
-        $('jbTabNow').onclick = () => showPanel('now'); $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };
+        $('jbTabNow').onclick = () => showPanel('now');
+        $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').blur(); };
+        $('jbTabSearch').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };
         $('jbSearch').oninput = (e) => renderAlbums(e.target.value);
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
         window.addEventListener('pagehide', () => { saveState(); beat(false, true); });

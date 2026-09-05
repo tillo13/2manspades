@@ -141,3 +141,54 @@ def queue_play_event(ev, session, ip):
         ev[k] = str(ev.get(k) or '')[:200]
     queue_db_operation(record_play_event, ev)
     return True
+
+
+def jukebox_stats():
+    """Listening stats for the /stats page. Read-only; empty dict on any failure so the
+    page renders without the section rather than 500ing."""
+    from utilities.postgres_utils import get_db_connection, return_db_connection
+    import psycopg2.extras
+    out = {}
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT to_regclass('twomanspades.jukebox_plays') AS t")
+        if not cur.fetchone()['t']:
+            return out
+        cur.execute("""
+            SELECT COUNT(*) AS plays, COUNT(*) FILTER (WHERE completed) AS completed,
+                   COALESCE(SUM(seconds_played), 0) AS seconds, COUNT(DISTINCT album_id) AS albums,
+                   COUNT(DISTINCT (album_id, track_n)) AS songs,
+                   COUNT(DISTINCT COALESCE(user_email, ip_address)) AS listeners
+            FROM twomanspades.jukebox_plays""")
+        out['totals'] = dict(cur.fetchone())
+        out['totals']['hours'] = round((out['totals']['seconds'] or 0) / 3600, 1)
+        cur.execute("""
+            SELECT title, album_title, year, COUNT(*) AS plays, ROUND(SUM(seconds_played)/60) AS minutes
+            FROM twomanspades.jukebox_plays WHERE seconds_played >= 30
+            GROUP BY album_id, track_n, title, album_title, year ORDER BY plays DESC, minutes DESC LIMIT 10""")
+        out['top_songs'] = [dict(r) for r in cur.fetchall()]
+        cur.execute("""
+            SELECT album_title, year, COUNT(*) AS plays, ROUND(SUM(seconds_played)/60) AS minutes
+            FROM twomanspades.jukebox_plays WHERE seconds_played >= 30
+            GROUP BY album_id, album_title, year ORDER BY minutes DESC, plays DESC LIMIT 10""")
+        out['top_albums'] = [dict(r) for r in cur.fetchall()]
+        cur.execute("""
+            SELECT COALESCE(NULLIF(split_part(user_name, ' ', 1), ''), 'Anonymous') AS listener,
+                   COUNT(*) AS plays, ROUND(SUM(seconds_played)/60) AS minutes, MAX(started_at) AS last_play
+            FROM twomanspades.jukebox_plays
+            GROUP BY 1 ORDER BY minutes DESC LIMIT 10""")
+        out['listeners'] = [dict(r) for r in cur.fetchall()]
+        cur.execute("""
+            SELECT title, album_title, started_at, seconds_played, completed
+            FROM twomanspades.jukebox_plays ORDER BY started_at DESC LIMIT 8""")
+        out['recent'] = [dict(r) for r in cur.fetchall()]
+        cur.close()
+    except Exception as e:
+        print(f"[JUKEBOX] stats failed: {e}")
+        return {}
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+    return out
