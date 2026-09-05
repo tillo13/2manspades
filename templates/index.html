@@ -288,17 +288,23 @@
         </div>
     </div>
 
-    <!-- Chat bubble icon (floating bottom right) -->
-    <div class="chat-bubble-icon" id="chatBubbleIcon" onclick="toggleChat()">
-        💬
+    <!-- THE bubble: one button for Marta + Hoyt (cover spins while music plays, badge = unread Marta) -->
+    <div class="chat-bubble-icon" id="chatBubbleIcon" onclick="toggleChat()" title="Marta and the Hoyt jukebox">
+        <img id="jbBubbleImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
+        <span class="jb-bubble-label" id="jbBubbleLabel"></span>
         <div id="chatBadge" class="chat-badge" style="display: none;"></div>
     </div>
 
-    <!-- Chat window (slides up from bottom) -->
+    <!-- The table sheet: one bottom sheet on phones (tabs), one docked card in the desktop rail (stacked) -->
+    <div class="ts-sheet" id="tableSheet" data-tab="marta">
+        <div class="ts-tabs">
+            <button class="ts-tab" id="tsTabMarta">Marta</button>
+            <button class="ts-tab" id="tsTabHoyt">Hoyt</button>
+            <button class="ts-close" id="tsClose" aria-label="Close">×</button>
+        </div>
     <div class="chat-window" id="chatWindow">
         <div class="chat-header">
             <span>Chat with Marta</span>
-            <button class="chat-close" onclick="toggleChat()">×</button>
         </div>
         <div class="jb-mini" id="jbMini" hidden>
             <img id="jbMiniImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
@@ -316,17 +322,9 @@
         </div>
     </div>
 
-    <!-- Hoyt Axton jukebox (bubble bottom-left; panel = bottom sheet on mobile, side rail on desktop) -->
-    <div class="jb-bubble" id="jbBubble" title="Hoyt Axton jukebox">
-        <img id="jbBubbleImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="Hoyt Axton jukebox">
-        <span class="jb-bubble-label" id="jbBubbleLabel"></span>
-    </div>
-    <div class="jb-toast" id="jbToast"></div>
+    <!-- Hoyt Axton jukebox pane (inside the table sheet) -->
     <div class="jb-panel" id="jbPanel">
-        <div class="jb-header">
-            <span>Hoyt Axton</span>
-            <button class="jb-close" id="jbClose" aria-label="Close">×</button>
-        </div>
+        <div class="jb-header"><span>Hoyt Axton</span></div>
         <div class="jb-now" id="jbNow">
             <img id="jbCover" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
             <div class="jb-title" id="jbTitle">Hoyt Axton</div>
@@ -350,6 +348,8 @@
             <div class="jb-bottom"><button class="jb-pill jb-pill-dark" id="jbTabNow">Back to the song</button></div>
         </div>
     </div>
+    </div><!-- /tableSheet -->
+    <div class="jb-toast" id="jbToast"></div>
 
     <!-- Difficulty Modal -->
     <div id="difficultyModal" class="difficulty-modal" onclick="closeDifficultyModal(event)">

@@ -43,27 +43,17 @@ document.addEventListener('DOMContentLoaded', function() {
 // =============================================================================
 
 function toggleChat() {
-    const chatWindow = document.getElementById('chatWindow');
-    const chatIcon = document.getElementById('chatBubbleIcon');
+    // 2026-09-05: Marta lives in the shared table sheet (jukebox.js owns it). Open = Marta tab.
+    if (window.TableSheet) { TableSheet.toggle('marta'); return; }
+}
 
-    chatOpen = !chatOpen;
-
-    if (chatOpen) {
-        chatWindow.classList.add('open');
-        chatIcon.style.display = 'none';
-
-        // Show static welcome message only when chat first opens
-        if (!chatInitialized) {
-            addMessage("Ready when you are.", 'marta');
-            chatInitialized = true;
-        }
-
-        // Clear unread messages when chat is opened
+// called by TableSheet whenever the Marta tab becomes visible / hidden
+function onChatVisibility(visible) {
+    chatOpen = visible;
+    if (visible) {
+        if (!chatInitialized) { addMessage("Ready when you are.", 'marta'); chatInitialized = true; }
         unreadMessages = 0;
         updateChatBadge();
-    } else {
-        chatWindow.classList.remove('open');
-        chatIcon.style.display = 'flex';
     }
 }
 

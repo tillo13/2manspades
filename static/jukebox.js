@@ -80,7 +80,7 @@
 
     // ---------- UI ----------
     function setResumePrompt(on) {
-        const b = $('jbBubble'); if (!b) return; b.classList.toggle('needs-tap', on);
+        const b = $('chatBubbleIcon'); if (!b) return; b.classList.toggle('needs-tap', on);
         $('jbBubbleLabel').textContent = on ? 'Tap to resume' : '';
         $('jbPlay').classList.toggle('needs-tap', on);
     }
@@ -89,7 +89,7 @@
         const cur = current(), a = cur && albumById(cur.album), t = cur && trackOf(cur);
         const playing = state.playing && audio && !audio.paused;
         const cover = a ? `/static/jukebox/covers/${a.id}.jpg` : '/static/jukebox/hoyt.jpg';
-        $('jbBubbleImg').src = cover; $('jbBubble').classList.toggle('spinning', !!playing);
+        $('jbBubbleImg').src = cover; $('chatBubbleIcon').classList.toggle('spinning', !!playing);
         $('jbCover').src = cover;
         $('jbTitle').textContent = t ? t.title : 'Hoyt Axton';
         $('jbAlbum').textContent = a ? `${a.title} · ${a.year}` : 'Tap play for some Hoyt';
@@ -150,10 +150,26 @@
         lastPanel = which;
         $('jbNow').hidden = which !== 'now'; $('jbBrowse').hidden = which !== 'browse';
     }
-    function openPanel(open) {
-        panelOpen = open; $('jbPanel').classList.toggle('open', open); document.body.classList.toggle('jb-open', open);
-        if (open && typeof chatOpen !== 'undefined' && chatOpen && typeof toggleChat === 'function' && !window.matchMedia('(min-width: 1150px)').matches) toggleChat();
+    // ---------- the table sheet (Marta + Hoyt) ----------
+    const isDesktop = () => window.matchMedia('(min-width: 1150px)').matches;
+    function sheetOpen() { return $('tableSheet').classList.contains('open'); }
+    function showTab(tab) {
+        const sh = $('tableSheet'); sh.dataset.tab = tab;
+        $('tsTabMarta').classList.toggle('active', tab === 'marta'); $('tsTabHoyt').classList.toggle('active', tab === 'hoyt');
+        if (typeof onChatVisibility === 'function') onChatVisibility(isDesktop() || (sheetOpen() && tab === 'marta'));
+        if (tab === 'hoyt') showPanel(lastPanel);
     }
+    function openSheet(tab) {
+        $('tableSheet').classList.add('open'); document.body.classList.add('sheet-open'); panelOpen = true;
+        showTab(tab || $('tableSheet').dataset.tab || 'marta');
+    }
+    function closeSheet() {
+        $('tableSheet').classList.remove('open'); document.body.classList.remove('sheet-open'); panelOpen = false;
+        if (typeof onChatVisibility === 'function') onChatVisibility(isDesktop());
+    }
+    function openPanel(open) { if (open) openSheet('hoyt'); else closeSheet(); }
+    window.TableSheet = { open: openSheet, close: closeSheet, tab: showTab,
+        toggle: (tab) => { if (sheetOpen() && $('tableSheet').dataset.tab === tab) closeSheet(); else openSheet(tab); } };
 
     function wire() {
         audio = new Audio(); audio.preload = 'auto';
@@ -169,16 +185,19 @@
         // the bubble ALWAYS opens the panel (never a dead end); on a blocked resume it also
         // retries play inside this tap gesture, which is what Safari needs. An empty player
         // starts the shuffle and opens the panel so he sees what happened.
-        $('jbBubble').onclick = () => {
-            if ($('jbBubble').classList.contains('needs-tap')) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => {}); }
-            else if (!state.album) toggle();
-            openPanel(true);
+        $('chatBubbleIcon').onclick = () => {
+            const b = $('chatBubbleIcon');
+            if (b.classList.contains('needs-tap')) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => {}); openSheet('hoyt'); return; }
+            if (sheetOpen()) { closeSheet(); return; }
+            // unread Marta reply wins; otherwise whichever tab was last used
+            const unread = (typeof unreadMessages !== 'undefined' && unreadMessages > 0);
+            openSheet(unread ? 'marta' : ($('tableSheet').dataset.tab || 'marta'));
         };
-        $('jbClose').onclick = () => openPanel(false);
+        $('tsClose').onclick = closeSheet; $('tsTabMarta').onclick = () => showTab('marta'); $('tsTabHoyt').onclick = () => showTab('hoyt');
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
         if ($('jbMini')) {
             $('jbMiniPlay').onclick = toggle; $('jbMiniNext').onclick = () => next();
-            const toJukebox = () => { if (typeof chatOpen !== 'undefined' && chatOpen && typeof toggleChat === 'function') toggleChat(); showPanel('now'); openPanel(true); };
+            const toJukebox = () => { showPanel('now'); openSheet('hoyt'); };
             $('jbMiniImg').onclick = toJukebox; $('jbMiniText').onclick = toJukebox;
         }
         $('jbTabNow').onclick = () => showPanel('now');
@@ -187,14 +206,9 @@
         $('jbSearch').oninput = (e) => renderAlbums(e.target.value);
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
         window.addEventListener('pagehide', () => { saveState(); beat(false, true); });
-        // one sheet at a time on narrow layouts: the jukebox already closes the chat when it
-        // opens; this makes the chat bubble close the jukebox too (game.js owns toggleChat,
-        // and the onclick resolves through window, so the wrap takes effect everywhere)
-        if (typeof window.toggleChat === 'function') {
-            const origToggle = window.toggleChat;
-            window.toggleChat = function () { origToggle.apply(this, arguments); const isOpen = typeof chatOpen !== 'undefined' && chatOpen; document.body.classList.toggle('chat-open', !!isOpen); if (isOpen && panelOpen && !window.matchMedia('(min-width: 1150px)').matches) openPanel(false); };
-        }
         renderAlbums(''); showPanel('now'); render();
+        if (isDesktop()) { openSheet($('tableSheet').dataset.tab || 'marta'); }
+        window.matchMedia('(min-width: 1150px)').addEventListener('change', e => { if (e.matches) openSheet($('tableSheet').dataset.tab); });
         // resume across the reload that every new hand causes
         if (state.album && state.playing) play(current(), state.pos);
     }

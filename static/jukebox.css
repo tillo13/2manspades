@@ -98,3 +98,49 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 @media (min-width: 1150px) { .jb-mini { display: none !important; } }
 
 .jb-controls .jb-big.needs-tap { animation: jbPulse 1.2s ease-in-out infinite; }
+
+/* ============================================================================
+   TABLE SHEET 2026-09-05: Marta + Hoyt in ONE sheet behind ONE bubble.
+   Phones/tablets: a bottom sheet with two tabs. Desktop (>=1150px): docked in the
+   right rail, tabs hidden, both panes stacked (chat on top, player below).
+   The old per-panel fixed positioning is overridden here; panes are static inside.
+   ========================================================================== */
+.ts-sheet { position: fixed; bottom: 0; left: 0; right: 0; height: 72vh; max-height: 640px; background: #fff; border-radius: 15px 15px 0 0;
+    transform: translateY(100%); transition: transform .3s ease; z-index: 999; display: flex; flex-direction: column; box-shadow: 0 -4px 20px rgba(0,0,0,.2); overflow: hidden; }
+.ts-sheet.open { transform: translateY(0); }
+.ts-tabs { display: flex; align-items: stretch; background: #1d1d2b; padding: 6px 6px 0 6px; gap: 6px; flex: none; }
+.ts-tab { flex: 1; background: transparent; color: #cfcfe0; border: none; border-radius: 10px 10px 0 0; padding: 12px 0; font-size: 17px; font-weight: 700; cursor: pointer; min-width: 0; }
+.ts-tab.active { background: #fff; color: #222; }
+.ts-close { flex: none; width: 44px; background: transparent; color: #fff; border: none; font-size: 30px; line-height: 1; cursor: pointer; min-width: 0; padding: 0; }
+.ts-sheet .chat-window, .ts-sheet .jb-panel { position: static; transform: none; height: 100%; min-height: 0; flex: 1 1 auto; width: auto; max-height: none;
+    border-radius: 0; border-top: none; box-shadow: none; left: auto; right: auto; top: auto; bottom: auto; display: flex; flex-direction: column; }
+.ts-sheet .chat-header, .ts-sheet .jb-header { display: none; }          /* the tabs are the headers on phones */
+.ts-sheet[data-tab="marta"] .jb-panel { display: none; }
+.ts-sheet[data-tab="hoyt"] .chat-window { display: none; }
+.ts-sheet[data-tab="marta"] #tsTabMarta, .ts-sheet[data-tab="hoyt"] #tsTabHoyt { background: #fff; color: #222; }
+.jb-mini { flex: none; }
+@media (min-width: 768px) and (max-width: 1149px) {
+    .ts-sheet { left: 50%; right: auto; width: min(560px, 96vw); transform: translate(-50%, 100%); }
+    .ts-sheet.open { transform: translate(-50%, 0); }
+}
+@media (min-width: 1150px) {
+    .ts-sheet { left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap)); right: auto; width: var(--rail-w);
+        top: 160px; bottom: 45px; height: auto; max-height: none; transform: none; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+    .ts-tabs { display: none; }
+    .ts-sheet .chat-header, .ts-sheet .jb-header { display: flex; }
+    .ts-sheet[data-tab="marta"] .jb-panel, .ts-sheet[data-tab="hoyt"] .chat-window { display: flex; }   /* both stacked */
+    .ts-sheet .chat-window { flex: 0 0 var(--chat-h); height: var(--chat-h); border-bottom: 2px solid #f6c453; }
+    .ts-sheet .jb-panel { flex: 1 1 auto; }
+    .ts-sheet .jb-mini { display: none !important; }
+}
+/* the one bubble: cover art, spins while playing, badge = unread Marta */
+.chat-bubble-icon { background: #222; overflow: visible; font-size: 0; }
+.chat-bubble-icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.chat-bubble-icon::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid #f6c453; opacity: 0; pointer-events: none; }
+.chat-bubble-icon.spinning img { animation: jbSpin 6s linear infinite; }
+.chat-bubble-icon.spinning::after { opacity: 1; }
+.chat-bubble-icon.needs-tap::after { opacity: 1; animation: jbPulse 1.2s ease-in-out infinite; }
+.chat-bubble-icon .jb-bubble-label { left: 60px; }
+.chat-bubble-icon .chat-badge { font-size: 11px; }
+body.sheet-open .chat-bubble-icon, body.sheet-open .jb-toast { display: none !important; }
+@media (min-width: 1150px) { .chat-bubble-icon, .jb-toast { display: none !important; } }
