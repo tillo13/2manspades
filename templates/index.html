@@ -337,15 +337,14 @@
                 <button id="jbNext" aria-label="Next">⏭</button>
             </div>
             <div class="jb-mode" id="jbMode"></div>
-            <div class="jb-bottom">
-                <button class="jb-pill" id="jbTabSearch">Search</button>
-                <button class="jb-pill jb-pill-dark" id="jbTabBrowse">Albums</button>
-            </div>
         </div>
         <div class="jb-browse" id="jbBrowse" hidden>
-            <input class="jb-search" id="jbSearch" type="search" placeholder="Find a song or album…">
             <div class="jb-albums" id="jbAlbums"></div>
-            <div class="jb-bottom"><button class="jb-pill jb-pill-dark" id="jbTabNow">Back to the song</button></div>
+        </div>
+        <div class="jb-footer">
+            <input class="jb-search" id="jbSearch" type="search" placeholder="Find a song or album…" autocomplete="off">
+            <button class="jb-pill jb-pill-dark" id="jbTabBrowse">Albums</button>
+            <button class="jb-pill" id="jbTabNow" hidden>Back</button>
         </div>
     </div>
     </div><!-- /tableSheet -->

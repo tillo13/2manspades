@@ -61,7 +61,7 @@
 @media (min-width: 1150px) {
     .jb-bubble, .jb-toast, .jb-close { display: none !important; }
     .jb-panel { left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap));
-        right: auto; width: var(--rail-w); top: calc(160px + var(--chat-h) + 20px); bottom: 45px; height: auto; max-height: none;
+        right: auto; width: var(--rail-w); top: calc(var(--rail-top, 160px) + var(--chat-h) + 20px); bottom: 45px; height: auto; max-height: none;
         transform: none; border-radius: 12px; border-top: none; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
     .jb-header { border-radius: 12px 12px 0 0; }
     .jb-now img { width: 140px; height: 140px; }
@@ -125,7 +125,7 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 }
 @media (min-width: 1150px) {
     .ts-sheet { left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap)); right: auto; width: var(--rail-w);
-        top: 160px; bottom: 45px; height: auto; max-height: none; transform: none; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+        top: var(--rail-top, 160px); bottom: 45px; height: auto; max-height: none; transform: none; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
     .ts-tabs { display: none; }
     .ts-sheet .chat-header, .ts-sheet .jb-header { display: flex; }
     .ts-sheet[data-tab="marta"] .jb-panel, .ts-sheet[data-tab="hoyt"] .chat-window { display: flex; }   /* both stacked */
@@ -144,3 +144,8 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 .chat-bubble-icon .chat-badge { font-size: 11px; }
 body.sheet-open .chat-bubble-icon, body.sheet-open .jb-toast { display: none !important; }
 @media (min-width: 1150px) { .chat-bubble-icon, .jb-toast { display: none !important; } }
+
+/* player footer: the search box IS the search (no button to reach it), Albums beside it */
+.jb-footer { flex: none; display: flex; gap: 8px; align-items: center; padding: 8px 12px 12px; border-top: 1px solid #eee; background: #fff; }
+.jb-footer .jb-search { flex: 1; margin: 0; min-width: 0; }
+.jb-footer .jb-pill { flex: none; min-width: 0; padding: 10px 16px; }

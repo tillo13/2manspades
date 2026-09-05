@@ -1131,3 +1131,16 @@ body {
     }
 }
 
+
+/* Hoyt jukebox cards (2026-09-05): rows are a real grid so the three columns line up,
+   title | value | detail, instead of flex rows that ragged at every long title */
+.hoyt-section .achievement-row { display: grid; grid-template-columns: minmax(0, 1.4fr) 5.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.hoyt-section .achievement-player { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoyt-section .achievement-value { white-space: nowrap; text-align: right; }
+.hoyt-section .achievement-detail { text-align: right; font-size: 11px; color: #777; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoyt-section .overall-stats-grid { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 767px) {
+    .hoyt-section .achievement-row { grid-template-columns: minmax(0, 1fr) 5em; }
+    .hoyt-section .achievement-detail { grid-column: 1 / -1; text-align: left; }
+    .hoyt-section .overall-stats-grid { grid-template-columns: repeat(3, 1fr); }
+}

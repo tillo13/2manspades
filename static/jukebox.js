@@ -149,6 +149,7 @@
     function showPanel(which) {
         lastPanel = which;
         $('jbNow').hidden = which !== 'now'; $('jbBrowse').hidden = which !== 'browse';
+        $('jbTabBrowse').hidden = which === 'browse'; $('jbTabNow').hidden = which !== 'browse';
     }
     // ---------- the table sheet (Marta + Hoyt) ----------
     const isDesktop = () => window.matchMedia('(min-width: 1150px)').matches;
@@ -201,9 +202,8 @@
             $('jbMiniImg').onclick = toJukebox; $('jbMiniText').onclick = toJukebox;
         }
         $('jbTabNow').onclick = () => showPanel('now');
-        $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').blur(); };
-        $('jbTabSearch').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };
-        $('jbSearch').oninput = (e) => renderAlbums(e.target.value);
+        $('jbTabBrowse').onclick = () => { $('jbSearch').value = ''; renderAlbums(''); showPanel('browse'); };
+        $('jbSearch').oninput = (e) => { renderAlbums(e.target.value); showPanel('browse'); };   // typing IS the search
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
         window.addEventListener('pagehide', () => { saveState(); beat(false, true); });
         renderAlbums(''); showPanel('now'); render();
