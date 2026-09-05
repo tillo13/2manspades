@@ -37,6 +37,11 @@ function handleLoginClick() {
 
     // If button shows "Login", go to login page
     if (buttonText === 'Login') {
+        // logging in from the Hoyt tab: come back with the sheet on Hoyt and the music started
+        const sheet = document.getElementById('tableSheet');
+        if (sheet && sheet.classList.contains('open') && sheet.dataset.tab === 'hoyt') {
+            try { sessionStorage.setItem('hoyt_after_login', '1'); } catch (e) {}
+        }
         window.location.href = '/login';
     }
     // Otherwise, button just shows name - do nothing on click

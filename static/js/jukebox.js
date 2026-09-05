@@ -219,6 +219,12 @@
 
         // resume across the reload that every new hand causes
         if (state.album && state.playing) play(current(), state.pos);
+
+        // back from a login started on the Hoyt tab: open it and start the music. If the
+        // browser refuses autoplay on this navigation, the big play button pulses for one tap.
+        let afterLogin = false;
+        try { afterLogin = sessionStorage.getItem('hoyt_after_login') === '1'; sessionStorage.removeItem('hoyt_after_login'); } catch (e) {}
+        if (afterLogin) { openSheet('hoyt'); showPanel('now'); if (!(state.album && state.playing)) shuffleAll(); }
     }
 
     if (!(document.body.dataset.loggedIn === 'true')) {
