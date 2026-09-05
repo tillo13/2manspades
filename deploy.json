@@ -20,5 +20,7 @@
       "dst": "utilities/schema_guard.py"
     }
   ],
-  "pre_deploy_test": "/Users/at/Desktop/code/_local_infrastructure/anthropic_logger/check_violations.sh ."
+  "pre_deploy_test": "venv_2man/bin/python -m unittest discover -s tests -q && /Users/at/Desktop/code/_local_infrastructure/anthropic_logger/check_violations.sh .",
+  "post_deploy_test": "curl --fail --silent --show-error https://2manspades.com/health",
+  "venv": "venv_2man"
 }

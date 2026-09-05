@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, session, jsonify, redirect, Response
+"""Two-Man Spades HTTP routes. Run locally with Flask; ship with deploy."""
+from flask import Flask, render_template, request, session, jsonify, redirect, Response, abort
 import sys
 import os
 import time
@@ -47,7 +48,8 @@ try:
 except Exception as _e:
     print(f"[KUMORI] api client init failed: {_e}")
 
-app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
+app.secret_key = os.environ.get('TWOMANSPADES_FLASK_SECRET') or _get_secret(
+    'TWOMANSPADES_FLASK_SECRET', project_id='kumori-404602')
 
 # Session configuration - keep users logged in for 30 days
 from datetime import timedelta
@@ -55,6 +57,20 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JS access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+
+
+@app.route('/health')
+def health():
+    from pathlib import Path
+    return jsonify(status='ok', version=Path(__file__).with_name('VERSION').read_text().strip())
+
+
+@app.before_request
+def validate_json_body():
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        if data is not None and not isinstance(data, dict):
+            return jsonify(error='Expected a JSON object'), 400
 
 
 # Initialize async logging for production immediately when module loads
@@ -198,6 +214,7 @@ STACK TRACE:
 @app.route('/debug_async_logging')
 def debug_async_logging():
     """Debug endpoint to check async logging status"""
+    abort(404)
     from utilities.logging_utils import get_async_db_stats, IS_PRODUCTION
     
     stats = get_async_db_stats()
@@ -473,13 +490,13 @@ def make_blind_bid():
     
     client_info = track_request_session(session, request)
     game = session['game']
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     bid = data.get('bid')
     
     if game['phase'] != 'blind_bidding':
         return jsonify({'error': 'Can only make blind bid during blind bidding phase'}), 400
     
-    if bid < 5 or bid > 10:
+    if type(bid) is not int or bid < 5 or bid > 10:
         return jsonify({'error': 'Blind bid must be between 5 and 10'}), 400
     
     process_blind_bid_phase(game, session, bid, request)
@@ -528,7 +545,7 @@ def make_bid():
     if game['phase'] != 'bidding':
         return jsonify({'error': 'Not in bidding phase'}), 400
     
-    if bid < 0 or bid > 10:
+    if type(bid) is not int or bid < 0 or bid > 10:
         return jsonify({'error': 'Bid must be between 0 and 10'}), 400
     
     process_bidding_phase(game, session, bid, request)
@@ -549,7 +566,7 @@ def discard_card():
     if game['phase'] != 'discard':
         return jsonify({'error': 'Not in discard phase'}), 400
     
-    if card_index < 0 or card_index >= len(game['player_hand']):
+    if type(card_index) is not int or card_index < 0 or card_index >= len(game['player_hand']):
         return jsonify({'error': 'Invalid card index'}), 400
     
     process_discard_phase(game, session, card_index, request)
@@ -573,7 +590,7 @@ def play_card():
     if game['turn'] != 'player':
         return jsonify({'error': 'Not your turn'}), 400
     
-    if card_index < 0 or card_index >= len(game['player_hand']):
+    if type(card_index) is not int or card_index < 0 or card_index >= len(game['player_hand']):
         return jsonify({'error': 'Invalid card index'}), 400
     
     card = game['player_hand'][card_index]
@@ -739,6 +756,7 @@ def game_detail(hand_id):
 @app.route('/debug_game_creation')
 def debug_game_creation():
     """Debug game creation issues"""
+    abort(404)
     if 'game' not in session:
         return jsonify({'error': 'No game in session'})
     

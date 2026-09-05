@@ -194,6 +194,9 @@ __pycache__/
 
 
 logging/
+_oneoff/
+_antiquated*/
+.pytest_cache/
 # ── Media (audio/video) — NEVER commit, use external storage ──
 *.mp4
 *.mov
