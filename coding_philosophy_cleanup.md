@@ -231,3 +231,34 @@ Picked up from §5. Everything below is in the working tree, uncommitted, undepl
 
 1. `deploy "..."` the split (needs Andy's go). Expect `/health` 200 and `walk` against prod green including `/stats`.
 2. Then §5 step 2 (stats speed) and step 3 (cookie size measurement).
+
+---
+
+## 7. 2026-09-05 evening — the plan is done; every step deployed and prod-walked
+
+Superseded: §0 (walk done), §5 "not deployed" items, §6 "Next". Ten deploys today after the split;
+each one ran the 12-test suite as the pre-deploy gate and was followed by a `walk` against prod
+(16 route/viewport combinations, all clean at the end). Commit messages carry the measured numbers.
+
+| step | shipped as | proof |
+|---|---|---|
+| 1 walk | walk.json: 4 viewports, 4 routes incl. a full-hand play-through (discard, bid, 10 tricks, next hand) | went red on the peeking sheet, the double bubble handler, the lost mobile banner offset; green after each fix |
+| 2 security | (earlier session) secret key, debug routes 404, /health, VERSION | /health 200 = 2026.09.05.2 |
+| 3 frontend | base.html + 6 extending templates; static/css + static/js; 0 inline <style>/<script>; 39 onclick → 0 (delegated data-action); sheet.css from the final design; style.css → header/game/layout; !important 53 → 0; jukebox.js pruned | walk screenshots matched the saved baseline (`_oneoff/_walk_baseline/`) |
+| 4 splits | postgres_utils package; app_helpers → session_helpers + hand_flow; game.js → chat/game/ui; stats.css → stats + stats_sections | every file ≤ 958 lines; 12 tests OK |
+| 5 tests | tests/test_smoke (7), test_db_release (3), test_stats_cache (2), wired in deploy.json | gate blocked one deploy (segfault at exit from the visitor flusher) and was fixed at the source |
+| 6 speed | /stats 60 s single-flight cache: warm 5.0 s → 2 ms server-side; cookie measured 1.6 KB max, game state stays in the cookie | numbers in commit cf967b1 |
+| 7 DRY/ops/hygiene | one get_secret; visitor_logging vendored (rows landing in kumori_ops.visitor_log); ProxyFix; logs → _oneoff/_test_logs; legacy scripts, archive/, one-offs moved to _antiquated/_oneoff; docstrings | root `ls` = app.py app.yaml CLAUDE.md deploy.json README.md requirements.txt skills.md VERSION walk.json + this file |
+| 8 decisions | UUID play_id kept and documented in utilities/jukebox.py | — |
+
+Not done, on purpose: killswitch (guards paid-API spend; this app has no paid calls, so it would be dead
+code) and the cron header check (no cron route exists). QA robot: Andy's call, not started.
+
+Also today, outside the plan: login from the Hoyt tab returns to an open Hoyt tab with the music
+started. Marta's song-question failures are the kumori router's high tier (one working lane, one
+25 s hanger, 13 gated); brief handed to the kumori session, nothing changed app-side.
+
+Where things live now: original style.css/jukebox.css/app_helpers.py/postgres_utils.py under
+`_antiquated/20260905_retrofit/`; dead CSS in `dead_css_2026-09-05.css` there; one-off scripts and
+walk baseline under `_oneoff/`. Local walk recipe: `venv_2man/bin/python _oneoff/run_local.py 5077`
+(skips the visitor-telemetry thread) with the Auth Proxy on 5433, then `walk --base http://127.0.0.1:5077`.
