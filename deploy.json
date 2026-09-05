@@ -6,6 +6,14 @@
     {
       "src": "anthropic_logger/anthropic_logger.py",
       "dst": "utilities/anthropic_logger.py"
+    },
+    {
+      "src": "kumori/shared/kumori_api_client/__init__.py",
+      "dst": "utilities/kumori_api_client/__init__.py"
+    },
+    {
+      "src": "kumori/shared/kumori_api_client/client.py",
+      "dst": "utilities/kumori_api_client/client.py"
     }
   ],
   "pre_deploy_test": "/Users/at/Desktop/code/_local_infrastructure/anthropic_logger/check_violations.sh ."

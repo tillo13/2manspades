@@ -1,122 +1,32 @@
-# utilities/claude_utils.py
+# utilities/marta_chat.py
 """
 Marta AI Chat utilities for Two-Man Spades game
-Marta responds to direct user chat messages as an active player in the game
+Marta responds to direct user chat messages as an active player in the game.
+
+2026-09-05: transport cut over from a direct Anthropic call (utilities/claude_utils.py,
+paid per token) to kumori.ai's free-tier LLM router via the vendored kumori_api_client.
+Persona, visible-game-state builder and fallback lines are unchanged. The router picks
+the best live free lane for the requested tier and records usage server-side under
+app_name, so the local pricing table + usage logger went with the old transport.
 """
 
-import os
-from utilities.anthropic_logger import new_client, APIError, RateLimitError, APIConnectionError
 from typing import Dict, Optional, Any
 import logging
 import json
 
-# Configure logging
+from utilities.kumori_api_client import llm_chat_resilient
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 APP_NAME = 'twomanspades'
 
-_PRICING = {
-    'haiku-4-5': {'input': 0.000001, 'output': 0.000005},
-    'haiku-3': {'input': 0.00000025, 'output': 0.00000125},
-    'sonnet-4': {'input': 0.000003, 'output': 0.000015},
-    'sonnet-4-5': {'input': 0.000003, 'output': 0.000015},
-    'opus-4-5': {'input': 0.000005, 'output': 0.000025},
-    'opus-4-6': {'input': 0.000005, 'output': 0.000025},
-}
 
-def _get_pricing(model):
-    m = model.lower()
-    for k, v in _PRICING.items():
-        if k in m:
-            return v
-    return {'input': 0.000003, 'output': 0.000015}
-
-
-def log_api_usage(model, usage, feature=None, streaming=False,
-                  image_count=0, user_id=None, duration_ms=None):
-    """Log an API call to kumori_api_usage in a background thread.
-    Never blocks the caller. Never raises."""
-    import threading
-
-    def _do_log():
-        try:
-            from utilities.postgres_utils import get_db_connection, return_db_connection
-            pricing = _get_pricing(model)
-
-            input_tokens = getattr(usage, 'input_tokens', None) or 0
-            output_tokens = getattr(usage, 'output_tokens', None) or 0
-            cache_creation = getattr(usage, 'cache_creation_input_tokens', None) or 0
-            cache_read = getattr(usage, 'cache_read_input_tokens', None) or 0
-
-            cost = (
-                input_tokens * pricing['input']
-                + output_tokens * pricing['output']
-                + cache_creation * pricing['input'] * 1.25
-                + cache_read * pricing['input'] * 0.1
-            )
-
-            conn = get_db_connection()
-            try:
-                cur = conn.cursor()
-                cur.execute("""
-                    INSERT INTO kumori_api_usage
-                    (app_name, feature, model, input_tokens, output_tokens,
-                     cache_creation_tokens, cache_read_tokens, thinking_tokens,
-                     web_search_requests, web_fetch_requests, code_execution_requests,
-                     image_count, estimated_cost_usd, streaming, user_id, duration_ms)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """, (APP_NAME, feature, model, input_tokens, output_tokens,
-                      cache_creation, cache_read, 0,
-                      0, 0, 0,
-                      image_count, cost, streaming, user_id, duration_ms))
-                conn.commit()
-            finally:
-                return_db_connection(conn)
-        except Exception as e:
-            logger.warning(f"Failed to log API usage: {e}")
-
-    threading.Thread(target=_do_log, daemon=True).start()
-
-# For production Secret Manager
-try:
-    from google.cloud import secretmanager
-    GOOGLE_CLOUD_AVAILABLE = True
-    print("[CLAUDE] Google Cloud Secret Manager available")
-except ImportError:
-    GOOGLE_CLOUD_AVAILABLE = False
-    print("[CLAUDE] Google Cloud Secret Manager NOT available")
-
-# For local development
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-    print("[CLAUDE] dotenv loaded successfully")
-except ImportError:
-    print("[CLAUDE] dotenv NOT available")
-
-class ClaudeGameChat:
+class MartaChat:
     def __init__(self):
-        print("[CLAUDE] Initializing ClaudeGameChat for Marta's responses...")
-        
-        self.api_key = self._get_api_key()
-        if not self.api_key:
-            error_msg = "ANTHROPIC_API_KEY not found in environment or Secret Manager"
-            print(f"[CLAUDE] ERROR: {error_msg}")
-            raise ValueError(error_msg)
-        
-        print(f"[CLAUDE] API key found: {self.api_key[:10]}...{self.api_key[-4:] if len(self.api_key) > 14 else 'SHORT'}")
-        
-        try:
-            # Fast-fail config: one retry, 10s timeout
-            self.client = new_client(max_retries=1, timeout=10.0)
-            print("[CLAUDE] Anthropic client initialized successfully with fast-fail config")
-        except Exception as e:
-            print(f"[CLAUDE] ERROR initializing Anthropic client: {e}")
-            raise e
-        
-        self.model = "claude-haiku-4-5-20251001"
-        self.max_tokens = 150
+        self.min_quality_tier = 'high'   # Pro tier: frontier has 2 free lanes, both pacing-throttled 2026-09-05 (24 s then 502); Pro answered in 2.5 s
+        self.budget_ms = 8000   # a failing cascade must return the canned fallback fast, not stall the table
+        self.max_tokens = 200
         self.temperature = 0.8
         self.user_id = None
         
@@ -137,35 +47,26 @@ class ClaudeGameChat:
             "You only respond when your opponent directly talks to you - never initiate conversation."
         )
         
-        print(f"[CLAUDE] Configuration:")
-        print(f"  Model: {self.model}")
-        print(f"  Max tokens: {self.max_tokens}")
-        print(f"  Temperature: {self.temperature}")
-        print(f"  Max retries: 1")
-        print(f"  Timeout: 10.0 seconds")
-        print(f"  System prompt length: {len(self.system_prompt)} chars")
-        print(f"  Mode: Marta as active player")
-    
-
+        print(f"[MARTA] kumori tier={self.min_quality_tier} max_tokens={self.max_tokens} temp={self.temperature}")
 
     def get_marta_response(self, 
                         player_message: str, 
                         game_context: Optional[Dict[str, Any]] = None) -> str:
         """Get a response from Marta as an active player in the game"""
-        print(f"\n[CLAUDE] === MARTA CHAT REQUEST ===")
-        print(f"[CLAUDE] Opponent message: '{player_message}'")
-        print(f"[CLAUDE] Game context received: {bool(game_context)}")
+        print(f"\n[MARTA] === MARTA CHAT REQUEST ===")
+        print(f"[MARTA] Opponent message: '{player_message}'")
+        print(f"[MARTA] Game context received: {bool(game_context)}")
         
         if game_context:
-            print(f"[CLAUDE] Context keys count: {len(game_context.keys())}")
-            print(f"[CLAUDE] Context keys: {list(game_context.keys())}")
+            print(f"[MARTA] Context keys count: {len(game_context.keys())}")
+            print(f"[MARTA] Context keys: {list(game_context.keys())}")
         
         # SECRET DEBUG: Check for magic phrase and extract hand info
         secret_hand_reveal = ""
         magic_phrase_detected = False
         
         if "abra cadabra" in player_message.lower() and game_context:
-            print(f"[CLAUDE] MAGIC PHRASE DETECTED! Preparing to reveal Marta's hand...")
+            print(f"[MARTA] MAGIC PHRASE DETECTED! Preparing to reveal Marta's hand...")
             
             computer_hand = game_context.get('computer_hand', [])
             if computer_hand:
@@ -178,15 +79,15 @@ class ClaudeGameChat:
                     cards_str = ", ".join(hand_cards)
                     secret_hand_reveal = f"[SECRET_DEBUG_ACTIVATED: My actual hand is {cards_str}] "
                     magic_phrase_detected = True
-                    print(f"[CLAUDE] Secret hand info prepared: {cards_str}")
+                    print(f"[MARTA] Secret hand info prepared: {cards_str}")
         
         try:
             context_str = self._build_marta_visible_context(game_context)
             if not context_str or context_str == "[MY_VISIBLE_GAME_STATE: JSON conversion failed] ":
-                print(f"[CLAUDE] Context building failed, using fallback")
+                print(f"[MARTA] Context building failed, using fallback")
                 return self._fallback_marta_response(game_context)
             
-            print(f"[CLAUDE] Built Marta's visible context successfully")
+            print(f"[MARTA] Built Marta's visible context successfully")
             
             # Enhanced user prompt that handles both normal and secret responses
             if magic_phrase_detected:
@@ -198,7 +99,7 @@ class ClaudeGameChat:
                     f"Don't tell anyone I showed you!' Then continue with your normal competitive, snarky response about the game. "
                     f"Reference specific details from what you can legitimately see in the current game state."
                 )
-                print(f"[CLAUDE] Using SECRET REVEAL prompt mode")
+                print(f"[MARTA] Using SECRET REVEAL prompt mode")
             else:
                 user_prompt = (
                     f"{context_str}"
@@ -210,88 +111,53 @@ class ClaudeGameChat:
                     f"maintaining my snarky, poker-faced personality. Remember: I'm actively playing against this opponent."
                 )
             
-            print(f"[CLAUDE] Prompt length: {len(user_prompt)} chars")
-            print(f"[CLAUDE] Making API call to {self.model}...")
-            
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
+            print(f"[MARTA] Prompt length: {len(user_prompt)} chars")
+            print(f"[MARTA] kumori llm_chat_resilient tier={self.min_quality_tier}")
+            text, backend, attempts, _ = llm_chat_resilient(
+                messages=[{"role": "user", "content": user_prompt}],
                 system=self.system_prompt,
-                messages=[{
-                    "role": "user", 
-                    "content": user_prompt
-                }]
+                max_tokens=self.max_tokens, temperature=self.temperature,
+                min_quality_tier=self.min_quality_tier, allow_degrade=True,
+                budget_ms=self.budget_ms, min_chars=5, app_name=APP_NAME,
             )
-            
-            print(f"[CLAUDE] API call successful!")
-            log_api_usage(self.model, response.usage, feature='marta_chat', user_id=self.user_id)
-
-            api_response = response.content[0].text.strip()
-            print(f"[CLAUDE] Raw API response: '{api_response}'")
-            print(f"[CLAUDE] Response length: {len(api_response)} chars")
+            print(f"[MARTA] backend={backend} attempts={len(attempts or [])}")
+            api_response = (text or '').strip()
+            print(f"[MARTA] Raw API response: '{api_response}'")
+            print(f"[MARTA] Response length: {len(api_response)} chars")
             
             if magic_phrase_detected:
-                print(f"[CLAUDE] SECRET REVEAL response delivered!")
+                print(f"[MARTA] SECRET REVEAL response delivered!")
             
             if not api_response:
-                print(f"[CLAUDE] WARNING: Empty response from API")
+                print(f"[MARTA] WARNING: Empty response from API")
                 return self._fallback_marta_response(game_context)
             
-            print(f"[CLAUDE] SUCCESS: Returning Marta's response")
+            print(f"[MARTA] SUCCESS: Returning Marta's response")
             return api_response
             
-        except anthropic.APITimeoutError as e:
-            print(f"[CLAUDE] API Timeout Error after 10s: {e}")
-            fallback = self._fallback_marta_response(game_context)
-            print(f"[CLAUDE] Using timeout fallback: '{fallback}'")
-            return fallback
-            
-        except RateLimitError as e:
-            print(f"[CLAUDE] Rate Limit Error: {e}")
-            retry_after = getattr(e.response, 'headers', {}).get('retry-after', 'unknown')
-            print(f"[CLAUDE] Retry-after header: {retry_after}")
-            fallback = self._fallback_marta_response(game_context)
-            print(f"[CLAUDE] Using rate limit fallback: '{fallback}'")
-            return fallback
-            
-        except APIConnectionError as e:
-            print(f"[CLAUDE] Connection Error: {e}")
-            fallback = self._fallback_marta_response(game_context)
-            print(f"[CLAUDE] Using connection error fallback: '{fallback}'")
-            return fallback
-            
-        except APIError as e:
-            print(f"[CLAUDE] General API Error: {e}")
-            print(f"[CLAUDE] Error type: {type(e)}")
-            if hasattr(e, 'status_code'):
-                print(f"[CLAUDE] Status code: {e.status_code}")
-            fallback = self._fallback_marta_response(game_context)
-            print(f"[CLAUDE] Using API error fallback: '{fallback}'")
-            return fallback
-            
         except Exception as e:
-            print(f"[CLAUDE] Unexpected error: {e}")
-            print(f"[CLAUDE] Error type: {type(e)}")
+            print(f"[MARTA] Unexpected error: {e}")
+            print(f"[MARTA] Error type: {type(e)}")
             fallback = self._fallback_marta_response(game_context)
-            print(f"[CLAUDE] Using general error fallback: '{fallback}'")
+            print(f"[MARTA] Using general error fallback: '{fallback}'")
             return fallback
+
 
     def _build_marta_visible_context(self, game_context: Optional[Dict[str, Any]]) -> str:
         """Build context showing only what Marta can legitimately see during play"""
-        print(f"[CLAUDE] Building Marta's visible context...")
+        print(f"[MARTA] Building Marta's visible context...")
         
         if not game_context:
-            print(f"[CLAUDE] No game context provided")
+            print(f"[MARTA] No game context provided")
             return "[MY_VISIBLE_GAME_STATE: No context available] "
         
-        print(f"[CLAUDE] Processing {len(game_context)} context keys...")
+        print(f"[MARTA] Processing {len(game_context)} context keys...")
         
         # Create Marta's visible context (exclude her hidden hand AND secret discard info)
         marta_visible_context = {}
         
         for key, value in game_context.items():
-            print(f"[CLAUDE] Processing key: {key} (type: {type(value).__name__})")
+            print(f"[MARTA] Processing key: {key} (type: {type(value).__name__})")
             
             # Skip internal/hidden information
             excluded_keys = {
@@ -308,7 +174,7 @@ class ClaudeGameChat:
                 })
             
             if key in excluded_keys:
-                print(f"[CLAUDE] Excluding key: {key}")
+                print(f"[MARTA] Excluding key: {key}")
                 continue
                 
             # Convert and rename from Marta's perspective with safe handling
@@ -316,10 +182,10 @@ class ClaudeGameChat:
                 if key == 'player_hand' and isinstance(value, list):
                     # Marta can only see count, not actual cards in opponent's hand
                     marta_visible_context['opponent_hand_size'] = len(value)
-                    print(f"[CLAUDE] Converted player_hand to opponent_hand_size: {len(value)}")
+                    print(f"[MARTA] Converted player_hand to opponent_hand_size: {len(value)}")
                 elif key == 'computer_hand_count':
                     marta_visible_context['my_hand_size'] = value
-                    print(f"[CLAUDE] Set my_hand_size: {value}")
+                    print(f"[MARTA] Set my_hand_size: {value}")
                 elif key == 'current_trick' and isinstance(value, list):
                     converted_trick = []
                     for play in value:
@@ -340,7 +206,7 @@ class ClaudeGameChat:
                                         'card_details': f"Opponent played {card_str}"
                                     })
                     marta_visible_context[key] = converted_trick
-                    print(f"[CLAUDE] Converted current_trick: {len(converted_trick)} plays")
+                    print(f"[MARTA] Converted current_trick: {len(converted_trick)} plays")
                 elif key == 'trick_history' and isinstance(value, list):
                     converted_history = []
                     for trick in value:
@@ -377,30 +243,30 @@ class ClaudeGameChat:
                             converted_history.append(converted_trick)
                             
                     marta_visible_context[key] = converted_history
-                    print(f"[CLAUDE] Converted trick_history: {len(converted_history)} tricks")
+                    print(f"[MARTA] Converted trick_history: {len(converted_history)} tricks")
                 # Handle discard cards ONLY if hand is over AND they exist
                 elif key == 'player_discarded' and value and hand_is_over:
                     if isinstance(value, dict) and 'rank' in value and 'suit' in value:
                         opponent_discard = f"{value['rank']}{value['suit']}"
                         marta_visible_context['opponent_discarded'] = opponent_discard
                         marta_visible_context['opponent_discard_details'] = f"Opponent discarded {opponent_discard}"
-                        print(f"[CLAUDE] Converted player_discarded to opponent_discarded")
+                        print(f"[MARTA] Converted player_discarded to opponent_discarded")
                 elif key == 'computer_discarded' and value and hand_is_over:
                     if isinstance(value, dict) and 'rank' in value and 'suit' in value:
                         my_discard = f"{value['rank']}{value['suit']}"
                         marta_visible_context['my_discarded'] = my_discard
                         marta_visible_context['my_discard_details'] = f"I discarded {my_discard}"
-                        print(f"[CLAUDE] Converted computer_discarded to my_discarded")
+                        print(f"[MARTA] Converted computer_discarded to my_discarded")
                 elif key.startswith('player_'):
                     # Rename player stats to opponent stats for Marta's perspective
                     new_key = key.replace('player_', 'opponent_')
                     marta_visible_context[new_key] = value
-                    print(f"[CLAUDE] Renamed {key} to {new_key}")
+                    print(f"[MARTA] Renamed {key} to {new_key}")
                 elif key.startswith('computer_'):
                     # Rename computer stats to my stats for Marta's perspective
                     new_key = key.replace('computer_', 'my_')
                     marta_visible_context[new_key] = value
-                    print(f"[CLAUDE] Renamed {key} to {new_key}")
+                    print(f"[MARTA] Renamed {key} to {new_key}")
                 elif key == 'player_parity':
                     marta_visible_context['opponent_parity'] = value
                 elif key == 'computer_parity':
@@ -444,37 +310,38 @@ class ClaudeGameChat:
                 else:
                     # Keep other fields as-is (but exclude discard explanation during active play)
                     if key == 'discard_bonus_explanation' and not hand_is_over:
-                        print(f"[CLAUDE] Excluding discard_bonus_explanation (hand not over)")
+                        print(f"[MARTA] Excluding discard_bonus_explanation (hand not over)")
                         continue
                     # Only include serializable values
                     if isinstance(value, (str, int, float, bool, type(None))):
                         marta_visible_context[key] = value
-                        print(f"[CLAUDE] Kept simple value: {key}")
+                        print(f"[MARTA] Kept simple value: {key}")
                     else:
-                        print(f"[CLAUDE] Skipping complex value: {key} (type: {type(value).__name__})")
+                        print(f"[MARTA] Skipping complex value: {key} (type: {type(value).__name__})")
                         
             except Exception as e:
-                print(f"[CLAUDE] Error processing key {key}: {e}")
+                print(f"[MARTA] Error processing key {key}: {e}")
                 continue
         
         # Rest of the function remains the same...
-        print(f"[CLAUDE] Final context keys: {list(marta_visible_context.keys())}")
+        print(f"[MARTA] Final context keys: {list(marta_visible_context.keys())}")
         
         # Test JSON conversion with detailed error handling
         try:
             context_json = json.dumps(marta_visible_context, separators=(',', ':'))
-            print(f"[CLAUDE] JSON conversion successful, length: {len(context_json)} chars")
+            print(f"[MARTA] JSON conversion successful, length: {len(context_json)} chars")
         except Exception as e:
-            print(f"[CLAUDE] JSON conversion FAILED: {e}")
+            print(f"[MARTA] JSON conversion FAILED: {e}")
             return "[MY_VISIBLE_GAME_STATE: JSON conversion failed] "
         
         final_context = f"[MY_VISIBLE_GAME_STATE: {context_json}] "
-        print(f"[CLAUDE] Final context length: {len(final_context)} chars")
+        print(f"[MARTA] Final context length: {len(final_context)} chars")
         return final_context
     
+
     def _fallback_marta_response(self, game_context: Optional[Dict[str, Any]]) -> str:
         """Game-aware fallback responses from Marta's perspective as active player"""
-        print(f"[CLAUDE] Generating Marta's fallback response...")
+        print(f"[MARTA] Generating Marta's fallback response...")
         
         if not game_context:
             fallbacks = [
@@ -484,7 +351,7 @@ class ClaudeGameChat:
             ]
             import random
             selected = random.choice(fallbacks)
-            print(f"[CLAUDE] No context fallback: '{selected}'")
+            print(f"[MARTA] No context fallback: '{selected}'")
             return selected
         
         # Try to make contextual fallbacks from Marta's perspective
@@ -519,11 +386,11 @@ class ClaudeGameChat:
             if contextual_fallbacks:
                 import random
                 selected = random.choice(contextual_fallbacks)
-                print(f"[CLAUDE] Contextual Marta fallback: '{selected}'")
+                print(f"[MARTA] Contextual Marta fallback: '{selected}'")
                 return selected
                 
         except Exception as e:
-            print(f"[CLAUDE] Error creating contextual fallback: {e}")
+            print(f"[MARTA] Error creating contextual fallback: {e}")
         
         # Default fallbacks if context parsing fails
         generic_fallbacks = [
@@ -537,146 +404,43 @@ class ClaudeGameChat:
         
         import random
         selected = random.choice(generic_fallbacks)
-        print(f"[CLAUDE] Generic Marta fallback: '{selected}'")
+        print(f"[MARTA] Generic Marta fallback: '{selected}'")
         return selected
     
-    def _get_api_key(self) -> Optional[str]:
-        """Get API key from environment or Secret Manager with detailed logging"""
-        print(f"[CLAUDE] === API KEY DETECTION ===")
-        
-        # First try environment variable
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if api_key:
-            print(f"[CLAUDE] Found API key in environment variable")
-            print(f"[CLAUDE] Key length: {len(api_key)} chars")
-            print(f"[CLAUDE] Key starts with: {api_key[:10]}...")
-            return api_key
-        
-        print(f"[CLAUDE] No API key in environment variable")
-        
-        # Check if we're in Google Cloud
-        is_gcp = self._is_google_cloud_environment()
-        print(f"[CLAUDE] Running in Google Cloud: {is_gcp}")
-        
-        if is_gcp:
-            print(f"[CLAUDE] Attempting to get key from Secret Manager...")
-            return self._get_secret_from_manager()
-        
-        print(f"[CLAUDE] Not in Google Cloud environment")
-        print(f"[CLAUDE] No API key source available")
-        return None
-    
-    def _is_google_cloud_environment(self) -> bool:
-        """Detect if we're running in Google Cloud with logging"""
-        gae_env = os.getenv('GAE_ENV')
-        k_service = os.getenv('K_SERVICE')
-        gcp_project = os.getenv('GOOGLE_CLOUD_PROJECT')
-        
-        print(f"[CLAUDE] Environment check:")
-        print(f"  GAE_ENV: {gae_env}")
-        print(f"  K_SERVICE: {k_service}")
-        print(f"  GOOGLE_CLOUD_PROJECT: {gcp_project}")
-        
-        is_gcp = (
-            gae_env == 'standard' or
-            k_service is not None or
-            gcp_project is not None
-        )
-        
-        print(f"[CLAUDE] Is Google Cloud: {is_gcp}")
-        return is_gcp
-    
-    def _get_secret_from_manager(self) -> Optional[str]:
-        """Get API key from Google Secret Manager with detailed logging"""
-        print(f"[CLAUDE] === SECRET MANAGER ACCESS ===")
-        
-        if not GOOGLE_CLOUD_AVAILABLE:
-            print(f"[CLAUDE] ERROR: Google Cloud libraries not available")
-            return None
-        
-        try:
-            print(f"[CLAUDE] Creating Secret Manager client...")
-            client = secretmanager.SecretManagerServiceClient()
-
-            secret_name = "projects/kumori-404602/secrets/KUMORI_ANTHROPIC_API_KEY/versions/latest"
-            print(f"[CLAUDE] Secret path: {secret_name}")
-            
-            print(f"[CLAUDE] Accessing secret...")
-            response = client.access_secret_version(request={"name": secret_name})
-            
-            secret_value = response.payload.data.decode("UTF-8")
-            print(f"[CLAUDE] Secret retrieved successfully")
-            print(f"[CLAUDE] Secret length: {len(secret_value)} chars")
-            print(f"[CLAUDE] Secret starts with: {secret_value[:10]}...")
-            
-            return secret_value
-            
-        except Exception as e:
-            print(f"[CLAUDE] ERROR accessing Secret Manager: {e}")
-            print(f"[CLAUDE] Error type: {type(e)}")
-            return None
 
 # Singleton instance
-_claude_chat = None
+_marta_chat = None
 
-def get_claude_chat() -> ClaudeGameChat:
-    """Get singleton Claude chat instance for Marta responses"""
-    global _claude_chat
-    if _claude_chat is None:
-        print("[CLAUDE] Creating new ClaudeGameChat singleton instance (Marta as player)")
-        _claude_chat = ClaudeGameChat()
-    else:
-        print("[CLAUDE] Using existing ClaudeGameChat singleton (Marta as player)")
-    return _claude_chat
+def get_marta_chat() -> MartaChat:
+    global _marta_chat
+    if _marta_chat is None:
+        print("[MARTA] Creating MartaChat singleton (Marta as player)")
+        _marta_chat = MartaChat()
+    return _marta_chat
 
 def get_smart_marta_response(player_message: str, game_state: Dict[str, Any], user_id: str = None) -> str:
     """Convenience function to get Marta's response as active player"""
-    print(f"[CLAUDE] get_smart_marta_response called (Marta as active player)")
-    print(f"[CLAUDE] Opponent message: '{player_message}'")
-    print(f"[CLAUDE] Game state keys: {list(game_state.keys()) if game_state else 'None'}")
-
-    claude = get_claude_chat()
-    claude.user_id = user_id
-    response = claude.get_marta_response(player_message, game_state)
-    
-    print(f"[CLAUDE] Final Marta response: '{response}'")
+    print(f"[MARTA] get_smart_marta_response: '{player_message}'")
+    marta = get_marta_chat()
+    marta.user_id = user_id
+    response = marta.get_marta_response(player_message, game_state)
+    print(f"[MARTA] Final Marta response: '{response}'")
     return response
 
-# Test function for debugging
-def test_claude_connection():
-    """Test function to verify Claude API connectivity with Marta as player"""
-    print(f"[CLAUDE] === TESTING CLAUDE CONNECTION (MARTA AS PLAYER) ===")
-    
-    try:
-        claude = get_claude_chat()
-        
-        # Test with rich game context - simulating opponent asking about game state
-        test_context = {
-            'hand_number': 2,
-            'phase': 'playing',
-            'player_score': 89,  # Opponent's score
-            'computer_score': 127,  # Marta's score
-            'player_bid': 4,  # Opponent's bid
-            'computer_bid': 6,  # Marta's bid
-            'player_tricks': 2,  # Opponent's tricks
-            'computer_tricks': 3,  # Marta's tricks
-            'player_bags': 1,  # Opponent's bags
-            'computer_bags': 0,  # Marta's bags
-            'hand_over': False,  # Hand still in progress - no discard info
-            'trick_history': [
-                {'number': 1, 'player_card': {'rank': '7', 'suit': '♣'}, 'computer_card': {'rank': 'A', 'suit': '♣'}, 'winner': 'computer'},
-                {'number': 2, 'player_card': {'rank': 'K', 'suit': '♠'}, 'computer_card': {'rank': 'Q', 'suit': '♠'}, 'winner': 'player'}
-            ]
-        }
-        
-        test_response = claude.get_marta_response("How do you think this hand is going?", test_context)
-        print(f"[CLAUDE] Marta player test successful: '{test_response}'")
-        return True, test_response
-    except Exception as e:
-        print(f"[CLAUDE] Marta player test failed: {e}")
-        return False, str(e)
+def test_marta_connection():
+    """Smoke test: rich game context, Marta as player, through kumori."""
+    test_context = {
+        'hand_number': 2, 'phase': 'playing',
+        'player_score': 89, 'computer_score': 127,
+        'player_bid': 4, 'computer_bid': 6,
+        'player_tricks': 2, 'computer_tricks': 3,
+        'player_bags': 1, 'computer_bags': 0, 'hand_over': False,
+        'trick_history': [
+            {'number': 1, 'player_card': {'rank': '7', 'suit': '♣'}, 'computer_card': {'rank': 'A', 'suit': '♣'}, 'winner': 'computer'},
+            {'number': 2, 'player_card': {'rank': 'K', 'suit': '♠'}, 'computer_card': {'rank': 'Q', 'suit': '♠'}, 'winner': 'player'},
+        ],
+    }
+    return get_marta_chat().get_marta_response("How do you think this hand is going?", test_context)
 
 if __name__ == "__main__":
-    # Run test when script is executed directly
-    success, result = test_claude_connection()
-    print(f"Marta player test result: {success} - {result}")
+    print(test_marta_connection())

@@ -36,6 +36,17 @@ except Exception:
     pass
 google_auth = SimpleGoogleAuth(app)
 
+# kumori free-tier LLM router (Marta chat). The key lives in kumori-404602, not this
+# project's Secret Manager, so the project id is forced. KUMORI_API_KEY env overrides.
+try:
+    from utilities.google_auth_utils import get_secret as _get_secret
+    from utilities.kumori_api_client import init as _kumori_init
+    _kumori_init(get_secret_fn=lambda name: _get_secret(name, project_id='kumori-404602'),
+                 api_key_name='TWOMANSPADES_KUMORI_API_KEY')
+    print("[KUMORI] api client initialized (TWOMANSPADES_KUMORI_API_KEY)")
+except Exception as _e:
+    print(f"[KUMORI] api client init failed: {_e}")
+
 app.secret_key = 'a-super-secret-key-change-this-or-dont-whatever-its-spades-man'
 
 # Session configuration - keep users logged in for 30 days
@@ -281,9 +292,9 @@ def chat_response():
             game_state = session['game']
             print(f"[CHAT] Game state found: Hand {game_state.get('hand_number', 1)}, Phase {game_state.get('phase', 'unknown')}")
             
-            from utilities.claude_utils import get_smart_marta_response
+            from utilities.marta_chat import get_smart_marta_response
             
-            print("[CHAT] Calling Claude...")
+            print("[CHAT] Calling Marta via kumori...")
             response = get_smart_marta_response(player_message, game_state,
                                                 user_id=session.get('user', {}).get('email'))
             print(f"[CHAT] Final response: '{response}'")
