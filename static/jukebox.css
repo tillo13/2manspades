@@ -124,14 +124,12 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
     .ts-sheet.open { transform: translate(-50%, 0); }
 }
 @media (min-width: 1150px) {
+    /* docked in the right rail when open; closed by default like the phone (slides in from the right) */
     .ts-sheet { left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap)); right: auto; width: var(--rail-w);
-        top: var(--rail-top, 160px); bottom: 45px; height: auto; max-height: none; transform: none; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
-    .ts-tabs { display: none; }
-    .ts-sheet .chat-header, .ts-sheet .jb-header { display: flex; }
-    .ts-sheet[data-tab="marta"] .jb-panel, .ts-sheet[data-tab="hoyt"] .chat-window { display: flex; }   /* both stacked */
-    .ts-sheet .chat-window { flex: 0 0 var(--chat-h); height: var(--chat-h); border-bottom: 2px solid #f6c453; }
-    .ts-sheet .jb-panel { flex: 1 1 auto; }
-    .ts-sheet .jb-mini { display: none !important; }
+        top: var(--rail-top, 160px); bottom: 45px; height: auto; max-height: none; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+        transform: translateX(calc(100% + 40px)); }
+    .ts-sheet.open { transform: none; }
+    .ts-tabs { border-radius: 12px 12px 0 0; }
 }
 /* the one bubble: cover art, spins while playing, badge = unread Marta */
 .chat-bubble-icon { background: #222; overflow: visible; font-size: 0; }
@@ -143,9 +141,18 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 .chat-bubble-icon .jb-bubble-label { left: 60px; }
 .chat-bubble-icon .chat-badge { font-size: 11px; }
 body.sheet-open .chat-bubble-icon, body.sheet-open .jb-toast { display: none !important; }
-@media (min-width: 1150px) { .chat-bubble-icon, .jb-toast { display: none !important; } }
 
 /* player footer: the search box IS the search (no button to reach it), Albums beside it */
 .jb-footer { flex: none; display: flex; gap: 8px; align-items: center; padding: 8px 12px 12px; border-top: 1px solid #eee; background: #fff; }
 .jb-footer .jb-search { flex: 1; margin: 0; min-width: 0; }
 .jb-footer .jb-pill { flex: none; min-width: 0; padding: 10px 16px; }
+
+/* listening stats in the player's spare room */
+.jb-stats { margin-top: auto; width: 100%; max-width: 360px; padding: 10px 12px; border-top: 1px solid #eee; text-align: center; }
+.jb-stats-row { display: flex; justify-content: space-around; gap: 8px; }
+.jb-stats-row span { font-size: 13px; color: #333; }
+.jb-stats-row span b { display: block; font-size: 20px; color: #222; line-height: 1.1; }
+.jb-stats-top { font-size: 12px; color: #666; margin-top: 8px; line-height: 1.4; }
+.jb-stats-top b { color: #222; }
+.jb-stats-link { display: inline-block; margin-top: 6px; font-size: 12px; color: #667eea; }
+.jb-stats[hidden] { display: none; }

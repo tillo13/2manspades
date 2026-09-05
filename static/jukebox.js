@@ -8,6 +8,7 @@
     let PL = null, audio = null, state = null, order = [], panelOpen = false, lastPanel = 'now';
     let playId = null, lastSource = 'shuffle', lastBeat = 0;
     const PILLS = ["What's this song about?", "When did Hoyt record this?", "Tell me about this record", "Play something like this"];
+    const IDLE_PILLS = ["Tell me about Hoyt Axton", "What record should I start with?", "What's his best song?"];
 
     const norm = (s) => s.toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
     const albumById = (id) => PL.albums.find(a => a.id === id);
@@ -131,13 +132,23 @@
     function renderPills() {
         const wrap = $('chatPills'); if (!wrap) return;
         const np = nowPlaying();
-        if (!np) { wrap.hidden = true; wrap.innerHTML = ''; return; }
-        const key = np.album + '/' + np.n;
-        if (wrap.dataset.for === key) { wrap.hidden = (wrap.dataset.asked === key); return; }   // asked about this song already: stay out of the way
-        wrap.hidden = false;
-        wrap.dataset.for = key; wrap.innerHTML = '';
-        for (const q of PILLS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chat-pill'; b.textContent = q;
-            b.onclick = () => { const i = $('chatInput'); if (!i) return; i.value = q; wrap.hidden = true; wrap.dataset.asked = wrap.dataset.for; if (typeof sendMessage === 'function') sendMessage(); }; wrap.appendChild(b); }
+        const key = np ? np.album + '/' + np.n : '__idle__';
+        if (wrap.dataset.for === key) { wrap.hidden = (wrap.dataset.asked === key); return; }   // asked already: stay out of the way
+        wrap.hidden = false; wrap.dataset.for = key; wrap.innerHTML = '';
+        for (const q of (np ? PILLS : IDLE_PILLS)) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chat-pill'; b.textContent = q;
+            b.onclick = () => { const i = $('chatInput'); if (!i) return; i.value = q; wrap.hidden = true; wrap.dataset.asked = key; if (typeof sendMessage === 'function') sendMessage(); }; wrap.appendChild(b); }
+    }
+    let statsAt = 0;
+    function loadStats(force) {
+        if (!$('jbStats') || (!force && Date.now() - statsAt < 120000)) return;
+        statsAt = Date.now();
+        fetch('/jukebox/stats').then(r => r.json()).then(s => {
+            if (!s || !s.plays) { $('jbStats').hidden = true; return; }
+            $('jbStatPlays').innerHTML = `<b>${s.plays}</b>plays`; $('jbStatHours').innerHTML = `<b>${s.hours}</b>hours`; $('jbStatSongs').innerHTML = `<b>${s.songs}</b>songs`;
+            const top = (s.top_songs || [])[0], alb = (s.top_albums || [])[0];
+            $('jbStatTop').innerHTML = (top ? `Most played: <b>${top.title}</b> (${top.plays})` : '') + (alb ? `<br>Favorite record: <b>${alb.album}</b>` : '');
+            $('jbStats').hidden = false;
+        }).catch(() => {});
     }
     function nowPlaying() {
         const cur = current(); if (!cur) return null;   // paused still counts: the song on the turntable is the song he is asking about
@@ -157,8 +168,8 @@
     function showTab(tab) {
         const sh = $('tableSheet'); sh.dataset.tab = tab;
         $('tsTabMarta').classList.toggle('active', tab === 'marta'); $('tsTabHoyt').classList.toggle('active', tab === 'hoyt');
-        if (typeof onChatVisibility === 'function') onChatVisibility(isDesktop() || (sheetOpen() && tab === 'marta'));
-        if (tab === 'hoyt') showPanel(lastPanel);
+        if (typeof onChatVisibility === 'function') onChatVisibility(sheetOpen() && tab === 'marta');
+        if (tab === 'hoyt') { showPanel(lastPanel); loadStats(false); }
     }
     function openSheet(tab) {
         $('tableSheet').classList.add('open'); document.body.classList.add('sheet-open'); panelOpen = true;
@@ -166,7 +177,7 @@
     }
     function closeSheet() {
         $('tableSheet').classList.remove('open'); document.body.classList.remove('sheet-open'); panelOpen = false;
-        if (typeof onChatVisibility === 'function') onChatVisibility(isDesktop());
+        if (typeof onChatVisibility === 'function') onChatVisibility(false);
     }
     function openPanel(open) { if (open) openSheet('hoyt'); else closeSheet(); }
     window.TableSheet = { open: openSheet, close: closeSheet, tab: showTab,
@@ -206,9 +217,8 @@
         $('jbSearch').oninput = (e) => { renderAlbums(e.target.value); showPanel('browse'); };   // typing IS the search
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
         window.addEventListener('pagehide', () => { saveState(); beat(false, true); });
-        renderAlbums(''); showPanel('now'); render();
-        if (isDesktop()) { openSheet($('tableSheet').dataset.tab || 'marta'); }
-        window.matchMedia('(min-width: 1150px)').addEventListener('change', e => { if (e.matches) openSheet($('tableSheet').dataset.tab); });
+        renderAlbums(''); showPanel('now'); render(); renderPills(); loadStats(true);
+
         // resume across the reload that every new hand causes
         if (state.album && state.playing) play(current(), state.pos);
     }

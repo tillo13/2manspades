@@ -60,17 +60,18 @@ function onChatVisibility(visible) {
 function sendMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
-
     if (!message) return;
-
-    // Add player message
     addMessage(message, 'player');
     input.value = '';
-
-    // Show Marta typing indicator
     showMartaTyping();
+    askMarta(message, 1);
+}
 
-    // Get smart response from Marta with enhanced context - ONLY user-initiated
+// 2026-09-05: a music question can stall the free-LLM router. The server answers
+// {retry:true} instead of a canned card line; we keep the dots up, tell him once that
+// we're still looking, and re-send up to MAX_TRIES times a few seconds apart.
+const MARTA_MAX_TRIES = 3, MARTA_RETRY_MS = 4000;
+function askMarta(message, attempt) {
     fetch('/chat_response', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,34 +79,27 @@ function sendMessage() {
     })
         .then(response => response.json())
         .then(data => {
+            if (data.retry) {
+                if (attempt === 1 && data.note) { addMessage(data.note, 'marta'); showMartaTyping(); }   // note above, dots stay below
+                if (attempt < MARTA_MAX_TRIES) { setTimeout(() => askMarta(message, attempt + 1), MARTA_RETRY_MS); return; }
+                hideMartaTyping();
+                addMessage("I kept looking and came up empty this time. Ask me again in a minute.", 'marta');
+                return;
+            }
             if (data.response) {
-                // Simulate realistic typing time based on response length
                 const typingDelay = Math.min(Math.max(data.response.length * 50, 800), 3000);
-
-                setTimeout(() => {
-                    hideMartaTyping();
-                    addMessage(data.response, 'marta');
-                }, typingDelay);
+                setTimeout(() => { hideMartaTyping(); addMessage(data.response, 'marta'); }, typingDelay);
             } else {
                 hideMartaTyping();
-                addMessage("...", 'marta'); // Mysterious fallback
+                addMessage("...", 'marta');
             }
         })
         .catch(error => {
             console.error('Chat error:', error);
+            if (attempt < MARTA_MAX_TRIES) { setTimeout(() => askMarta(message, attempt + 1), MARTA_RETRY_MS); return; }
             hideMartaTyping();
-            // Snarky fallback responses
-            const fallbacks = [
-                "Interesting move...",
-                "We'll see about that.",
-                "My cards are speaking to me.",
-                "Poker face activated.",
-                "You're full of surprises."
-            ];
-            const response = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-            setTimeout(() => {
-                addMessage(response, 'marta');
-            }, 800 + Math.random() * 1000);
+            const fallbacks = ["Interesting move...", "We'll see about that.", "My cards are speaking to me.", "Poker face activated.", "You're full of surprises."];
+            setTimeout(() => addMessage(fallbacks[Math.floor(Math.random() * fallbacks.length)], 'marta'), 800 + Math.random() * 1000);
         });
 }
 

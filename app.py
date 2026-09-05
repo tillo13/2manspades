@@ -299,7 +299,11 @@ def chat_response():
                                                 user_id=session.get('user', {}).get('email'),
                                                 now_playing=data.get('now_playing'))
             print(f"[CHAT] Final response: '{response}'")
-            
+            if response == "__RETRY__":
+                # router stalled on a music question: tell the client to keep trying (it shows
+                # "still looking" + dots and re-sends up to 2 more times) rather than a canned line
+                return jsonify({'response': None, 'retry': True,
+                                'note': "Still looking that one up for you..."})
             return jsonify({'response': response})
         else:
             print("[CHAT] No game session found")
@@ -323,6 +327,20 @@ def chat_response():
 def jukebox_audio(album_id, n):
     from utilities.jukebox import stream_track
     return stream_track(album_id, n)
+
+_jukebox_stats_cache = {'t': 0, 'v': {}}
+@app.route('/jukebox/stats')
+def jukebox_stats_json():
+    from utilities.jukebox import jukebox_stats
+    if time.time() - _jukebox_stats_cache['t'] > 60:
+        s = jukebox_stats()
+        _jukebox_stats_cache.update(t=time.time(), v={
+            'plays': (s.get('totals') or {}).get('plays', 0), 'hours': (s.get('totals') or {}).get('hours', 0),
+            'songs': (s.get('totals') or {}).get('songs', 0), 'albums': (s.get('totals') or {}).get('albums', 0),
+            'top_songs': [{'title': x['title'], 'album': x['album_title'], 'plays': int(x['plays'])} for x in (s.get('top_songs') or [])[:3]],
+            'top_albums': [{'album': x['album_title'], 'minutes': int(x['minutes'] or 0)} for x in (s.get('top_albums') or [])[:3]],
+        })
+    return jsonify(_jukebox_stats_cache['v'])
 
 @app.route('/jukebox/event', methods=['POST'])
 def jukebox_event():

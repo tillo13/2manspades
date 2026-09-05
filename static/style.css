@@ -1661,7 +1661,6 @@ button:disabled {
     /* margin, NOT transform: .bottom-section is position:fixed INSIDE .container and a transformed
        ancestor would pin it to the container instead of the viewport */
     .container { margin-left: calc(50% - var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2); margin-right: 0; }
-    .chat-bubble-icon, .chat-close { display: none !important; }
     .chat-window {
         left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap));
         right: auto; width: var(--rail-w); transform: none; border-radius: 12px; border-top: none;

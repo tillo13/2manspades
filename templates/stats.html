@@ -503,7 +503,7 @@
 
         <!-- Hoyt Axton jukebox: what gets played at the table -->
         {% if hoyt and hoyt.totals and hoyt.totals.plays %}
-        <div class="stats-section hoyt-section">
+        <div class="stats-section hoyt-section" id="hoyt">
             <div class="section-title">Hoyt Axton Jukebox</div>
             <div class="overall-stats-grid">
                 <div class="overall-stat"><div class="overall-value">{{ "{:,}".format(hoyt.totals.plays|int) }}</div><div class="overall-label">Songs Played</div></div>

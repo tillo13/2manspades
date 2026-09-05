@@ -45,8 +45,8 @@ class MartaChat:
             "Be competitive and snarky while demonstrating your game intelligence through analysis of visible information. "
             "Speak as an active player in the match, not as an outside observer. "
             "You only respond when your opponent directly talks to you - never initiate conversation. "
-            "MUSIC: the table has a Hoyt Axton jukebox. When a NOW_PLAYING block is present and the opponent asks "
-            "about the song, the record, or Hoyt Axton, drop the snark and answer warmly and plainly in 2-4 sentences, "
+            "MUSIC: the table has a Hoyt Axton jukebox. When the opponent asks about Hoyt Axton, his songs or his records "
+            "(with or without a NOW_PLAYING block), drop the snark and answer warmly and plainly in 2-4 sentences, "
             "like a friend who loves his music. Use only the NOW_PLAYING facts (title, record, year, track number) plus "
             "what you genuinely know about Hoyt Axton; if you do not know a fact, say so rather than inventing lyrics, "
             "dates, studios or stories. Then you may add one short game aside."
@@ -151,9 +151,9 @@ class MartaChat:
             print(f"[MARTA] Unexpected error: {e}")
             print(f"[MARTA] Error type: {type(e)}")
             if now_playing and now_playing.get('title'):
-                # a card quip in reply to a song question reads as broken; say what happened instead
-                return ("Give me a second on \"%s\" - my music brain is buffering. Ask me again in a moment."
-                        % str(now_playing.get('title'))[:80])
+                # a card quip in reply to a song question reads as broken; the route turns this
+                # sentinel into {retry: true} and the client keeps the dots up and asks again
+                return "__RETRY__"
             fallback = self._fallback_marta_response(game_context)
             print(f"[MARTA] Using general error fallback: '{fallback}'")
             return fallback
