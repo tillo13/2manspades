@@ -1670,3 +1670,19 @@ button:disabled {
     .chat-window { top: 160px; bottom: auto; height: var(--chat-h); }
     .chat-header { border-radius: 12px 12px 0 0; }
 }
+
+/* COMPACT SCORE HEADER on phones (2026-09-05): each score reads on one line, You (EVEN) 0,
+   and the two bars drop from ~130px to ~85px so the table and the sheets get the room. */
+@media (max-width: 767px) {
+    .floating-game-score { top: 6px; padding: 5px 10px; border-radius: 8px; }
+    .game-score-item { display: flex; align-items: baseline; justify-content: center; gap: 5px; white-space: nowrap; }
+    .game-score-label { margin: 0; font-size: 12px; }
+    .game-score-parity { margin: 0; font-size: 9px; }
+    .game-score-value { font-size: 18px; line-height: 1.1; }
+    .floating-hand-score { top: 46px; padding: 4px 8px; }
+    .hand-score-item .label { font-size: 9px; margin: 0; }
+    .hand-score-item .value { font-size: 12px; white-space: nowrap; }
+    body:not(.instructions-page) { padding-top: 92px; }
+    body:has(.login-prompt-banner) { padding-top: 127px !important; }
+    body:has(.login-prompt-banner) .floating-hand-score { top: 81px; }
+}
