@@ -25,7 +25,8 @@
       "Bash(deploy:*)",
       "Bash(lsof -iTCP:5433 -sTCP:LISTEN)",
       "Bash(echo \"exit=$?\")",
-      "Bash(grep -E \"FAIL|❌|Pre-Deploy|Live at|version|health|Ran|OK\" _oneoff/deploy_split.log)"
+      "Bash(grep -E \"FAIL|❌|Pre-Deploy|Live at|version|health|Ran|OK\" _oneoff/deploy_split.log)",
+      "Bash(cd *)"
     ]
   }
 }

@@ -5,11 +5,42 @@ import psycopg2.pool
 import json
 import os
 import threading
+import time
 from datetime import datetime
 from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
 from .connection import get_db_connection
 from .connection import return_db_connection
+from .achievements import get_player_achievements, get_per_hand_stats
+from .players import get_unified_leaderboard
+
+# /stats is read-mostly and costs ~60 queries (measured 2026-09-05: 4–8 s server-side on the
+# shared micro instance), so the whole payload is cached for 60 s per process and computed
+# single-flight so 8 gunicorn threads can't stampede the pool.
+_PAYLOAD = {'data': None, 'ts': 0.0}
+_PAYLOAD_TTL = 60
+_PAYLOAD_LOCK = threading.Lock()
+
+
+def stats_payload():
+    """Everything /stats renders, as one dict; recomputed at most once a minute."""
+    if time.time() - _PAYLOAD['ts'] < _PAYLOAD_TTL:
+        return _PAYLOAD['data']
+    with _PAYLOAD_LOCK:
+        if time.time() - _PAYLOAD['ts'] < _PAYLOAD_TTL:
+            return _PAYLOAD['data']
+        from utilities.jukebox import jukebox_stats
+        data = {
+            'google_leaders': get_unified_leaderboard(),
+            'fun_stats': get_fun_stats(),
+            'achievements': get_player_achievements(),
+            'special_cards': get_special_card_stats(),
+            'overall_stats': get_overall_game_stats(),
+            'per_hand_stats': get_per_hand_stats(),
+            'hoyt': jukebox_stats(),
+        }
+        _PAYLOAD.update(data=data, ts=time.time())
+        return data
 
 def get_fun_stats() -> Dict[str, Any]:
     """Get fun/interesting stats for display.

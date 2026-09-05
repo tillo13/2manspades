@@ -20,7 +20,7 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_unified_leaderboard, get_fun_stats, get_player_achievements, get_special_card_stats, get_overall_game_stats, get_per_hand_stats, get_suspected_player_from_ip, get_user_difficulty, save_user_difficulty
+from utilities.postgres_utils import get_suspected_player_from_ip, get_user_difficulty, save_user_difficulty
 from utilities.gmail_utils import send_simple_email
 
 from utilities.google_auth_utils import SimpleGoogleAuth
@@ -713,24 +713,8 @@ def instructions():
 
 @app.route('/stats')
 def stats():
-    # Unified leaderboard: Tom/Luke/Jon/Andy/Other (from vw_unified_leaderboard view)
-    google_leaders = get_unified_leaderboard()
-    fun_stats = get_fun_stats()
-    achievements = get_player_achievements()
-    special_cards = get_special_card_stats()
-    overall_stats = get_overall_game_stats()
-    per_hand_stats = get_per_hand_stats()
-    from utilities.jukebox import jukebox_stats
-    hoyt = jukebox_stats()
-
-    return render_template('stats.html',
-                        hoyt=hoyt,
-                        google_leaders=google_leaders,
-                        fun_stats=fun_stats,
-                        achievements=achievements,
-                        special_cards=special_cards,
-                        overall_stats=overall_stats,
-                        per_hand_stats=per_hand_stats)
+    from utilities.postgres_utils.stats import stats_payload
+    return render_template('stats.html', **stats_payload())
 
 
 @app.route('/player/<name>')
