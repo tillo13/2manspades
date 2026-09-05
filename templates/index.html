@@ -61,7 +61,7 @@
     <!-- Login prompt for suspected known player -->
     <div id="loginPromptBanner" class="login-prompt-banner">
         <span>Hey {{ suspected_player }}! <a href="/login" class="login-prompt-link">Login</a> to track your stats</span>
-        <button class="login-prompt-dismiss" onclick="dismissLoginPrompt()">&times;</button>
+        <button class="login-prompt-dismiss" data-action="dismissLoginPrompt">&times;</button>
     </div>
     {% endif %}
 
@@ -76,7 +76,7 @@
             <div class="game-score-label">Hand #<span id="floatingHandNumber">1</span></div>
         </div>
         <div class="game-score-item">
-            <div class="game-score-label">Marta <span class="difficulty-gear" onclick="openDifficultyModal()" title="Adjust difficulty">&#9881;</span></div>
+            <div class="game-score-label">Marta <span class="difficulty-gear" data-action="openDifficultyModal" title="Adjust difficulty">&#9881;</span></div>
             <div class="game-score-parity" id="floatingComputerParity">(ODD)</div>
             <div class="game-score-value" id="floatingComputerScore">0</div>
         </div>
@@ -124,7 +124,7 @@
             <!-- Game Over section -->
             <div class="game-over" id="gameOver" style="display: none;">
                 <div class="winner-text" id="winnerText"></div>
-                <button onclick="startNewGame()">Play Again</button>
+                <button data-action="startNewGame">Play Again</button>
             </div>
 
             <!-- Message area -->
@@ -132,7 +132,7 @@
 
             <!-- Next Hand Button -->
             <div class="next-hand-section" id="nextHandSection" style="display: none;">
-                <button id="nextHandButton" onclick="nextHand()" class="next-hand-btn">Next Hand</button>
+                <button id="nextHandButton" data-action="nextHand" class="next-hand-btn">Next Hand</button>
             </div>
 
             <!-- Discarded cards section -->
@@ -164,15 +164,15 @@
                 </div>
                 <div class="decision-buttons"
                     style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px;">
-                    <button onclick="chooseBlindNil()"
+                    <button data-action="chooseBlindNil"
                         style="background: #8b0000; color: white; padding: 12px 6px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 11px;">
                         Blind NIL<br><small>Win or Die!</small>
                     </button>
-                    <button onclick="chooseBlindBidding()"
+                    <button data-action="chooseBlindBidding"
                         style="background: #d32f2f; color: white; padding: 12px 6px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 11px;">
                         Go BLIND<br><small>5-10 tricks</small>
                     </button>
-                    <button onclick="chooseNormalBidding()"
+                    <button data-action="chooseNormalBidding"
                         style="background: #1976d2; color: white; padding: 12px 6px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 11px;">
                         Bid Normal<br><small>See cards</small>
                     </button>
@@ -189,12 +189,12 @@
                     </div>
                 </div>
                 <div class="bid-buttons blind-buttons">
-                    <button onclick="makeBlindBid(5)" class="blind-bid-btn">BLIND 5</button>
-                    <button onclick="makeBlindBid(6)" class="blind-bid-btn">BLIND 6</button>
-                    <button onclick="makeBlindBid(7)" class="blind-bid-btn">BLIND 7</button>
-                    <button onclick="makeBlindBid(8)" class="blind-bid-btn">BLIND 8</button>
-                    <button onclick="makeBlindBid(9)" class="blind-bid-btn">BLIND 9</button>
-                    <button onclick="makeBlindBid(10)" class="blind-bid-btn">BLIND 10</button>
+                    <button data-action="makeBlindBid" data-arg="5" class="blind-bid-btn">BLIND 5</button>
+                    <button data-action="makeBlindBid" data-arg="6" class="blind-bid-btn">BLIND 6</button>
+                    <button data-action="makeBlindBid" data-arg="7" class="blind-bid-btn">BLIND 7</button>
+                    <button data-action="makeBlindBid" data-arg="8" class="blind-bid-btn">BLIND 8</button>
+                    <button data-action="makeBlindBid" data-arg="9" class="blind-bid-btn">BLIND 9</button>
+                    <button data-action="makeBlindBid" data-arg="10" class="blind-bid-btn">BLIND 10</button>
                 </div>
             </div>
 
@@ -205,25 +205,25 @@
 
                 <!-- 6x2 bidding buttons -->
                 <div class="bid-buttons">
-                    <button onclick="selectBid(0)" class="bid-btn" data-bid="0">0<br><small>NIL</small></button>
-                    <button onclick="selectBid(1)" class="bid-btn" data-bid="1">1</button>
-                    <button onclick="selectBid(2)" class="bid-btn" data-bid="2">2</button>
-                    <button onclick="selectBid(3)" class="bid-btn" data-bid="3">3</button>
-                    <button onclick="selectBid(4)" class="bid-btn" data-bid="4">4</button>
-                    <button onclick="selectBid(5)" class="bid-btn" data-bid="5">5</button>
-                    <button onclick="selectBid(6)" class="bid-btn" data-bid="6">6</button>
-                    <button onclick="selectBid(7)" class="bid-btn" data-bid="7">7</button>
-                    <button onclick="selectBid(8)" class="bid-btn" data-bid="8">8</button>
-                    <button onclick="selectBid(9)" class="bid-btn" data-bid="9">9</button>
-                    <button onclick="selectBid(10)" class="bid-btn" data-bid="10">10</button>
+                    <button data-action="selectBid" data-arg="0" class="bid-btn" data-bid="0">0<br><small>NIL</small></button>
+                    <button data-action="selectBid" data-arg="1" class="bid-btn" data-bid="1">1</button>
+                    <button data-action="selectBid" data-arg="2" class="bid-btn" data-bid="2">2</button>
+                    <button data-action="selectBid" data-arg="3" class="bid-btn" data-bid="3">3</button>
+                    <button data-action="selectBid" data-arg="4" class="bid-btn" data-bid="4">4</button>
+                    <button data-action="selectBid" data-arg="5" class="bid-btn" data-bid="5">5</button>
+                    <button data-action="selectBid" data-arg="6" class="bid-btn" data-bid="6">6</button>
+                    <button data-action="selectBid" data-arg="7" class="bid-btn" data-bid="7">7</button>
+                    <button data-action="selectBid" data-arg="8" class="bid-btn" data-bid="8">8</button>
+                    <button data-action="selectBid" data-arg="9" class="bid-btn" data-bid="9">9</button>
+                    <button data-action="selectBid" data-arg="10" class="bid-btn" data-bid="10">10</button>
                 </div>
 
                 <!-- Confirmation buttons -->
                 <div class="bid-confirmation-buttons" style="margin-top: 12px; text-align: center;">
-                    <button id="confirmBidButton" onclick="confirmSelectedBid()" style="display: none;">
+                    <button id="confirmBidButton" data-action="confirmSelectedBid" style="display: none;">
                         Confirm Bid
                     </button>
-                    <button id="cancelBidButton" onclick="cancelBidSelection()" style="display: none;">
+                    <button id="cancelBidButton" data-action="cancelBidSelection" style="display: none;">
                         Cancel
                     </button>
                 </div>
@@ -240,7 +240,7 @@
                 </div>
                 <div class="cards" id="playerHand"></div>
                 <div class="controls">
-                    <button id="actionButton" onclick="performAction()">Select Card</button>
+                    <button id="actionButton" data-action="performAction">Select Card</button>
                 </div>
             </div>
 
@@ -248,7 +248,7 @@
             <div class="hand-section" id="computerHandSection">
                 <div class="hand-title">
                     Marta's Hand (hidden)
-                    <button id="toggleComputerHand" onclick="toggleComputerHand()" style="display: none;">Show
+                    <button id="toggleComputerHand" data-action="toggleComputerHand" style="display: none;">Show
                         Cards</button>
                 </div>
                 <div class="cards" id="computerHand"></div>
@@ -257,10 +257,10 @@
 
         <!-- Bottom navigation -->
         <div class="bottom-section">
-            <button class="bottom-new-game-btn" onclick="startNewGame()">New Game</button>
-            <button class="bottom-rules-btn" onclick="window.open('/instructions', '_blank')">How to Play</button>
-            <button class="bottom-rules-btn" onclick="window.open('/stats', '_blank')">Stats</button>
-            <button class="bottom-rules-btn" id="loginButton" onclick="handleLoginClick()"
+            <button class="bottom-new-game-btn" data-action="startNewGame">New Game</button>
+            <button class="bottom-rules-btn" data-action="open" data-arg="/instructions">How to Play</button>
+            <button class="bottom-rules-btn" data-action="open" data-arg="/stats">Stats</button>
+            <button class="bottom-rules-btn" id="loginButton" data-action="handleLoginClick"
                 style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; font-weight: bold;">
                 {% if session.get('user') %}
                 {{ session['user']['name'].split()[0] }}
@@ -272,7 +272,7 @@
     </div>
 
     <!-- THE bubble: one button for Marta + Hoyt (cover spins while music plays, badge = unread Marta) -->
-    <div class="chat-bubble-icon" id="chatBubbleIcon" onclick="toggleChat()" title="Marta and the Hoyt jukebox">
+    <div class="chat-bubble-icon" id="chatBubbleIcon" title="Marta and the Hoyt jukebox">
         <img id="jbBubbleImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
         <span class="jb-bubble-label" id="jbBubbleLabel"></span>
         <div id="chatBadge" class="chat-badge" style="display: none;"></div>
@@ -301,7 +301,7 @@
         <div class="chat-pills" id="chatPills" hidden></div>
         <div class="chat-input-area">
             <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
-            <button onclick="sendMessage()">Send</button>
+            <button data-action="sendMessage">Send</button>
         </div>
     </div>
 
@@ -312,7 +312,7 @@
             <img src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
             <div class="jb-title">Hoyt plays for players</div>
             <div class="jb-album">Log in and the jukebox is yours: 43 records, 667 songs.</div>
-            <button class="jb-pill" onclick="handleLoginClick()">Log in</button>
+            <button class="jb-pill" data-action="handleLoginClick">Log in</button>
         </div>
         <div class="jb-now" id="jbNow">
             <img id="jbCover" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
@@ -345,22 +345,22 @@
     <div class="jb-toast" id="jbToast"></div>
 
     <!-- Difficulty Modal -->
-    <div id="difficultyModal" class="difficulty-modal" onclick="closeDifficultyModal(event)">
-        <div class="difficulty-content" onclick="event.stopPropagation()">
+    <div id="difficultyModal" class="difficulty-modal" data-action="closeDifficultyModal">
+        <div class="difficulty-content" data-action="stop">
             <div class="difficulty-title">Marta's Difficulty</div>
             <div class="difficulty-options">
                 <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="easy" onchange="setDifficulty('easy')">
+                    <input type="radio" name="difficulty" value="easy" data-change="setDifficulty">
                     <span class="difficulty-label">Easy</span>
                     <span class="difficulty-desc">Current Marta</span>
                 </label>
                 <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="medium" onchange="setDifficulty('medium')">
+                    <input type="radio" name="difficulty" value="medium" data-change="setDifficulty">
                     <span class="difficulty-label">Medium</span>
                     <span class="difficulty-desc">Smarter bidding</span>
                 </label>
                 <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="ruthless" onchange="setDifficulty('ruthless')">
+                    <input type="radio" name="difficulty" value="ruthless" data-change="setDifficulty">
                     <span class="difficulty-label">Ruthless</span>
                     <span class="difficulty-desc">No mercy</span>
                 </label>
@@ -370,6 +370,8 @@
     </div>
 {% endblock %}
 {% block scripts %}
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
     <script src="{{ url_for('static', filename='js/jukebox.js') }}"></script>
 {% endblock %}

@@ -10,3 +10,8 @@ function toggleTricks(handNumber) {
     }
 }
     
+
+document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action="toggleTricks"]');
+    if (el) toggleTricks(el.dataset.arg);
+});

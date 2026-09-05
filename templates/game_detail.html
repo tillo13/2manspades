@@ -140,7 +140,7 @@
 
             <!-- Trick Details -->
             {% if hand.trick_history %}
-            <button class="expand-tricks" onclick="toggleTricks({{ hand.hand_number }})">
+            <button class="expand-tricks" data-action="toggleTricks" data-arg="{{ hand.hand_number }}">
                 Show Trick Details ▼
             </button>
             <div class="trick-history" id="tricks-{{ hand.hand_number }}">

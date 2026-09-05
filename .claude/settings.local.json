@@ -30,7 +30,8 @@
       "Bash(echo \"deploy exit=$?\")",
       "Bash(grep -E \"FAIL|❌|Deployed|Live at|^Ran|^OK|visitor\" _oneoff/deploy_hygiene.log)",
       "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_base.log)",
-      "Bash(curl -s https://2manspades.com/health)"
+      "Bash(curl -s https://2manspades.com/health)",
+      "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_ui.log)"
     ]
   }
 }

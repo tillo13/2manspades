@@ -2,57 +2,241 @@
   "name": "2manspades",
   "baseUrl": "https://2manspades.com",
   "viewports": [
-    { "name": "desktop", "viewport": { "width": 1440, "height": 900 } },
-    { "name": "laptop", "viewport": { "width": 1265, "height": 1000 } },
-    { "name": "tablet", "viewport": { "width": 900, "height": 1000 } },
-    { "name": "mobile", "viewport": { "width": 390, "height": 844 }, "screen": { "width": 390, "height": 844 }, "isMobile": true, "hasTouch": true }
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "name": "laptop",
+      "viewport": {
+        "width": 1265,
+        "height": 1000
+      }
+    },
+    {
+      "name": "tablet",
+      "viewport": {
+        "width": 900,
+        "height": 1000
+      }
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screen": {
+        "width": 390,
+        "height": 844
+      },
+      "isMobile": true,
+      "hasTouch": true
+    }
   ],
   "routes": [
     {
       "path": "/",
       "expectSelector": "#playerHand",
       "actions": [
-        { "expectInViewport": ".floating-game-score" },
-        { "expectInViewport": ".floating-hand-score" },
-        { "expectInViewport": ".bottom-section" },
-        { "expectInViewport": "#chatBubbleIcon" },
-        { "expectMinSize": { "selector": "#chatBubbleIcon", "width": 44, "height": 44 } },
-        { "expectHidden": "#tableSheet" },
-        { "screenshot": "table-closed" },
-        { "click": "#chatBubbleIcon", "wait": 450 },
-        { "expectVisible": "#tableSheet" },
-        { "expectInViewport": "#tableSheet" },
-        { "expectInViewport": "#chatInput" },
-        { "expectInViewport": "#tsTabHoyt" },
-        { "expectHidden": "#chatBubbleIcon", "viewports": ["mobile", "tablet"] },
-        { "screenshot": "sheet-marta" },
-        { "click": "#tsTabHoyt", "wait": 300 },
-        { "expectInViewport": "#jbPanel" },
-        { "expectVisible": "#jbLocked", "whenSelector": "body.jb-locked-mode" },
-        { "expectInViewport": "#jbSearch", "whenSelector": "body:not(.jb-locked-mode)" },
-        { "expectInViewport": "#jbPlay", "whenSelector": "body:not(.jb-locked-mode)" },
-        { "expectMinSize": { "selector": "#jbPlay", "width": 56, "height": 56 }, "whenSelector": "body:not(.jb-locked-mode)" },
-        { "expectInViewport": "#jbTabBrowse", "whenSelector": "body:not(.jb-locked-mode)" },
-        { "screenshot": "sheet-hoyt" },
-        { "click": "#tsClose", "wait": 450 },
-        { "expectHidden": "#tableSheet" },
-        { "expectInViewport": "#chatBubbleIcon" },
-        { "click": ".difficulty-gear" },
-        { "waitFor": "#difficultyModal.show" },
-        { "expectVisible": "#difficultyModal" },
-        { "expectInViewport": ".difficulty-content" },
-        { "screenshot": "difficulty-modal" }
+        {
+          "expectInViewport": ".floating-game-score"
+        },
+        {
+          "expectInViewport": ".floating-hand-score"
+        },
+        {
+          "expectInViewport": ".bottom-section"
+        },
+        {
+          "expectInViewport": "#chatBubbleIcon"
+        },
+        {
+          "expectMinSize": {
+            "selector": "#chatBubbleIcon",
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "expectHidden": "#tableSheet"
+        },
+        {
+          "screenshot": "table-closed"
+        },
+        {
+          "click": "#chatBubbleIcon",
+          "wait": 450
+        },
+        {
+          "expectVisible": "#tableSheet"
+        },
+        {
+          "expectInViewport": "#tableSheet"
+        },
+        {
+          "expectInViewport": "#chatInput"
+        },
+        {
+          "expectInViewport": "#tsTabHoyt"
+        },
+        {
+          "expectHidden": "#chatBubbleIcon",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ]
+        },
+        {
+          "screenshot": "sheet-marta"
+        },
+        {
+          "click": "#tsTabHoyt",
+          "wait": 300
+        },
+        {
+          "expectInViewport": "#jbPanel"
+        },
+        {
+          "expectVisible": "#jbLocked",
+          "whenSelector": "body.jb-locked-mode"
+        },
+        {
+          "expectInViewport": "#jbSearch",
+          "whenSelector": "body:not(.jb-locked-mode)"
+        },
+        {
+          "expectInViewport": "#jbPlay",
+          "whenSelector": "body:not(.jb-locked-mode)"
+        },
+        {
+          "expectMinSize": {
+            "selector": "#jbPlay",
+            "width": 56,
+            "height": 56
+          },
+          "whenSelector": "body:not(.jb-locked-mode)"
+        },
+        {
+          "expectInViewport": "#jbTabBrowse",
+          "whenSelector": "body:not(.jb-locked-mode)"
+        },
+        {
+          "screenshot": "sheet-hoyt"
+        },
+        {
+          "click": "#tsClose",
+          "wait": 450
+        },
+        {
+          "expectHidden": "#tableSheet"
+        },
+        {
+          "expectInViewport": "#chatBubbleIcon"
+        },
+        {
+          "click": ".difficulty-gear"
+        },
+        {
+          "waitFor": "#difficultyModal.show"
+        },
+        {
+          "expectVisible": "#difficultyModal"
+        },
+        {
+          "expectInViewport": ".difficulty-content"
+        },
+        {
+          "screenshot": "difficulty-modal"
+        }
       ]
     },
-    { "path": "/instructions", "expectText": "How to Play", "actions": [ { "scroll": 600 }, { "screenshot": "scrolled" } ] },
-    { "path": "/stats", "expectText": "Leaderboard", "actions": [
-        { "expectSelector": ".stats-section" },
-        { "expectSelector": "#hoyt" },
-        { "scrollIntoView": "#hoyt .section-title", "wait": 500 },
-        { "expectInViewport": "#hoyt .section-title" },
-        { "screenshot": "hoyt-stats" }
-    ] }
+    {
+      "path": "/?walk=play",
+      "expectSelector": "#playerHand .card",
+      "actions": [
+        {
+          "click": "#playerHand .card:not(.disabled)"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])"
+        },
+        {
+          "click": "#actionButton"
+        },
+        {
+          "waitFor": "#biddingSection.active"
+        },
+        {
+          "expectInViewport": ".bid-btn[data-bid=\"4\"]"
+        },
+        {
+          "click": ".bid-btn[data-bid=\"4\"]"
+        },
+        {
+          "waitFor": "#confirmBidButton"
+        },
+        {
+          "expectVisible": "#confirmBidButton"
+        },
+        {
+          "click": "#confirmBidButton"
+        },
+        {
+          "waitFor": "#playArea:not(.hidden-for-phase)"
+        },
+        {
+          "expectInViewport": "#trickDisplay"
+        },
+        {
+          "screenshot": "playing"
+        }
+      ]
+    },
+    {
+      "path": "/instructions",
+      "expectText": "How to Play",
+      "actions": [
+        {
+          "scroll": 600
+        },
+        {
+          "screenshot": "scrolled"
+        }
+      ]
+    },
+    {
+      "path": "/stats",
+      "expectText": "Leaderboard",
+      "actions": [
+        {
+          "expectSelector": ".stats-section"
+        },
+        {
+          "expectSelector": "#hoyt"
+        },
+        {
+          "scrollIntoView": "#hoyt .section-title",
+          "wait": 500
+        },
+        {
+          "expectInViewport": "#hoyt .section-title"
+        },
+        {
+          "screenshot": "hoyt-stats"
+        }
+      ]
+    }
   ],
-  "checks": { "noBrokenImages": true, "noConsoleErrors": true, "no5xx": true, "no4xx": false, "noHorizontalOverflow": true },
+  "checks": {
+    "noBrokenImages": true,
+    "noConsoleErrors": true,
+    "no5xx": true,
+    "no4xx": false,
+    "noHorizontalOverflow": true
+  },
   "screenshots": true
 }

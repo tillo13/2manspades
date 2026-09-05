@@ -28,3 +28,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
     
+
+document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action="toggleSection"]');
+    if (el) toggleSection(el.dataset.arg);
+});
