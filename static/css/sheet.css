@@ -1,0 +1,333 @@
+/* One bubble, one sheet. The bubble (Hoyt's cover art, or Marta's icon when logged out) opens a
+   sheet with two tabs, Marta and Hoyt. Phones: full-width bottom sheet. 768-1149px: centered
+   sheet. >=1150px: docked in the right rail (rail variables come from layout.css). Both panes
+   are static flex columns inside the sheet; nothing here is fixed-positioned except the sheet,
+   the bubble and the toast. */
+
+/* ---- the bubble ---- */
+.chat-bubble-icon { position: fixed; bottom: 45px; right: 15px; width: 50px; height: 50px; background: #222; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 0; overflow: visible; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3); z-index: 1001; transition: all .3s ease; }
+.chat-bubble-icon:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(0,0,0,.4); }
+.chat-bubble-icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.chat-bubble-icon::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid #f6c453; opacity: 0; pointer-events: none; }
+.chat-bubble-icon.spinning img { animation: jbSpin 6s linear infinite; }
+.chat-bubble-icon.spinning::after { opacity: 1; }
+.chat-bubble-icon.needs-tap::after { opacity: 1; animation: jbPulse 1.2s ease-in-out infinite; }
+.jb-bubble-label { position: absolute; left: 60px; top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); pointer-events: none; }
+@keyframes jbSpin { to { transform: rotate(360deg); } }
+@keyframes jbPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@media (max-width: 767px) { .chat-bubble-icon { bottom: 40px; right: 10px; width: 45px; height: 45px; } }
+@media (min-width: 768px) { .chat-bubble-icon { bottom: 55px; right: 15px; } }
+body.sheet-open .chat-bubble-icon, body.sheet-open .jb-toast { display: none; }
+.jb-toast { position: fixed; bottom: 108px; left: 15px; max-width: 70vw; background: rgba(0,0,0,.75); color: #fff; font-size: 13px; padding: 6px 10px; border-radius: 10px;
+    opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s; pointer-events: none; z-index: 1001; }
+.jb-toast.show { opacity: 1; transform: translateY(0); }
+
+/* ---- the sheet ---- */
+.ts-sheet { position: fixed; bottom: 0; left: 0; right: 0; height: 72vh; max-height: 640px; background: #fff; border-radius: 15px 15px 0 0;
+    z-index: 999; display: flex; flex-direction: column; box-shadow: 0 -4px 20px rgba(0,0,0,.2); overflow: hidden;
+    transform: translateY(100%); visibility: hidden; transition: transform .3s ease, visibility 0s linear .3s; }
+.ts-sheet.open { transform: translateY(0); visibility: visible; transition: transform .3s ease, visibility 0s; }
+.ts-tabs { display: flex; align-items: stretch; background: #1d1d2b; padding: 6px 6px 0 6px; gap: 6px; flex: none; }
+.ts-tab { flex: 1; background: transparent; color: #cfcfe0; border: none; border-radius: 10px 10px 0 0; padding: 12px 0; font-size: 17px; font-weight: 700; cursor: pointer; min-width: 0; }
+.ts-tab.active, .ts-sheet[data-tab="marta"] #tsTabMarta, .ts-sheet[data-tab="hoyt"] #tsTabHoyt { background: #fff; color: #222; }
+.ts-close { flex: none; width: 44px; background: transparent; color: #fff; border: none; font-size: 30px; line-height: 1; cursor: pointer; min-width: 0; padding: 0; }
+.chat-window, .jb-panel { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background: #fff; }
+.ts-sheet[data-tab="marta"] .jb-panel, .ts-sheet[data-tab="hoyt"] .chat-window { display: none; }
+@media (min-width: 768px) and (max-width: 1149px) {
+    .ts-sheet { left: 50%; right: auto; width: min(560px, 96vw); transform: translate(-50%, 100%); }
+    .ts-sheet.open { transform: translate(-50%, 0); }
+}
+@media (min-width: 1150px) {
+    /* docked in the right rail when open; closed it sits fully off the right edge (translateX(100vw)
+       plus visibility:hidden, after a closed sheet was found peeking 25px in at ~1300px wide) */
+    .ts-sheet { left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap)); right: auto; width: var(--rail-w);
+        top: var(--rail-top, 160px); bottom: 45px; height: auto; max-height: none; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+        transform: translateX(100vw); }
+    .ts-sheet.open { transform: none; }
+    .ts-tabs { border-radius: 12px 12px 0 0; }
+}
+
+/* ---- Marta pane ---- */
+.chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+
+
+
+
+
+.chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.marta-message {
+    background: #f0f2f5;
+    padding: 8px 12px;
+    border-radius: 18px;
+    margin-bottom: 8px;
+    max-width: 80%;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.player-message {
+    background: #667eea;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 18px;
+    margin-bottom: 8px;
+    margin-left: auto;
+    max-width: 80%;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-content {
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.message-timestamp {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 2px;
+    font-weight: normal;
+}
+
+.marta-message .message-timestamp {
+    text-align: left;
+    color: #666;
+}
+
+.player-message .message-timestamp {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ENHANCED TYPING INDICATOR */
+.typing-indicator .message-content {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    animation: typingPulse 1.4s infinite ease-in-out;
+    box-shadow: 0 1px 2px rgba(102, 126, 234, 0.3);
+}
+
+.typing-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0s;
+}
+
+@keyframes typingPulse {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0.6);
+        opacity: 0.4;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.marta-message.typing-indicator {
+    opacity: 0.9;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    animation: typingGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes typingGlow {
+    0% {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    100% {
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    }
+}
+
+.chat-input-area {
+    padding: 10px 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 8px;
+    background: #fafafa;
+}
+
+.chat-input-area input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.chat-input-area input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.chat-input-area input:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.chat-input-area button {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    min-width: 60px;
+    transition: all 0.2s ease;
+}
+
+.chat-input-area button:hover:not(:disabled) {
+    background: #5a6fd8;
+    transform: translateY(-1px);
+}
+
+.chat-input-area button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* song-question pills above Marta's input while Hoyt is playing */
+.chat-pills { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding: 6px 12px 4px; scrollbar-width: none; }
+.chat-pills::-webkit-scrollbar { display: none; }
+.chat-pills[hidden] { display: none; }
+.chat-pill { flex: none; white-space: nowrap; background: #fff7dd; color: #333; border: 1px solid #f6c453; border-radius: 16px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.chat-pill:hover { background: #f6c453; }
+
+/* now-playing strip at the top of Marta's pane (narrow layouts only) */
+.jb-mini { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #222; color: #fff; border-bottom: 2px solid #f6c453; }
+.jb-mini img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex: none; cursor: pointer; }
+.jb-mini-text { flex: 1; min-width: 0; cursor: pointer; }
+.jb-mini-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jb-mini-album { font-size: 12px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jb-mini-btn { flex: none; width: 40px; height: 40px; min-width: 0; max-width: 40px; padding: 0; margin: 0; border: none; border-radius: 50%; background: #f6c453; color: #222; font-size: 18px; line-height: 1; cursor: pointer; }
+#jbMiniNext { background: #444; color: #fff; }
+.jb-mini[hidden] { display: none; }
+@media (min-width: 1150px) { .jb-mini { display: none; } }
+
+/* ---- Hoyt pane ---- */
+.jb-now { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 16px; overflow: auto; }
+.jb-now img { width: 180px; height: 180px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.25); object-fit: cover; }
+.jb-title { font-size: 20px; font-weight: 700; color: #222; text-align: center; }
+.jb-album { font-size: 14px; color: #666; text-align: center; }
+.jb-barwrap { width: 100%; max-width: 360px; height: 8px; background: #e9ecef; border-radius: 4px; cursor: pointer; overflow: hidden; }
+.jb-bar { height: 100%; width: 0; background: #f6c453; }
+.jb-time { font-size: 12px; color: #888; }
+.jb-controls { display: flex; align-items: center; gap: 22px; }
+.jb-controls button { background: #222; color: #fff; border: none; border-radius: 50%; width: 56px; height: 56px; min-width: 0; max-width: 56px; padding: 0; margin: 0; flex: none; box-sizing: border-box; font-size: 22px; line-height: 1; cursor: pointer; }
+.jb-controls .jb-big { width: 76px; height: 76px; max-width: 76px; font-size: 30px; background: #f6c453; color: #222; }
+.jb-controls .jb-big.needs-tap { animation: jbPulse 1.2s ease-in-out infinite; }
+.jb-mode { font-size: 12px; color: #888; }
+.jb-browse { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.jb-now[hidden], .jb-browse[hidden] { display: none; }   /* display:flex above would beat the hidden attribute */
+.jb-albums { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; padding: 6px 12px 16px; overflow-y: auto; }
+.jb-album { cursor: pointer; text-align: center; }
+.jb-album img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.jb-album.current img, .jb-album.current .jb-all-tile { outline: 3px solid #f6c453; }
+.jb-album-title { font-size: 12px; font-weight: 600; color: #222; margin-top: 4px; line-height: 1.2; }
+.jb-album-year { font-size: 11px; color: #888; }
+.jb-all-tile { width: 100%; aspect-ratio: 1; border-radius: 6px; background: #222; color: #f6c453; font-size: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.jb-hits { text-align: left; font-size: 12px; margin-top: 4px; }
+.jb-hits div { padding: 3px 6px; border-radius: 4px; background: #fff7dd; margin-bottom: 2px; }
+.jb-hits div:hover { background: #f6c453; }
+/* player footer: the search box IS the search, Albums beside it */
+.jb-footer { flex: none; display: flex; gap: 8px; align-items: center; padding: 8px 12px 12px; border-top: 1px solid #eee; background: #fff; }
+.jb-search { flex: 1; margin: 0; min-width: 0; padding: 10px 12px; border: 1px solid #ccc; border-radius: 20px; font-size: 15px; }
+.jb-pill { flex: none; background: #f6c453; color: #222; border: none; border-radius: 22px; padding: 10px 16px; font-size: 15px; font-weight: 700; cursor: pointer; min-width: 0; }
+.jb-pill-dark { background: #222; color: #fff; }
+/* listening stats in the player's spare room */
+.jb-stats { margin-top: auto; width: 100%; max-width: 360px; padding: 10px 12px; border-top: 1px solid #eee; text-align: center; }
+.jb-stats-row { display: flex; justify-content: space-around; gap: 8px; }
+.jb-stats-row span { font-size: 13px; color: #333; }
+.jb-stats-row span b { display: block; font-size: 20px; color: #222; line-height: 1.1; }
+.jb-stats-top { font-size: 12px; color: #666; margin-top: 8px; line-height: 1.4; }
+.jb-stats-top b { color: #222; }
+.jb-stats-link { display: inline-block; margin-top: 6px; font-size: 12px; color: #667eea; }
+.jb-stats[hidden] { display: none; }
+/* logged out: the Hoyt tab is a login card */
+.jb-locked { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; }
+.jb-locked img { width: 140px; height: 140px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.jb-locked[hidden] { display: none; }
+body.jb-locked-mode .jb-footer, body.jb-locked-mode .jb-now, body.jb-locked-mode .jb-browse { display: none; }
+@media (min-width: 1150px) {
+    .jb-now img { width: 140px; height: 140px; }
+    .jb-controls button { width: 48px; height: 48px; font-size: 18px; }
+    .jb-controls .jb-big { width: 64px; height: 64px; max-width: 64px; font-size: 26px; }
+    .jb-now { padding: 10px 14px 6px; gap: 6px; }
+    .jb-title { font-size: 17px; }
+    .jb-pill { padding: 9px 14px; font-size: 14px; }
+}

@@ -5,7 +5,7 @@
 (function () {
     const KEY = 'hoyt_jukebox_v1';
     const $ = (id) => document.getElementById(id);
-    let PL = null, audio = null, state = null, order = [], panelOpen = false, lastPanel = 'now';
+    let PL = null, audio = null, state = null, order = [], lastPanel = 'now';
     let playId = null, lastSource = 'shuffle', lastBeat = 0;
     const PILLS = ["What's this song about?", "When did Hoyt record this?", "Tell me about this record", "Play something like this"];
     const IDLE_PILLS = ["Tell me about Hoyt Axton", "What record should I start with?", "What's his best song?"];
@@ -163,7 +163,6 @@
         $('jbTabBrowse').hidden = which === 'browse'; $('jbTabNow').hidden = which !== 'browse';
     }
     // ---------- the table sheet (Marta + Hoyt) ----------
-    const isDesktop = () => window.matchMedia('(min-width: 1150px)').matches;
     function sheetOpen() { return $('tableSheet').classList.contains('open'); }
     function showTab(tab) {
         const sh = $('tableSheet'); sh.dataset.tab = tab;
@@ -172,14 +171,13 @@
         if (tab === 'hoyt') { showPanel(lastPanel); loadStats(false); }
     }
     function openSheet(tab) {
-        $('tableSheet').classList.add('open'); document.body.classList.add('sheet-open'); panelOpen = true;
+        $('tableSheet').classList.add('open'); document.body.classList.add('sheet-open');
         showTab(tab || $('tableSheet').dataset.tab || 'marta');
     }
     function closeSheet() {
-        $('tableSheet').classList.remove('open'); document.body.classList.remove('sheet-open'); panelOpen = false;
+        $('tableSheet').classList.remove('open'); document.body.classList.remove('sheet-open');
         if (typeof onChatVisibility === 'function') onChatVisibility(false);
     }
-    function openPanel(open) { if (open) openSheet('hoyt'); else closeSheet(); }
     window.TableSheet = { open: openSheet, close: closeSheet, tab: showTab,
         toggle: (tab) => { if (sheetOpen() && $('tableSheet').dataset.tab === tab) closeSheet(); else openSheet(tab); } };
 

@@ -51,8 +51,10 @@
     <meta name="apple-mobile-web-app-title" content="Two-Man Spades">
 {% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/jukebox.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sheet.css') }}">
 {% endblock %}
 {% block body_attrs %} data-logged-in="{{ 'true' if session.get('user') else 'false' }}"{% endblock %}
 {% block content %}
@@ -286,9 +288,6 @@
             <button class="ts-close" id="tsClose" aria-label="Close">×</button>
         </div>
     <div class="chat-window" id="chatWindow">
-        <div class="chat-header">
-            <span>Chat with Marta</span>
-        </div>
         <div class="jb-mini" id="jbMini" hidden>
             <img id="jbMiniImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
             <div class="jb-mini-text" id="jbMiniText"><div class="jb-mini-title" id="jbMiniTitle"></div><div class="jb-mini-album" id="jbMiniAlbum"></div></div>
@@ -307,7 +306,6 @@
 
     <!-- Hoyt Axton jukebox pane (inside the table sheet) -->
     <div class="jb-panel" id="jbPanel">
-        <div class="jb-header"><span>Hoyt Axton</span></div>
         <div class="jb-locked" id="jbLocked" hidden>
             <img src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
             <div class="jb-title">Hoyt plays for players</div>

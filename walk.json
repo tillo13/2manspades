@@ -159,13 +159,16 @@
       "expectSelector": "#playerHand .card",
       "actions": [
         {
-          "click": "#playerHand .card:not(.disabled)"
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000
         },
         {
-          "waitFor": "#actionButton:not([disabled])"
+          "click": "#actionButton",
+          "timeout": 20000
         },
         {
-          "click": "#actionButton"
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000
         },
         {
           "waitFor": "#biddingSection.active"
@@ -183,6 +186,9 @@
           "expectVisible": "#confirmBidButton"
         },
         {
+          "screenshot": "bid-confirm"
+        },
+        {
           "click": "#confirmBidButton"
         },
         {
@@ -193,6 +199,275 @@
         },
         {
           "screenshot": "playing"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#playerHand .card:not(.disabled)",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#actionButton:not([disabled])",
+          "timeout": 20000,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "click": "#actionButton",
+          "timeout": 20000,
+          "whenSelector": "#actionButton:not([disabled])"
+        },
+        {
+          "wait": 3500,
+          "whenSelector": "#actionButton[style*='inline-block']"
+        },
+        {
+          "waitFor": "#nextHandButton",
+          "timeout": 20000
+        },
+        {
+          "expectVisible": "#nextHandButton"
+        },
+        {
+          "expectVisible": "#resultsSection.show"
+        },
+        {
+          "screenshot": "hand-over"
+        },
+        {
+          "click": "#nextHandButton",
+          "timeout": 20000
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "waitFor": "#playerHand .card",
+          "timeout": 20000,
+          "whenSelector": "#playerHand .card"
+        },
+        {
+          "expectInViewport": "#actionButton",
+          "whenSelector": "#playerHand .card"
         }
       ]
     },

@@ -1,0 +1,308 @@
+/* Breakpoint adjustments (>=768px), login pulse, difficulty modal, the >=1150px right rail
+   variables and the compact score header. Loads after game.css so its overrides win by order. */
+/* DESKTOP ADJUSTMENTS */
+@media (min-width: 768px) {
+    body:not(.instructions-page) {
+        padding-top: 160px;
+        padding-bottom: 45px;
+    }
+
+    .container {
+        max-width: 750px;
+        padding: 20px;
+    }
+
+    .floating-game-score,
+    .floating-hand-score {
+        max-width: 750px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+    }
+
+    .floating-hand-score {
+        top: 85px;
+    }
+
+    .bottom-section {
+        max-width: 750px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        height: 35px;
+    }
+
+    .bottom-new-game-btn,
+    .bottom-rules-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+        height: 25px;
+        min-width: 60px;
+    }
+
+    .play-area {
+        min-height: 170px;
+        padding: 25px 10px;
+    }
+
+    .trick-card {
+        width: 140px;
+        height: 160px;
+        padding: 18px 14px;
+    }
+
+    .trick-card .card-content {
+        font-size: 36px;
+    }
+
+    .trick-card-placeholder {
+        width: 140px;
+        height: 160px;
+    }
+
+    .game-over {
+        padding: 25px 20px;
+        margin-bottom: 20px;
+    }
+
+    .winner-text {
+        font-size: 26px;
+        margin-bottom: 18px;
+    }
+
+    .game-over button {
+        padding: 18px 30px;
+        font-size: 20px;
+    }
+
+    .cards {
+        grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+        gap: 12px;
+        max-width: 700px;
+        margin: 0 auto 15px auto;
+    }
+
+    .card {
+        min-width: 85px;
+        min-height: 105px;
+        font-size: 22px;
+        padding: 16px 10px;
+    }
+
+    .bid-buttons {
+        grid-template-columns: repeat(11, 1fr);
+        max-width: 600px;
+    }
+
+    .blind-buttons {
+        grid-template-columns: repeat(6, 1fr);
+        max-width: 400px;
+    }
+
+    .trick-line {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .trick-number,
+    .trick-cards,
+    .trick-winner {
+        width: auto;
+        text-align: center;
+    }
+
+    .trick-cards {
+        margin: 0;
+        flex: 1;
+    }
+
+    .trick-winner {
+        font-size: 11px;
+        min-width: 60px;
+        text-align: right;
+    }
+
+    .trick-history {
+        max-height: 200px;
+    }
+
+
+
+
+}
+
+
+/* Gentle login button pulse for non-logged-in users */
+@keyframes gentlePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(33, 150, 243, 0.3);
+    }
+}
+
+.login-pulse {
+    animation: gentlePulse 2s ease-in-out 3;
+}
+
+/* DIFFICULTY SELECTOR */
+.difficulty-gear {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 0.9em;
+    transition: opacity 0.2s;
+}
+.difficulty-gear:hover {
+    opacity: 1;
+}
+
+.difficulty-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+.difficulty-modal.show {
+    display: flex;
+}
+
+.difficulty-content {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 280px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.difficulty-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.difficulty-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.difficulty-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.difficulty-option:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+.difficulty-option:has(input:checked) {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.difficulty-option input {
+    margin: 0;
+}
+
+.difficulty-label {
+    font-weight: 600;
+    color: #333;
+}
+
+.difficulty-desc {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: auto;
+}
+
+.difficulty-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 1rem;
+}
+
+/* Screen-reader-only: visible to assistive tech and search engines, hidden from sighted users */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.site-footer {
+    display: none;
+}
+/* ============================================================================
+   LAYOUT 2026-09-05: side rail on wide screens, bottom sheets on narrow ones.
+   Before this, the chat window was a mobile bottom sheet pinned bottom-right at a
+   fixed width, so on a desktop viewport it sat ON TOP of the card table. Now:
+     < 1150px : chat + jukebox are full-width bottom sheets (never side by side
+                with the table, so nothing can overlap it); one open at a time.
+     >= 1150px: the centered column (scores, table, bottom bar) shifts left by half
+                a rail width; sheet.css docks the Marta/Hoyt sheet in that rail using
+                the variables set here.
+   ========================================================================== */
+@media (min-width: 1150px) {
+    :root { --rail-w: 360px; --rail-gap: 24px; --col-w: 750px; --chat-h: 300px; --rail-top: 110px; }
+    /* floating bars already sit at left:50% + translateX(-50%); the container centers by
+       margin:auto, so it only needs the half-rail nudge, not the -50% */
+    .floating-game-score, .floating-hand-score, .bottom-section {
+        transform: translateX(calc(-50% - (var(--rail-w) + var(--rail-gap)) / 2));
+    }
+    /* margin, NOT transform: .bottom-section is position:fixed INSIDE .container and a transformed
+       ancestor would pin it to the container instead of the viewport */
+    .container { margin-left: calc(50% - var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2); margin-right: 0; }
+}
+
+/* COMPACT SCORE HEADER (2026-09-05): each score reads on one line, You (EVEN) 0, at every
+   width. On phones the two bars drop from ~130px to ~85px; on desktop they take the table's
+   width instead of shrink-wrapping to a narrow stack. */
+.floating-game-score { padding: 5px 10px; border-radius: 8px; }
+.game-score-item { display: flex; align-items: baseline; justify-content: center; gap: 5px; white-space: nowrap; }
+.game-score-label { margin: 0; font-size: 12px; }
+.game-score-parity { margin: 0; font-size: 9px; }
+.game-score-value { font-size: 18px; line-height: 1.1; }
+.floating-hand-score { padding: 4px 8px; }
+.hand-score-item .label { font-size: 9px; margin: 0; }
+.hand-score-item .value { font-size: 12px; white-space: nowrap; }
+@media (max-width: 767px) {
+    .floating-game-score { top: 6px; }
+    .floating-hand-score { top: 46px; }
+    body:not(.instructions-page) { padding-top: 92px; }
+    body:has(.login-prompt-banner) { padding-top: 127px; }
+    body:has(.login-prompt-banner) .floating-hand-score { top: 81px; }
+}
+@media (min-width: 768px) {
+    .floating-game-score, .floating-hand-score { width: var(--col-w, 750px); max-width: calc(100vw - 16px); }
+    .floating-game-score { top: 10px; padding: 8px 14px; }
+    .game-score-label { font-size: 14px; }
+    .game-score-value { font-size: 22px; }
+    .floating-hand-score { top: 58px; padding: 6px 12px; }
+    .hand-score-item .label { font-size: 10px; }
+    .hand-score-item .value { font-size: 13px; }
+    body:not(.instructions-page) { padding-top: 110px; }
+    body:has(.login-prompt-banner) { padding-top: 145px; }
+    body:has(.login-prompt-banner) .floating-game-score { top: 45px; }
+    body:has(.login-prompt-banner) .floating-hand-score { top: 93px; }
+}
