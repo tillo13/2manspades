@@ -1652,7 +1652,7 @@ button:disabled {
     .chat-window.open { transform: translate(-50%, 0); }
 }
 @media (min-width: 1150px) {
-    :root { --rail-w: 360px; --rail-gap: 24px; --col-w: 750px; }
+    :root { --rail-w: 360px; --rail-gap: 24px; --col-w: 750px; --chat-h: 300px; }
     /* floating bars already sit at left:50% + translateX(-50%); the container centers by
        margin:auto, so it only needs the half-rail nudge, not the -50% */
     .floating-game-score, .floating-hand-score, .bottom-section {
@@ -1667,6 +1667,6 @@ button:disabled {
         right: auto; width: var(--rail-w); transform: none; border-radius: 12px; border-top: none;
         box-shadow: 0 6px 24px rgba(0,0,0,.25);
     }
-    .chat-window { top: 160px; bottom: auto; height: calc(50vh - 120px); min-height: 260px; }
+    .chat-window { top: 160px; bottom: auto; height: var(--chat-h); }
     .chat-header { border-radius: 12px 12px 0 0; }
 }

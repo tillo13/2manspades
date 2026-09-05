@@ -18,11 +18,10 @@
 .jb-panel { position: fixed; bottom: 0; left: 0; right: 0; height: 62vh; max-height: 560px; background: #fff; border-top: 2px solid #f6c453; border-radius: 15px 15px 0 0;
     transform: translateY(100%); transition: transform .3s ease; z-index: 999; display: flex; flex-direction: column; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
 .jb-panel.open { transform: translateY(0); }
-.jb-header { background: #222; color: #fff; padding: 10px 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; border-radius: 15px 15px 0 0; }
-.jb-header .jb-tabs { display: flex; gap: 6px; margin-left: auto; }
-.jb-tabs button { background: transparent; color: #ddd; border: 1px solid #555; border-radius: 14px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
-.jb-tabs button.active { background: #f6c453; color: #222; border-color: #f6c453; }
-.jb-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; width: 30px; height: 30px; line-height: 30px; }
+.jb-header { background: #222; color: #fff; padding: 6px 6px 6px 15px; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 10px; border-radius: 15px 15px 0 0; }
+.jb-header .jb-close { margin-left: auto; }
+.jb-close { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; width: 44px; height: 44px; line-height: 44px; padding: 0; text-align: center; border-radius: 50%; }
+.jb-close:hover { background: rgba(255,255,255,.12); }
 
 .jb-now { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 16px; overflow: auto; }
 .jb-now img { width: 180px; height: 180px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.25); object-fit: cover; }
@@ -32,10 +31,12 @@
 .jb-bar { height: 100%; width: 0; background: #f6c453; }
 .jb-time { font-size: 12px; color: #888; }
 .jb-controls { display: flex; align-items: center; gap: 22px; }
-.jb-controls button { background: #222; color: #fff; border: none; border-radius: 50%; width: 56px; height: 56px; font-size: 22px; cursor: pointer; }
-.jb-controls .jb-big { width: 76px; height: 76px; font-size: 30px; background: #f6c453; color: #222; }
+.jb-controls button { background: #222; color: #fff; border: none; border-radius: 50%; width: 56px; height: 56px; min-width: 0; max-width: 56px; padding: 0; margin: 0; flex: none; box-sizing: border-box; font-size: 22px; line-height: 1; cursor: pointer; }
+.jb-controls .jb-big { width: 76px; height: 76px; max-width: 76px; font-size: 30px; background: #f6c453; color: #222; }
 .jb-mode { font-size: 12px; color: #888; }
-.jb-shuffle { background: transparent; border: 1px solid #ccc; border-radius: 16px; padding: 6px 14px; font-size: 13px; cursor: pointer; color: #333; }
+.jb-bottom { display: flex; gap: 10px; justify-content: center; padding: 8px 12px 14px; flex-wrap: wrap; }
+.jb-pill { background: #f6c453; color: #222; border: none; border-radius: 22px; padding: 12px 18px; font-size: 15px; font-weight: 700; cursor: pointer; min-width: 120px; }
+.jb-pill-dark { background: #222; color: #fff; }
 
 .jb-browse { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .jb-now[hidden], .jb-browse[hidden] { display: none; }   /* display:flex above would beat the hidden attribute */
@@ -60,10 +61,17 @@
 @media (min-width: 1150px) {
     .jb-bubble, .jb-toast, .jb-close { display: none !important; }
     .jb-panel { left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap));
-        right: auto; width: var(--rail-w); top: calc(50vh + 60px); bottom: 45px; height: auto; max-height: none;
+        right: auto; width: var(--rail-w); top: calc(160px + var(--chat-h) + 20px); bottom: 45px; height: auto; max-height: none;
         transform: none; border-radius: 12px; border-top: none; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
     .jb-header { border-radius: 12px 12px 0 0; }
     .jb-now img { width: 140px; height: 140px; }
     .jb-controls button { width: 48px; height: 48px; font-size: 18px; }
-    .jb-controls .jb-big { width: 64px; height: 64px; font-size: 26px; }
+    .jb-controls .jb-big { width: 64px; height: 64px; max-width: 64px; font-size: 26px; }
+    .jb-now { padding: 10px 14px 6px; gap: 6px; }
+    .jb-title { font-size: 17px; }
+    .jb-bottom { padding: 4px 10px 10px; }
+    .jb-pill { padding: 9px 14px; font-size: 14px; min-width: 100px; }
 }
+
+/* while a sheet is open on a narrow layout, both floating bubbles get out of its way */
+body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon, body.chat-open .jb-bubble { display: none !important; }   /* !important: game.js sets the chat bubble's display inline */

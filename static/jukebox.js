@@ -108,10 +108,9 @@
     function showPanel(which) {
         lastPanel = which;
         $('jbNow').hidden = which !== 'now'; $('jbBrowse').hidden = which !== 'browse';
-        $('jbTabNow').classList.toggle('active', which === 'now'); $('jbTabBrowse').classList.toggle('active', which === 'browse');
     }
     function openPanel(open) {
-        panelOpen = open; $('jbPanel').classList.toggle('open', open);
+        panelOpen = open; $('jbPanel').classList.toggle('open', open); document.body.classList.toggle('jb-open', open);
         if (open && typeof chatOpen !== 'undefined' && chatOpen && typeof toggleChat === 'function' && !window.matchMedia('(min-width: 1150px)').matches) toggleChat();
     }
 
@@ -129,10 +128,17 @@
         $('jbClose').onclick = () => openPanel(false);
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
         $('jbShuffle').onclick = shuffleAll;
-        $('jbTabNow').onclick = () => showPanel('now'); $('jbTabBrowse').onclick = () => showPanel('browse');
+        $('jbTabNow').onclick = () => showPanel('now'); $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };
         $('jbSearch').oninput = (e) => renderAlbums(e.target.value);
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
         window.addEventListener('pagehide', saveState);
+        // one sheet at a time on narrow layouts: the jukebox already closes the chat when it
+        // opens; this makes the chat bubble close the jukebox too (game.js owns toggleChat,
+        // and the onclick resolves through window, so the wrap takes effect everywhere)
+        if (typeof window.toggleChat === 'function') {
+            const origToggle = window.toggleChat;
+            window.toggleChat = function () { origToggle.apply(this, arguments); const isOpen = typeof chatOpen !== 'undefined' && chatOpen; document.body.classList.toggle('chat-open', !!isOpen); if (isOpen && panelOpen && !window.matchMedia('(min-width: 1150px)').matches) openPanel(false); };
+        }
         renderAlbums(''); showPanel('now'); render();
         // resume across the reload that every new hand causes
         if (state.album && state.playing) play(current(), state.pos);

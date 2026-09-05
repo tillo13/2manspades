@@ -318,10 +318,6 @@
     <div class="jb-panel" id="jbPanel">
         <div class="jb-header">
             <span>Hoyt Axton</span>
-            <div class="jb-tabs">
-                <button id="jbTabNow" class="active">Now playing</button>
-                <button id="jbTabBrowse">Records</button>
-            </div>
             <button class="jb-close" id="jbClose" aria-label="Close">×</button>
         </div>
         <div class="jb-now" id="jbNow">
@@ -336,11 +332,15 @@
                 <button id="jbNext" aria-label="Next">⏭</button>
             </div>
             <div class="jb-mode" id="jbMode"></div>
-            <button class="jb-shuffle" id="jbShuffle">Shuffle all the records</button>
+            <div class="jb-bottom">
+                <button class="jb-pill" id="jbShuffle">Shuffle all the records</button>
+                <button class="jb-pill jb-pill-dark" id="jbTabBrowse">Albums</button>
+            </div>
         </div>
         <div class="jb-browse" id="jbBrowse" hidden>
-            <input class="jb-search" id="jbSearch" type="search" placeholder="Find a song or record…">
+            <input class="jb-search" id="jbSearch" type="search" placeholder="Find a song or album…">
             <div class="jb-albums" id="jbAlbums"></div>
+            <div class="jb-bottom"><button class="jb-pill jb-pill-dark" id="jbTabNow">Back to the song</button></div>
         </div>
     </div>
 
