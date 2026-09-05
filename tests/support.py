@@ -8,7 +8,10 @@ os.environ.setdefault('TWOMANSPADES_FLASK_SECRET', secrets.token_hex(32))
 
 
 def load_app():
-    with patch('google.cloud.secretmanager.SecretManagerServiceClient'):
+    # No telemetry from tests: the visitor flusher is a daemon thread that opens gRPC +
+    # psycopg2 during interpreter exit and segfaulted the deploy gate 1 run in 4 (2026-09-05).
+    with patch('google.cloud.secretmanager.SecretManagerServiceClient'), \
+         patch('utilities.visitor_logging.install_middleware'):
         import app
     app.app.config.update(TESTING=True, SESSION_COOKIE_SECURE=False)
     return app
