@@ -125,12 +125,14 @@
     }
     function renderPills() {
         const wrap = $('chatPills'); if (!wrap) return;
-        const np = nowPlaying(); wrap.hidden = !np;
-        if (!np) { wrap.innerHTML = ''; return; }
-        if (wrap.dataset.for === np.album + '/' + np.n) return;
-        wrap.dataset.for = np.album + '/' + np.n; wrap.innerHTML = '';
+        const np = nowPlaying();
+        if (!np) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+        const key = np.album + '/' + np.n;
+        if (wrap.dataset.for === key) { wrap.hidden = (wrap.dataset.asked === key); return; }   // asked about this song already: stay out of the way
+        wrap.hidden = false;
+        wrap.dataset.for = key; wrap.innerHTML = '';
         for (const q of PILLS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chat-pill'; b.textContent = q;
-            b.onclick = () => { const i = $('chatInput'); if (!i) return; i.value = q; if (typeof sendMessage === 'function') sendMessage(); }; wrap.appendChild(b); }
+            b.onclick = () => { const i = $('chatInput'); if (!i) return; i.value = q; wrap.hidden = true; wrap.dataset.asked = wrap.dataset.for; if (typeof sendMessage === 'function') sendMessage(); }; wrap.appendChild(b); }
     }
     function nowPlaying() {
         const cur = current(); if (!cur) return null;   // paused still counts: the song on the turntable is the song he is asking about
