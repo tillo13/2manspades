@@ -1637,3 +1637,36 @@ button:disabled {
 .site-footer {
     display: none;
 }
+/* ============================================================================
+   LAYOUT 2026-09-05: side rail on wide screens, bottom sheets on narrow ones.
+   Before this, the chat window was a mobile bottom sheet pinned bottom-right at a
+   fixed width, so on a desktop viewport it sat ON TOP of the card table. Now:
+     < 1150px : chat + jukebox are full-width bottom sheets (never side by side
+                with the table, so nothing can overlap it); one open at a time.
+     >= 1150px: the centered column (scores, table, bottom bar) shifts left by half
+                a rail width and a 360px rail on the right holds Marta's chat on
+                top and the Hoyt jukebox below it, both always visible, no bubbles.
+   ========================================================================== */
+@media (min-width: 768px) and (max-width: 1149px) {
+    .chat-window { left: 50%; right: auto; width: min(560px, 96vw); transform: translate(-50%, 100%); }
+    .chat-window.open { transform: translate(-50%, 0); }
+}
+@media (min-width: 1150px) {
+    :root { --rail-w: 360px; --rail-gap: 24px; --col-w: 750px; }
+    /* floating bars already sit at left:50% + translateX(-50%); the container centers by
+       margin:auto, so it only needs the half-rail nudge, not the -50% */
+    .floating-game-score, .floating-hand-score, .bottom-section {
+        transform: translateX(calc(-50% - (var(--rail-w) + var(--rail-gap)) / 2));
+    }
+    /* margin, NOT transform: .bottom-section is position:fixed INSIDE .container and a transformed
+       ancestor would pin it to the container instead of the viewport */
+    .container { margin-left: calc(50% - var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2); margin-right: 0; }
+    .chat-bubble-icon, .chat-close { display: none !important; }
+    .chat-window {
+        left: calc(50% + var(--col-w) / 2 - (var(--rail-w) + var(--rail-gap)) / 2 + var(--rail-gap));
+        right: auto; width: var(--rail-w); transform: none; border-radius: 12px; border-top: none;
+        box-shadow: 0 6px 24px rgba(0,0,0,.25);
+    }
+    .chat-window { top: 160px; bottom: auto; height: calc(50vh - 120px); min-height: 260px; }
+    .chat-header { border-radius: 12px 12px 0 0; }
+}

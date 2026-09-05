@@ -1,0 +1,3770 @@
+{
+"artist": "Hoyt Axton",
+"albums": [
+{
+"id": "1962-the-balladeer-recorded-live-at-the-troubadour",
+"title": "The Balladeer: Recorded Live At The Troubadour",
+"year": "1962",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1962 - The Balladeer- Recorded Live At The Troubadour",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar (Live)",
+"duration": "3:35"
+},
+{
+"n": 2,
+"title": "Ashville Junction (Live)",
+"duration": "2:52"
+},
+{
+"n": 3,
+"title": "Brisbane Ladies (Live)",
+"duration": "3:28"
+},
+{
+"n": 4,
+"title": "Five Hundred Miles (Live)",
+"duration": "4:00"
+},
+{
+"n": 5,
+"title": "The Balladeer (Live)",
+"duration": "2:55"
+},
+{
+"n": 6,
+"title": "Ox Driver's Song (Live)",
+"duration": "3:43"
+},
+{
+"n": 7,
+"title": "Peggy-O (Live)",
+"duration": "4:05"
+},
+{
+"n": 8,
+"title": "Walkin' To Georgia (Live)",
+"duration": "2:11"
+},
+{
+"n": 9,
+"title": "Vandy (Live)",
+"duration": "3:30"
+},
+{
+"n": 10,
+"title": "John Henry (Live)",
+"duration": "7:06"
+}
+]
+},
+{
+"id": "1962-the-balladeer-recorded-live-at-the-troubadour-digitally-remastered",
+"title": "The Balladeer: Recorded Live At The Troubadour (Digitally Remastered)",
+"year": "1962",
+"kind": "Albums",
+"shuffle": false,
+"folder": "1962 - The Balladeer- Recorded Live At The Troubadour (Digitally Remastered)",
+"tracks": [
+{
+"n": 1,
+"title": "Ox Driver's Song (Live)",
+"duration": "3:43"
+},
+{
+"n": 2,
+"title": "Peggy-O (Live)",
+"duration": "4:05"
+},
+{
+"n": 3,
+"title": "Walkin' To Georgia (Live)",
+"duration": "2:11"
+},
+{
+"n": 4,
+"title": "Vandy (Live)",
+"duration": "3:30"
+},
+{
+"n": 5,
+"title": "John Henry (Live)",
+"duration": "7:06"
+},
+{
+"n": 6,
+"title": "Greenback Dollar (Live)",
+"duration": "3:35"
+},
+{
+"n": 7,
+"title": "Swananoah Tunnel (Live)",
+"duration": "3:37"
+},
+{
+"n": 8,
+"title": "One Grain Of Sand (Live)",
+"duration": "4:30"
+},
+{
+"n": 9,
+"title": "Brisbane Ladies (Live)",
+"duration": "3:28"
+},
+{
+"n": 10,
+"title": "Darlin' (Live)",
+"duration": "3:41"
+},
+{
+"n": 11,
+"title": "Five Hundred Miles (Live)",
+"duration": "4:00"
+},
+{
+"n": 12,
+"title": "The Balladeer (Live)",
+"duration": "2:55"
+}
+]
+},
+{
+"id": "1963-greenback-dollar-live",
+"title": "Greenback Dollar (Live)",
+"year": "1963",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1963 - Greenback Dollar (Live)",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar (Live)",
+"duration": "3:14"
+},
+{
+"n": 2,
+"title": "Ashville Junction (Live)",
+"duration": "2:52"
+},
+{
+"n": 3,
+"title": "Brisbane Ladies (Live)",
+"duration": "3:19"
+},
+{
+"n": 4,
+"title": "Five Hundred Miles (Live)",
+"duration": "3:50"
+},
+{
+"n": 5,
+"title": "The Balladeer (Live)",
+"duration": "2:39"
+},
+{
+"n": 6,
+"title": "Ox Driver's Song (Live)",
+"duration": "3:27"
+},
+{
+"n": 7,
+"title": "Peggy-O (Live)",
+"duration": "3:16"
+},
+{
+"n": 8,
+"title": "Walkin' to Georgia (Live)",
+"duration": "2:02"
+},
+{
+"n": 9,
+"title": "Vandy (Live)",
+"duration": "2:16"
+},
+{
+"n": 10,
+"title": "John Henry (Live)",
+"duration": "6:50"
+}
+]
+},
+{
+"id": "1963-grizzly-bear-gypsy-woman",
+"title": "Grizzly Bear / Gypsy Woman",
+"year": "1963",
+"kind": "Singles & EPs",
+"shuffle": false,
+"folder": "1963 - Grizzly Bear - Gypsy Woman",
+"tracks": [
+{
+"n": 1,
+"title": "Grizzly Bear",
+"duration": "1:53"
+},
+{
+"n": 2,
+"title": "Gypsy Woman",
+"duration": "3:40"
+}
+]
+},
+{
+"id": "1963-saturday-s-child",
+"title": "Saturday's Child",
+"year": "1963",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1963 - Saturday's Child",
+"tracks": [
+{
+"n": 1,
+"title": "Saturday's Child",
+"duration": "3:01"
+},
+{
+"n": 2,
+"title": "Trombone Charlie",
+"duration": "2:37"
+},
+{
+"n": 3,
+"title": "Infirmary Blues",
+"duration": "3:04"
+},
+{
+"n": 4,
+"title": "Hootchie Koochie Man",
+"duration": "4:30"
+},
+{
+"n": 5,
+"title": "Willie Jean",
+"duration": "3:14"
+},
+{
+"n": 6,
+"title": "Movin' Down the Line",
+"duration": "2:38"
+},
+{
+"n": 7,
+"title": "They're Been on Their Jobs Too Long",
+"duration": "2:39"
+},
+{
+"n": 8,
+"title": "Gamblers Blues",
+"duration": "3:19"
+},
+{
+"n": 9,
+"title": "Voodoo Blues",
+"duration": "3:03"
+},
+{
+"n": 10,
+"title": "Angel Cake and Wine",
+"duration": "3:34"
+},
+{
+"n": 11,
+"title": "Make Me a Pallet",
+"duration": "3:09"
+},
+{
+"n": 12,
+"title": "Rise Up",
+"duration": "2:25"
+}
+]
+},
+{
+"id": "1963-thunder-n-lightnin",
+"title": "Thunder'n Lightnin'",
+"year": "1963",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1963 - Thunder'n Lightnin'",
+"tracks": [
+{
+"n": 1,
+"title": "Thunder 'N Lightnin'",
+"duration": "2:44"
+},
+{
+"n": 2,
+"title": "Blue Prelude",
+"duration": "2:50"
+},
+{
+"n": 3,
+"title": "Woman At The Well",
+"duration": "4:03"
+},
+{
+"n": 4,
+"title": "Grizzly Bear",
+"duration": "1:53"
+},
+{
+"n": 5,
+"title": "I Never Knew My Father",
+"duration": "4:06"
+},
+{
+"n": 6,
+"title": "Midnight Special",
+"duration": "3:18"
+},
+{
+"n": 7,
+"title": "This Little Light",
+"duration": "2:32"
+},
+{
+"n": 8,
+"title": "Gypsy Woman",
+"duration": "3:40"
+},
+{
+"n": 9,
+"title": "Water Boy",
+"duration": "2:37"
+},
+{
+"n": 10,
+"title": "Daddy Walked In Darkness",
+"duration": "2:48"
+},
+{
+"n": 11,
+"title": "Cocaine",
+"duration": "2:48"
+},
+{
+"n": 12,
+"title": "House Of The Rising Sun",
+"duration": "2:44"
+}
+]
+},
+{
+"id": "1965-hoyt-axton-sings-bessie-smith",
+"title": "Hoyt Axton Sings Bessie Smith",
+"year": "1965",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1965 - Hoyt Axton Sings Bessie Smith",
+"tracks": [
+{
+"n": 1,
+"title": "You've Been a Good Ole Wagon",
+"duration": "3:15"
+},
+{
+"n": 2,
+"title": "Poor Man's Blues",
+"duration": "2:57"
+},
+{
+"n": 3,
+"title": "Nobody Knows You When You're Down and Out",
+"duration": "3:09"
+},
+{
+"n": 4,
+"title": "J. C. Holmes Blues",
+"duration": "2:08"
+},
+{
+"n": 5,
+"title": "Jailhouse Blues",
+"duration": "2:56"
+},
+{
+"n": 6,
+"title": "Black Mountain",
+"duration": "3:08"
+},
+{
+"n": 7,
+"title": "Long Old Road",
+"duration": "3:42"
+},
+{
+"n": 8,
+"title": "Send Me to the Electric Chair",
+"duration": "3:47"
+},
+{
+"n": 9,
+"title": "After You've Gone",
+"duration": "2:42"
+},
+{
+"n": 10,
+"title": "Me and My Gin",
+"duration": "3:29"
+},
+{
+"n": 11,
+"title": "Blue Spirit Blues",
+"duration": "3:28"
+}
+]
+},
+{
+"id": "1971-country-anthem",
+"title": "Country Anthem",
+"year": "1971",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1971 - Country Anthem",
+"tracks": [
+{
+"n": 1,
+"title": "My Carolina Sunshine Girl",
+"duration": "0:56"
+},
+{
+"n": 2,
+"title": "Jambalaya",
+"duration": "3:12"
+},
+{
+"n": 3,
+"title": "Officer Ray",
+"duration": "3:11"
+},
+{
+"n": 4,
+"title": "Epistle (Country Anthem)",
+"duration": "3:52"
+},
+{
+"n": 5,
+"title": "Heaven",
+"duration": "3:03"
+},
+{
+"n": 6,
+"title": "Better Lovin' Man",
+"duration": "5:19"
+},
+{
+"n": 7,
+"title": "Hey, Mr. Pilot Man",
+"duration": "2:55"
+},
+{
+"n": 8,
+"title": "The Devil",
+"duration": "3:30"
+},
+{
+"n": 9,
+"title": "Thomas Hall",
+"duration": "2:54"
+},
+{
+"n": 10,
+"title": "Country Anthem",
+"duration": "1:27"
+}
+]
+},
+{
+"id": "1971-joy-to-the-world",
+"title": "Joy To The World",
+"year": "1971",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1971 - Joy To The World",
+"tracks": [
+{
+"n": 1,
+"title": "Joy To The World",
+"duration": "2:47"
+},
+{
+"n": 2,
+"title": "Alice In Wonderland",
+"duration": "3:19"
+},
+{
+"n": 3,
+"title": "Never Been To Spain",
+"duration": "3:27"
+},
+{
+"n": 4,
+"title": "The Pusher",
+"duration": "5:24"
+},
+{
+"n": 5,
+"title": "Ease Your Pain",
+"duration": "2:46"
+},
+{
+"n": 6,
+"title": "Have A Nice Day",
+"duration": "3:03"
+},
+{
+"n": 7,
+"title": "Indian Song",
+"duration": "3:38"
+},
+{
+"n": 8,
+"title": "California Women",
+"duration": "2:22"
+},
+{
+"n": 9,
+"title": "Lightnin' Bar Blues",
+"duration": "3:06"
+},
+{
+"n": 10,
+"title": "Farther Along/ Old Time Religion",
+"duration": "3:40"
+}
+]
+},
+{
+"id": "1972-less-than-the-song",
+"title": "Less Than The Song",
+"year": "1972",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1972 - Less Than The Song",
+"tracks": [
+{
+"n": 1,
+"title": "Sweet Misery",
+"duration": "3:25"
+},
+{
+"n": 2,
+"title": "Less Than The Song",
+"duration": "3:05"
+},
+{
+"n": 3,
+"title": "Sweet Fantasy",
+"duration": "3:10"
+},
+{
+"n": 4,
+"title": "Days Are Short",
+"duration": "3:51"
+},
+{
+"n": 5,
+"title": "Mary Makes Magic",
+"duration": "3:31"
+},
+{
+"n": 6,
+"title": "Peacemaker",
+"duration": "3:05"
+},
+{
+"n": 7,
+"title": "Nothin' To Lose",
+"duration": "3:07"
+},
+{
+"n": 8,
+"title": "Oklahoma Song",
+"duration": "2:21"
+},
+{
+"n": 9,
+"title": "Mexico City Hangover",
+"duration": "3:21"
+},
+{
+"n": 10,
+"title": "Hungry Man",
+"duration": "2:50"
+},
+{
+"n": 11,
+"title": "Somebody Turned On The Light",
+"duration": "3:04"
+},
+{
+"n": 12,
+"title": "Blue Prelude",
+"duration": "1:52"
+}
+]
+},
+{
+"id": "1974-life-machine",
+"title": "Life Machine",
+"year": "1974",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1974 - Life Machine",
+"tracks": [
+{
+"n": 1,
+"title": "Maybelline",
+"duration": "2:45"
+},
+{
+"n": 2,
+"title": "Life Machine",
+"duration": "3:37"
+},
+{
+"n": 3,
+"title": "That's All Right",
+"duration": "5:13"
+},
+{
+"n": 4,
+"title": "Geronimo's Cadillac",
+"duration": "3:44"
+},
+{
+"n": 5,
+"title": "When The Morning Comes",
+"duration": "3:32"
+},
+{
+"n": 6,
+"title": "Good Lookin' Child",
+"duration": "2:51"
+},
+{
+"n": 7,
+"title": "I Dream Of Highways",
+"duration": "2:36"
+},
+{
+"n": 8,
+"title": "Pet Parade",
+"duration": "3:04"
+},
+{
+"n": 9,
+"title": "Telephone Booth",
+"duration": "3:30"
+},
+{
+"n": 10,
+"title": "Boney Fingers",
+"duration": "3:09"
+},
+{
+"n": 11,
+"title": "Billy's Theme",
+"duration": "2:36"
+}
+]
+},
+{
+"id": "1975-southbound",
+"title": "Southbound",
+"year": "1975",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1975 - Southbound",
+"tracks": [
+{
+"n": 1,
+"title": "I Love To Sing",
+"duration": "1:56"
+},
+{
+"n": 2,
+"title": "Southbound",
+"duration": "2:35"
+},
+{
+"n": 3,
+"title": "Lion In Winter",
+"duration": "3:24"
+},
+{
+"n": 4,
+"title": "Blind Fiddler",
+"duration": "2:30"
+},
+{
+"n": 5,
+"title": "Pride Of Man",
+"duration": "3:18"
+},
+{
+"n": 6,
+"title": "Greensleeves",
+"duration": "3:53"
+},
+{
+"n": 7,
+"title": "No No Song",
+"duration": "2:35"
+},
+{
+"n": 8,
+"title": "Nashville",
+"duration": "3:43"
+},
+{
+"n": 9,
+"title": "Speed Trap (Out Of State Cars)",
+"duration": "2:30"
+},
+{
+"n": 10,
+"title": "Roll Your Own",
+"duration": "2:14"
+},
+{
+"n": 11,
+"title": "Whiskey",
+"duration": "2:19"
+},
+{
+"n": 12,
+"title": "In A Young Girls Mind",
+"duration": "3:31"
+},
+{
+"n": 13,
+"title": "Sometimes It's Easy",
+"duration": "2:03"
+}
+]
+},
+{
+"id": "1976-fearless",
+"title": "Fearless",
+"year": "1976",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1976 - Fearless",
+"tracks": [
+{
+"n": 1,
+"title": "Idol Of The Band",
+"duration": "3:15"
+},
+{
+"n": 2,
+"title": "Evangelina",
+"duration": "3:34"
+},
+{
+"n": 3,
+"title": "Flash Of Fire",
+"duration": "2:45"
+},
+{
+"n": 4,
+"title": "Lay, Lady, Lay",
+"duration": "3:07"
+},
+{
+"n": 5,
+"title": "Jealous Man",
+"duration": "1:21"
+},
+{
+"n": 6,
+"title": "Paid In Advance",
+"duration": "2:32"
+},
+{
+"n": 7,
+"title": "An Old Greyhound",
+"duration": "2:54"
+},
+{
+"n": 8,
+"title": "A Stone And A Feather",
+"duration": "2:57"
+},
+{
+"n": 9,
+"title": "Gypsy Moth",
+"duration": "3:16"
+},
+{
+"n": 10,
+"title": "Beyond These Walls",
+"duration": "3:37"
+},
+{
+"n": 11,
+"title": "Penny Whistle Song",
+"duration": "1:25"
+},
+{
+"n": 12,
+"title": "The Devil",
+"duration": "1:54"
+}
+]
+},
+{
+"id": "1977-snowblind-friend",
+"title": "Snowblind Friend",
+"year": "1977",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1977 - Snowblind Friend",
+"tracks": [
+{
+"n": 1,
+"title": "You're The Hangnail In My Life",
+"duration": "2:07"
+},
+{
+"n": 2,
+"title": "Little White Moon",
+"duration": "2:44"
+},
+{
+"n": 3,
+"title": "Water For My Horses",
+"duration": "3:09"
+},
+{
+"n": 4,
+"title": "Funeral Of The King",
+"duration": "3:01"
+},
+{
+"n": 5,
+"title": "I Light This Candle",
+"duration": "3:15"
+},
+{
+"n": 6,
+"title": "Never Been To Spain",
+"duration": "2:37"
+},
+{
+"n": 7,
+"title": "You Taught Me How To Cry",
+"duration": "3:20"
+},
+{
+"n": 8,
+"title": "Snowblind Friend",
+"duration": "2:57"
+},
+{
+"n": 9,
+"title": "Poncho And Lefty",
+"duration": "3:10"
+},
+{
+"n": 10,
+"title": "Seven Come",
+"duration": "2:29"
+},
+{
+"n": 11,
+"title": "I Don't Know Why I Love You",
+"duration": "3:23"
+}
+]
+},
+{
+"id": "1978-free-sailin",
+"title": "Free Sailin'",
+"year": "1978",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1978 - Free Sailin'",
+"tracks": [
+{
+"n": 1,
+"title": "Bluebird",
+"duration": "2:54"
+},
+{
+"n": 2,
+"title": "Honky Tonk Music",
+"duration": "3:25"
+},
+{
+"n": 3,
+"title": "The Way Of The World",
+"duration": "2:26"
+},
+{
+"n": 4,
+"title": "The Heart You Break (May Be Your Own)",
+"duration": "3:07"
+},
+{
+"n": 5,
+"title": "Jive Man",
+"duration": "2:31"
+},
+{
+"n": 6,
+"title": "Free Sailing",
+"duration": "2:53"
+},
+{
+"n": 7,
+"title": "Them Downers",
+"duration": "2:12"
+},
+{
+"n": 8,
+"title": "Left My Gal In The Mountains",
+"duration": "2:40"
+},
+{
+"n": 9,
+"title": "Darrell & Judy",
+"duration": "2:31"
+},
+{
+"n": 10,
+"title": "Endless Road",
+"duration": "2:20"
+}
+]
+},
+{
+"id": "1988-church-street-station-presents-hoyt-axton-live-in-concert",
+"title": "Church Street Station Presents: Hoyt Axton (Live in Concert)",
+"year": "1988",
+"kind": "Singles & EPs",
+"shuffle": false,
+"folder": "1988 - Church Street Station Presents- Hoyt Axton (Live in Concert)",
+"tracks": [
+{
+"n": 1,
+"title": "Boney Fingers (Live)",
+"duration": "2:20"
+},
+{
+"n": 2,
+"title": "Joy to the World (Live)",
+"duration": "2:59"
+},
+{
+"n": 3,
+"title": "Evangelina (Live)",
+"duration": "3:14"
+},
+{
+"n": 4,
+"title": "Wild Bull Rider (Live)",
+"duration": "3:31"
+}
+]
+},
+{
+"id": "1992-american-originals",
+"title": "American Originals",
+"year": "1992",
+"kind": "Albums",
+"shuffle": false,
+"folder": "1992 - American Originals",
+"tracks": [
+{
+"n": 1,
+"title": "Never Been To Spain",
+"duration": "3:26"
+},
+{
+"n": 2,
+"title": "Ease Your Pain",
+"duration": "2:46"
+},
+{
+"n": 3,
+"title": "Indian Song",
+"duration": "3:35"
+},
+{
+"n": 4,
+"title": "Lightnin' Bar Blues",
+"duration": "3:05"
+},
+{
+"n": 5,
+"title": "California Women",
+"duration": "2:22"
+},
+{
+"n": 6,
+"title": "Joy To The World",
+"duration": "2:45"
+},
+{
+"n": 7,
+"title": "Alice In Wonderland",
+"duration": "3:18"
+},
+{
+"n": 8,
+"title": "The Pusher",
+"duration": "5:23"
+},
+{
+"n": 9,
+"title": "Have A Nice Day",
+"duration": "3:01"
+},
+{
+"n": 10,
+"title": "My Carolina Sunshine Girl",
+"duration": "0:54"
+},
+{
+"n": 11,
+"title": "Jambalaya",
+"duration": "3:08"
+},
+{
+"n": 12,
+"title": "Thomas Hall",
+"duration": "2:52"
+},
+{
+"n": 13,
+"title": "The Devil",
+"duration": "3:28"
+},
+{
+"n": 14,
+"title": "Epistle (Country Anthem)",
+"duration": "3:48"
+},
+{
+"n": 15,
+"title": "Officer Ray",
+"duration": "3:09"
+},
+{
+"n": 16,
+"title": "Better Lovin' Man",
+"duration": "5:16"
+},
+{
+"n": 17,
+"title": "Heaven",
+"duration": "3:00"
+},
+{
+"n": 18,
+"title": "Country Anthem",
+"duration": "1:25"
+},
+{
+"n": 19,
+"title": "Farther Along/ Old Time Religion",
+"duration": "6:30"
+},
+{
+"n": 20,
+"title": "It's Been Fun",
+"duration": "4:05"
+}
+]
+},
+{
+"id": "1998-a-rusty-old-halo-where-did-the-money-go",
+"title": "A Rusty Old Halo & Where Did the Money Go?",
+"year": "1998",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1998 - A Rusty Old Halo & Where Did the Money Go-",
+"tracks": [
+{
+"n": 1,
+"title": "A Rusty Old Halo",
+"duration": "2:38"
+},
+{
+"n": 2,
+"title": "Della and the Dealer",
+"duration": "3:24"
+},
+{
+"n": 3,
+"title": "The Hotel Ritz",
+"duration": "2:18"
+},
+{
+"n": 4,
+"title": "So Hard to Give It All Up",
+"duration": "2:37"
+},
+{
+"n": 5,
+"title": "Evangelina",
+"duration": "3:29"
+},
+{
+"n": 6,
+"title": "Torpedo",
+"duration": "3:18"
+},
+{
+"n": 7,
+"title": "Viva Pancho Villa",
+"duration": "4:09"
+},
+{
+"n": 8,
+"title": "Wild Bull Rider",
+"duration": "3:27"
+},
+{
+"n": 9,
+"title": "In a Young Girl's Mind",
+"duration": "3:54"
+},
+{
+"n": 10,
+"title": "Gotta Keep Rollin'",
+"duration": "2:56"
+},
+{
+"n": 11,
+"title": "Everybody's Goin' on the Road",
+"duration": "3:10"
+},
+{
+"n": 12,
+"title": "Betty La Rue",
+"duration": "2:58"
+},
+{
+"n": 13,
+"title": "Boozers Are Losers",
+"duration": "3:15"
+},
+{
+"n": 14,
+"title": "Politicians",
+"duration": "2:29"
+},
+{
+"n": 15,
+"title": "(When You Dance) You Do Not Tango",
+"duration": "2:53"
+},
+{
+"n": 16,
+"title": "Smile as You Go By",
+"duration": "2:34"
+},
+{
+"n": 17,
+"title": "Where Did the Money Go?",
+"duration": "3:24"
+},
+{
+"n": 18,
+"title": "Some People Ride",
+"duration": "2:47"
+},
+{
+"n": 19,
+"title": "Midnight in Memphis",
+"duration": "3:35"
+},
+{
+"n": 20,
+"title": "Ease Your Pain",
+"duration": "2:27"
+},
+{
+"n": 21,
+"title": "The Battle of New Orleans",
+"duration": "3:25"
+},
+{
+"n": 22,
+"title": "The House Song",
+"duration": "3:20"
+}
+]
+},
+{
+"id": "1998-pistol-packin-mama-spin-of-the-wheel",
+"title": "Pistol Packin' Mama + Spin of the Wheel",
+"year": "1998",
+"kind": "Albums",
+"shuffle": true,
+"folder": "1998 - Pistol Packin' Mama + Spin of the Wheel",
+"tracks": [
+{
+"n": 1,
+"title": "She's Too Lazy to Be Crazy",
+"duration": "2:09"
+},
+{
+"n": 2,
+"title": "Pistol Packin' Mama",
+"duration": "2:45"
+},
+{
+"n": 3,
+"title": "I Walk the Line",
+"duration": "3:00"
+},
+{
+"n": 4,
+"title": "Don't Fence Me In",
+"duration": "2:53"
+},
+{
+"n": 5,
+"title": "There Stands the Glass",
+"duration": "2:41"
+},
+{
+"n": 6,
+"title": "Warm Storms and Wild Flowers",
+"duration": "2:27"
+},
+{
+"n": 7,
+"title": "He Played Real Good for Free",
+"duration": "3:30"
+},
+{
+"n": 8,
+"title": "James Dean and the Junkman",
+"duration": "2:11"
+},
+{
+"n": 9,
+"title": "Indian Song",
+"duration": "3:36"
+},
+{
+"n": 10,
+"title": "Fearless the Wonder Dog",
+"duration": "1:53"
+},
+{
+"n": 11,
+"title": "Spin of the Wheel",
+"duration": "2:55"
+},
+{
+"n": 12,
+"title": "Heartbreak Hotel",
+"duration": "2:20"
+},
+{
+"n": 13,
+"title": "We Could've Been Sweethearts",
+"duration": "2:46"
+},
+{
+"n": 14,
+"title": "Young Man",
+"duration": "1:58"
+},
+{
+"n": 15,
+"title": "Mr. Winchester's Gun",
+"duration": "2:48"
+},
+{
+"n": 16,
+"title": "If You're a Cowboy",
+"duration": "3:54"
+},
+{
+"n": 17,
+"title": "American Dreams",
+"duration": "3:20"
+},
+{
+"n": 18,
+"title": "Mountain Right",
+"duration": "3:35"
+},
+{
+"n": 19,
+"title": "Cowboys on Horses with Wings",
+"duration": "3:32"
+},
+{
+"n": 20,
+"title": "I Collect Hearts",
+"duration": "3:13"
+},
+{
+"n": 21,
+"title": "We Were Buccaneers",
+"duration": "3:19"
+},
+{
+"n": 22,
+"title": "The Weight",
+"duration": "5:26"
+},
+{
+"n": 23,
+"title": "Thank You Lord",
+"duration": "4:27"
+},
+{
+"n": 24,
+"title": "Blue Prelude",
+"duration": "1:16"
+}
+]
+},
+{
+"id": "1998-the-a-m-years",
+"title": "The A&M Years",
+"year": "1998",
+"kind": "Albums",
+"shuffle": false,
+"folder": "1998 - The A&M Years",
+"tracks": [
+{
+"n": 1,
+"title": "Sweet Misery",
+"duration": "3:26"
+},
+{
+"n": 2,
+"title": "Less Than The Song",
+"duration": "3:06"
+},
+{
+"n": 3,
+"title": "Sweet Fantasy",
+"duration": "3:13"
+},
+{
+"n": 4,
+"title": "Days Are Short",
+"duration": "3:56"
+},
+{
+"n": 5,
+"title": "Mary Makes Magic",
+"duration": "3:33"
+},
+{
+"n": 6,
+"title": "Peacemaker",
+"duration": "3:08"
+},
+{
+"n": 7,
+"title": "Nothin' To Lose",
+"duration": "3:07"
+},
+{
+"n": 8,
+"title": "Oklahoma Song",
+"duration": "2:23"
+},
+{
+"n": 9,
+"title": "Mexico City Hangover",
+"duration": "3:24"
+},
+{
+"n": 10,
+"title": "Hungry Man",
+"duration": "2:52"
+},
+{
+"n": 11,
+"title": "Somebody Turned On The Light",
+"duration": "3:06"
+},
+{
+"n": 12,
+"title": "Blue Prelude",
+"duration": "1:52"
+},
+{
+"n": 13,
+"title": "Maybelline",
+"duration": "2:47"
+},
+{
+"n": 14,
+"title": "Life Machine",
+"duration": "3:38"
+},
+{
+"n": 15,
+"title": "That's All Right",
+"duration": "5:16"
+},
+{
+"n": 16,
+"title": "Geronimo's Cadillac",
+"duration": "3:45"
+},
+{
+"n": 17,
+"title": "When The Morning Comes",
+"duration": "3:33"
+},
+{
+"n": 18,
+"title": "Good Lookin' Child",
+"duration": "2:51"
+},
+{
+"n": 19,
+"title": "I Dream Of Highways",
+"duration": "2:36"
+},
+{
+"n": 20,
+"title": "Pet Parade",
+"duration": "3:08"
+},
+{
+"n": 21,
+"title": "Telephone Booth",
+"duration": "3:34"
+},
+{
+"n": 22,
+"title": "Boney Fingers",
+"duration": "3:12"
+},
+{
+"n": 23,
+"title": "Billy's Theme",
+"duration": "2:43"
+},
+{
+"n": 24,
+"title": "I Love To Sing",
+"duration": "1:57"
+},
+{
+"n": 25,
+"title": "Southbound",
+"duration": "2:33"
+},
+{
+"n": 26,
+"title": "Lion In Winter",
+"duration": "3:23"
+},
+{
+"n": 27,
+"title": "Blind Fiddler",
+"duration": "2:28"
+},
+{
+"n": 28,
+"title": "Pride Of Man",
+"duration": "3:17"
+},
+{
+"n": 29,
+"title": "Greensleeves",
+"duration": "3:51"
+},
+{
+"n": 30,
+"title": "No No Song",
+"duration": "2:34"
+},
+{
+"n": 31,
+"title": "Nashville",
+"duration": "3:41"
+},
+{
+"n": 32,
+"title": "Speed Trap (Out Of State Cars)",
+"duration": "2:30"
+},
+{
+"n": 33,
+"title": "Roll Your Own",
+"duration": "2:12"
+},
+{
+"n": 34,
+"title": "Whiskey",
+"duration": "2:17"
+},
+{
+"n": 35,
+"title": "In A Young Girls Mind",
+"duration": "3:30"
+},
+{
+"n": 36,
+"title": "Sometimes It's Easy",
+"duration": "2:01"
+},
+{
+"n": 37,
+"title": "Idol Of The Band",
+"duration": "3:15"
+},
+{
+"n": 38,
+"title": "Evangelina",
+"duration": "3:35"
+},
+{
+"n": 39,
+"title": "Flash Of Fire",
+"duration": "2:44"
+},
+{
+"n": 40,
+"title": "Lay, Lady, Lay",
+"duration": "3:07"
+},
+{
+"n": 41,
+"title": "Jealous Man",
+"duration": "1:19"
+},
+{
+"n": 42,
+"title": "Paid In Advance",
+"duration": "2:32"
+},
+{
+"n": 43,
+"title": "An Old Greyhound",
+"duration": "2:55"
+},
+{
+"n": 44,
+"title": "A Stone And A Feather",
+"duration": "2:58"
+},
+{
+"n": 45,
+"title": "Gypsy Moth",
+"duration": "3:15"
+},
+{
+"n": 46,
+"title": "Beyond These Walls",
+"duration": "3:38"
+},
+{
+"n": 47,
+"title": "Penny Whistle Song",
+"duration": "1:24"
+},
+{
+"n": 48,
+"title": "The Devil",
+"duration": "1:59"
+}
+]
+},
+{
+"id": "2006-hoyt-axton-selected-hits",
+"title": "Hoyt Axton Selected Hits",
+"year": "2006",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2006 - Hoyt Axton Selected Hits",
+"tracks": [
+{
+"n": 1,
+"title": "Young Man",
+"duration": "2:18"
+},
+{
+"n": 2,
+"title": "We'll Sing In The Sunshine",
+"duration": "2:10"
+},
+{
+"n": 3,
+"title": "Voodoo Blues",
+"duration": "3:05"
+},
+{
+"n": 4,
+"title": "Trombone Charlie",
+"duration": "2:39"
+},
+{
+"n": 5,
+"title": "Thunder 'N' Lightning",
+"duration": "2:44"
+},
+{
+"n": 6,
+"title": "Tiger In The Closet",
+"duration": "2:16"
+},
+{
+"n": 7,
+"title": "This Little Light",
+"duration": "2:32"
+},
+{
+"n": 8,
+"title": "They've Been On Their Jobs Too Long",
+"duration": "2:40"
+},
+{
+"n": 9,
+"title": "Red White and Blue",
+"duration": "2:29"
+},
+{
+"n": 10,
+"title": "Ox Driver's Song",
+"duration": "3:28"
+},
+{
+"n": 11,
+"title": "Never Gonna Work",
+"duration": "2:09"
+},
+{
+"n": 12,
+"title": "Bring Your Lovin'",
+"duration": "2:26"
+},
+{
+"n": 13,
+"title": "Big Red",
+"duration": "1:52"
+},
+{
+"n": 14,
+"title": "Lonesome Road",
+"duration": "3:06"
+},
+{
+"n": 15,
+"title": "Abc (Put On)",
+"duration": "2:49"
+},
+{
+"n": 16,
+"title": "L.A. Town",
+"duration": "2:29"
+},
+{
+"n": 17,
+"title": "I'll Be There",
+"duration": "2:02"
+},
+{
+"n": 18,
+"title": "Hoochie Koochie Man",
+"duration": "4:33"
+},
+{
+"n": 19,
+"title": "Heartbreak Hotel",
+"duration": "2:19"
+},
+{
+"n": 20,
+"title": "Grizzley Bear",
+"duration": "1:54"
+},
+{
+"n": 21,
+"title": "Greenback Dollar",
+"duration": "3:16"
+},
+{
+"n": 22,
+"title": "Gambler's Blues",
+"duration": "3:18"
+},
+{
+"n": 23,
+"title": "Five Hundred Miles",
+"duration": "3:54"
+},
+{
+"n": 24,
+"title": "Double Dare",
+"duration": "2:33"
+}
+]
+},
+{
+"id": "2006-red-white-blue",
+"title": "Red White & Blue",
+"year": "2006",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2006 - Red White & Blue",
+"tracks": [
+{
+"n": 1,
+"title": "Double Dare",
+"duration": "2:31"
+},
+{
+"n": 2,
+"title": "Young Man",
+"duration": "2:17"
+},
+{
+"n": 3,
+"title": "Never Gonna Work",
+"duration": "2:06"
+},
+{
+"n": 4,
+"title": "Bring Your Loving",
+"duration": "2:22"
+},
+{
+"n": 5,
+"title": "Tiger In The Closet",
+"duration": "2:15"
+},
+{
+"n": 6,
+"title": "Red White And Blue",
+"duration": "2:23"
+},
+{
+"n": 7,
+"title": "Heartbreak Hotel",
+"duration": "2:16"
+},
+{
+"n": 8,
+"title": "Big Red",
+"duration": "1:49"
+},
+{
+"n": 9,
+"title": "Lonesome Road",
+"duration": "3:02"
+},
+{
+"n": 10,
+"title": "I'll Be There",
+"duration": "1:58"
+}
+]
+},
+{
+"id": "2007-lonesome-road",
+"title": "Lonesome Road",
+"year": "2007",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2007 - Lonesome Road",
+"tracks": [
+{
+"n": 1,
+"title": "Poor Man's Blues",
+"duration": "2:58"
+},
+{
+"n": 2,
+"title": "Me & My Gin",
+"duration": "3:30"
+},
+{
+"n": 3,
+"title": "Lonesome Road",
+"duration": "3:04"
+},
+{
+"n": 4,
+"title": "Young Man",
+"duration": "2:17"
+},
+{
+"n": 5,
+"title": "Big Red",
+"duration": "1:51"
+},
+{
+"n": 6,
+"title": "Send Me To The Electric Chair",
+"duration": "3:48"
+},
+{
+"n": 7,
+"title": "After You've Gone",
+"duration": "2:43"
+},
+{
+"n": 8,
+"title": "Nobody Knows When You're Down & Out",
+"duration": "3:10"
+},
+{
+"n": 9,
+"title": "Red, White & Blue",
+"duration": "2:26"
+},
+{
+"n": 10,
+"title": "Bring Me Some Lovin'",
+"duration": "2:21"
+}
+]
+},
+{
+"id": "2008-heartbreak-hotel",
+"title": "Heartbreak Hotel",
+"year": "2008",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2008 - Heartbreak Hotel",
+"tracks": [
+{
+"n": 1,
+"title": "Red White And Blue",
+"duration": "2:23"
+},
+{
+"n": 2,
+"title": "Double Dare",
+"duration": "2:31"
+},
+{
+"n": 3,
+"title": "Tiger In The Closet",
+"duration": "2:15"
+},
+{
+"n": 4,
+"title": "Young Man",
+"duration": "2:17"
+},
+{
+"n": 5,
+"title": "Big Red",
+"duration": "1:49"
+},
+{
+"n": 6,
+"title": "Lonesome Road",
+"duration": "3:02"
+},
+{
+"n": 7,
+"title": "Never Gonna Work",
+"duration": "2:06"
+},
+{
+"n": 8,
+"title": "I'll Be There",
+"duration": "2:00"
+},
+{
+"n": 9,
+"title": "Bring Your Loving",
+"duration": "2:22"
+},
+{
+"n": 10,
+"title": "Heartbreak Hotel",
+"duration": "2:14"
+}
+]
+},
+{
+"id": "2009-greenback-dollar-recorded-live-at-the-troubadour",
+"title": "Greenback Dollar: Recorded Live At The Troubadour",
+"year": "2009",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2009 - Greenback Dollar- Recorded Live At The Troubadour",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar (Live)",
+"duration": "3:15"
+},
+{
+"n": 2,
+"title": "Ashville Junction (Live)",
+"duration": "2:52"
+},
+{
+"n": 3,
+"title": "Brisbane Ladies (Live)",
+"duration": "3:19"
+},
+{
+"n": 4,
+"title": "Five Hundred Miles (Live)",
+"duration": "3:51"
+},
+{
+"n": 5,
+"title": "The Balladeer (Live)",
+"duration": "2:39"
+},
+{
+"n": 6,
+"title": "Ox Driver's Song (Live)",
+"duration": "3:30"
+},
+{
+"n": 7,
+"title": "Peggy-O (Live)",
+"duration": "3:16"
+},
+{
+"n": 8,
+"title": "Walkin' To Georgia (Live)",
+"duration": "2:02"
+},
+{
+"n": 9,
+"title": "Vandy (Live)",
+"duration": "2:16"
+},
+{
+"n": 10,
+"title": "John Henry (Live)",
+"duration": "6:50"
+}
+]
+},
+{
+"id": "2011-heartbreak-hotel-other-favorites",
+"title": "Heartbreak Hotel & Other Favorites",
+"year": "2011",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2011 - Heartbreak Hotel & Other Favorites",
+"tracks": [
+{
+"n": 1,
+"title": "Evangelina",
+"duration": "3:13"
+},
+{
+"n": 2,
+"title": "Big Red",
+"duration": "1:50"
+},
+{
+"n": 3,
+"title": "Double Dare",
+"duration": "2:30"
+},
+{
+"n": 4,
+"title": "Joy To The World",
+"duration": "2:58"
+},
+{
+"n": 5,
+"title": "Never Gonna Work",
+"duration": "2:07"
+},
+{
+"n": 6,
+"title": "Southbound",
+"duration": "2:31"
+},
+{
+"n": 7,
+"title": "Nashville",
+"duration": "3:38"
+},
+{
+"n": 8,
+"title": "Red, White And Blue Was His Shroud",
+"duration": "2:23"
+},
+{
+"n": 9,
+"title": "Heartbreak Hotel",
+"duration": "2:16"
+},
+{
+"n": 10,
+"title": "I'll Be There",
+"duration": "2:00"
+},
+{
+"n": 11,
+"title": "No No Song",
+"duration": "2:32"
+},
+{
+"n": 12,
+"title": "There's A Tiger In The Closet",
+"duration": "2:14"
+}
+]
+},
+{
+"id": "2012-this-little-light-of-mine-the-best-of-hoyt-axton",
+"title": "This Little Light of Mine: The Best of Hoyt Axton",
+"year": "2012",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2012 - This Little Light of Mine- The Best of Hoyt Axton",
+"tracks": [
+{
+"n": 1,
+"title": "Five Hundred Miles",
+"duration": "3:20"
+},
+{
+"n": 2,
+"title": "Greenback Dollar",
+"duration": "2:47"
+},
+{
+"n": 3,
+"title": "This Little Light of Mine",
+"duration": "2:38"
+},
+{
+"n": 4,
+"title": "We'll Sing in the Sunshine",
+"duration": "2:44"
+},
+{
+"n": 5,
+"title": "Thunder n' Lightnin'",
+"duration": "3:36"
+},
+{
+"n": 6,
+"title": "Gamblers Blues",
+"duration": "3:26"
+},
+{
+"n": 7,
+"title": "Trombone Charlie",
+"duration": "2:15"
+},
+{
+"n": 8,
+"title": "Ox Driver's Song",
+"duration": "4:00"
+},
+{
+"n": 9,
+"title": "Grizzly Bear",
+"duration": "1:58"
+},
+{
+"n": 10,
+"title": "Hoochie Koochie Man",
+"duration": "4:38"
+},
+{
+"n": 11,
+"title": "They've Been on Their Jobs Too Long",
+"duration": "2:46"
+},
+{
+"n": 12,
+"title": "Voodoo Blues",
+"duration": "3:11"
+}
+]
+},
+{
+"id": "2014-greenback-dollar-one-more-round",
+"title": "Greenback Dollar / One More Round",
+"year": "2014",
+"kind": "Singles & EPs",
+"shuffle": false,
+"folder": "2014 - Greenback Dollar - One More Round",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar",
+"duration": "2:47"
+},
+{
+"n": 2,
+"title": "One More Round",
+"duration": "2:47"
+}
+]
+},
+{
+"id": "2015-essential-gold",
+"title": "Essential Gold",
+"year": "2015",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2015 - Essential Gold",
+"tracks": [
+{
+"n": 1,
+"title": "Never Gonna Work",
+"duration": "2:10"
+},
+{
+"n": 2,
+"title": "Bring Your Lovin' When You Come",
+"duration": "2:27"
+},
+{
+"n": 3,
+"title": "Tiger in the Closet",
+"duration": "2:18"
+},
+{
+"n": 4,
+"title": "Red, White and Blue Was His Shroud",
+"duration": "2:30"
+},
+{
+"n": 5,
+"title": "L.A. Town",
+"duration": "2:30"
+},
+{
+"n": 6,
+"title": "Heartbreak Hotel",
+"duration": "2:20"
+},
+{
+"n": 7,
+"title": "Big Red",
+"duration": "1:54"
+},
+{
+"n": 8,
+"title": "Look Down That Lonesome Road",
+"duration": "3:07"
+},
+{
+"n": 9,
+"title": "I'll Be There",
+"duration": "2:04"
+},
+{
+"n": 10,
+"title": "Double Dare",
+"duration": "2:34"
+},
+{
+"n": 11,
+"title": "ABC Song",
+"duration": "2:51"
+},
+{
+"n": 12,
+"title": "To Love (Young Man)",
+"duration": "2:19"
+},
+{
+"n": 13,
+"title": "Greenback Dollar",
+"duration": "3:17"
+},
+{
+"n": 14,
+"title": "Thunder 'N Lightnin'",
+"duration": "2:45"
+},
+{
+"n": 15,
+"title": "This Little Light",
+"duration": "2:33"
+},
+{
+"n": 16,
+"title": "Trombone Charlie",
+"duration": "2:40"
+},
+{
+"n": 17,
+"title": "Ox Driver's Song",
+"duration": "3:29"
+},
+{
+"n": 18,
+"title": "Gambler's Blues",
+"duration": "3:19"
+},
+{
+"n": 19,
+"title": "We'll Sing in the Sunshine",
+"duration": "2:11"
+},
+{
+"n": 20,
+"title": "Five Hundred Miles",
+"duration": "3:55"
+},
+{
+"n": 21,
+"title": "Grizzly Bear",
+"duration": "1:55"
+},
+{
+"n": 22,
+"title": "(I'm Your) Hoochie Kootchie Man",
+"duration": "4:35"
+},
+{
+"n": 23,
+"title": "They've Been on Their Jobs Too Long",
+"duration": "2:42"
+},
+{
+"n": 24,
+"title": "Voodoo Blues",
+"duration": "3:07"
+}
+]
+},
+{
+"id": "2015-explodes-digitally-remastered",
+"title": "Explodes! (Digitally Remastered)",
+"year": "2015",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2015 - Explodes! (Digitally Remastered)",
+"tracks": [
+{
+"n": 1,
+"title": "Never Gonna Work",
+"duration": "2:10"
+},
+{
+"n": 2,
+"title": "Bring Your Lovin' When You Come",
+"duration": "2:27"
+},
+{
+"n": 3,
+"title": "Tiger in the Closet",
+"duration": "2:18"
+},
+{
+"n": 4,
+"title": "Red, White and Blue Was His Shroud",
+"duration": "2:30"
+},
+{
+"n": 5,
+"title": "L.A. Town",
+"duration": "2:30"
+},
+{
+"n": 6,
+"title": "Heartbreak Hotel",
+"duration": "2:20"
+},
+{
+"n": 7,
+"title": "Big Red",
+"duration": "1:54"
+},
+{
+"n": 8,
+"title": "Look Down That Lonesome Road",
+"duration": "3:07"
+},
+{
+"n": 9,
+"title": "I'll Be There",
+"duration": "2:04"
+},
+{
+"n": 10,
+"title": "Double Dare",
+"duration": "2:34"
+},
+{
+"n": 11,
+"title": "ABC Song",
+"duration": "2:51"
+},
+{
+"n": 12,
+"title": "To Love (Young Man)",
+"duration": "2:19"
+}
+]
+},
+{
+"id": "2015-saturday-s-child",
+"title": "Saturday's Child",
+"year": "2015",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2015 - Saturday's Child",
+"tracks": [
+{
+"n": 1,
+"title": "Saturday's Child",
+"duration": "3:04"
+},
+{
+"n": 2,
+"title": "Trombone Charlie",
+"duration": "2:44"
+},
+{
+"n": 3,
+"title": "St. James Infirmary",
+"duration": "3:14"
+},
+{
+"n": 4,
+"title": "Hootchie Coochie Man",
+"duration": "4:40"
+},
+{
+"n": 5,
+"title": "Willie Jean",
+"duration": "3:25"
+},
+{
+"n": 6,
+"title": "Movin' Down the Line",
+"duration": "2:46"
+},
+{
+"n": 7,
+"title": "They've Been On Their Jobs Too Long",
+"duration": "2:44"
+},
+{
+"n": 8,
+"title": "Gambler's Blues",
+"duration": "3:24"
+},
+{
+"n": 9,
+"title": "Angel Cake & Wine",
+"duration": "3:08"
+},
+{
+"n": 10,
+"title": "Make Me a Pallet",
+"duration": "3:48"
+},
+{
+"n": 11,
+"title": "Rise Up",
+"duration": "3:18"
+}
+]
+},
+{
+"id": "2016-my-griffin-is-gone",
+"title": "My Griffin Is Gone",
+"year": "2016",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2016 - My Griffin Is Gone",
+"tracks": [
+{
+"n": 1,
+"title": "Way Before the Time of Towns",
+"duration": "3:07"
+},
+{
+"n": 2,
+"title": "Beelzebub's Laughter",
+"duration": "2:44"
+},
+{
+"n": 3,
+"title": "On the Natural",
+"duration": "3:58"
+},
+{
+"n": 4,
+"title": "Sunshine Fields of Love",
+"duration": "3:39"
+},
+{
+"n": 5,
+"title": "It's All Right Now",
+"duration": "2:32"
+},
+{
+"n": 6,
+"title": "Gypsy Will",
+"duration": "3:01"
+},
+{
+"n": 7,
+"title": "Revelations",
+"duration": "3:02"
+},
+{
+"n": 8,
+"title": "Snowblind Friend",
+"duration": "2:47"
+},
+{
+"n": 9,
+"title": "Childhood's End",
+"duration": "2:35"
+},
+{
+"n": 10,
+"title": "Sunrise",
+"duration": "2:28"
+},
+{
+"n": 11,
+"title": "Kingswood Manor",
+"duration": "3:03"
+},
+{
+"n": 12,
+"title": "Chase Down the Sun",
+"duration": "2:24"
+}
+]
+},
+{
+"id": "2018-the-jeremiah-records-collection",
+"title": "The Jeremiah Records Collection",
+"year": "2018",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2018 - The Jeremiah Records Collection",
+"tracks": [
+{
+"n": 1,
+"title": "A Rusty Old Halo",
+"duration": "2:38"
+},
+{
+"n": 2,
+"title": "Della and the Dealer",
+"duration": "3:24"
+},
+{
+"n": 3,
+"title": "The Hotel Ritz",
+"duration": "2:18"
+},
+{
+"n": 4,
+"title": "So Hard to Give It All Up",
+"duration": "2:37"
+},
+{
+"n": 5,
+"title": "Evangelina",
+"duration": "3:29"
+},
+{
+"n": 6,
+"title": "Torpedo",
+"duration": "3:18"
+},
+{
+"n": 7,
+"title": "Viva Pancho Villa",
+"duration": "4:09"
+},
+{
+"n": 8,
+"title": "Wild Bull Rider",
+"duration": "3:27"
+},
+{
+"n": 9,
+"title": "In a Young Girl's Mind",
+"duration": "3:54"
+},
+{
+"n": 10,
+"title": "Gotta Keep Rollin'",
+"duration": "2:56"
+},
+{
+"n": 11,
+"title": "Everybody's Goin' on the Road",
+"duration": "3:10"
+},
+{
+"n": 12,
+"title": "Betty La Rue",
+"duration": "2:58"
+},
+{
+"n": 13,
+"title": "Boozers Are Losers",
+"duration": "3:15"
+},
+{
+"n": 14,
+"title": "Politicians",
+"duration": "2:29"
+},
+{
+"n": 15,
+"title": "(When You Dance) You Do Not Tango",
+"duration": "2:53"
+},
+{
+"n": 16,
+"title": "Smile as You Go By",
+"duration": "2:34"
+},
+{
+"n": 17,
+"title": "Where Did the Money Go?",
+"duration": "3:24"
+},
+{
+"n": 18,
+"title": "Some People Ride",
+"duration": "2:47"
+},
+{
+"n": 19,
+"title": "Midnight in Memphis",
+"duration": "3:35"
+},
+{
+"n": 20,
+"title": "Ease Your Pain",
+"duration": "2:27"
+},
+{
+"n": 21,
+"title": "The Battle of New Orleans",
+"duration": "3:25"
+},
+{
+"n": 22,
+"title": "The House Song",
+"duration": "3:20"
+},
+{
+"n": 23,
+"title": "Roanoke (Live)",
+"duration": "3:11"
+},
+{
+"n": 24,
+"title": "Wild Bull Rider (Live)",
+"duration": "3:49"
+},
+{
+"n": 25,
+"title": "Flash of Fire (Live)",
+"duration": "2:51"
+},
+{
+"n": 26,
+"title": "Boney Fingers (Live)",
+"duration": "2:33"
+},
+{
+"n": 27,
+"title": "Della and the Dealer (Live)",
+"duration": "3:14"
+},
+{
+"n": 28,
+"title": "When the Morning Comes (Live)",
+"duration": "3:05"
+},
+{
+"n": 29,
+"title": "Evangelina (Live)",
+"duration": "3:24"
+},
+{
+"n": 30,
+"title": "No No Song (Live)",
+"duration": "3:25"
+},
+{
+"n": 31,
+"title": "Mel Tillis/Roger Miller Story (Live)",
+"duration": "1:36"
+},
+{
+"n": 32,
+"title": "Lion in the Winter (Live)",
+"duration": "4:26"
+},
+{
+"n": 33,
+"title": "Jealous Man (Live)",
+"duration": "2:00"
+},
+{
+"n": 34,
+"title": "The Devil (Live)",
+"duration": "2:23"
+},
+{
+"n": 35,
+"title": "A Rusty Old Halo (Live)",
+"duration": "3:01"
+},
+{
+"n": 36,
+"title": "Bus Story (Live)",
+"duration": "7:00"
+},
+{
+"n": 37,
+"title": "An Old Greyhound (Live)",
+"duration": "2:51"
+},
+{
+"n": 38,
+"title": "Orange Blossom Special (Live)",
+"duration": "5:25"
+},
+{
+"n": 39,
+"title": "Will the Circle Be Unbroken (Live)",
+"duration": "6:33"
+},
+{
+"n": 40,
+"title": "Maybelline (Live)",
+"duration": "3:47"
+},
+{
+"n": 41,
+"title": "Never Been to Spain (Live)",
+"duration": "4:01"
+},
+{
+"n": 42,
+"title": "Joy to the World (Live)",
+"duration": "3:29"
+},
+{
+"n": 43,
+"title": "She's Too Lazy to Be Crazy",
+"duration": "2:09"
+},
+{
+"n": 44,
+"title": "Pistol Packin' Mama",
+"duration": "2:45"
+},
+{
+"n": 45,
+"title": "I Walk the Line",
+"duration": "3:00"
+},
+{
+"n": 46,
+"title": "Don't Fence Me In",
+"duration": "2:53"
+},
+{
+"n": 47,
+"title": "There Stands the Glass",
+"duration": "2:41"
+},
+{
+"n": 48,
+"title": "Warm Storms & Wild Flowers",
+"duration": "2:27"
+},
+{
+"n": 49,
+"title": "He Played Real Good for Free",
+"duration": "3:30"
+},
+{
+"n": 50,
+"title": "James Dean & the Junkman",
+"duration": "2:11"
+},
+{
+"n": 51,
+"title": "Indian Song",
+"duration": "3:36"
+},
+{
+"n": 52,
+"title": "Fearless the Wonder Dog",
+"duration": "1:53"
+},
+{
+"n": 53,
+"title": "Spin of the Wheel",
+"duration": "2:55"
+},
+{
+"n": 54,
+"title": "Heartbreak Hotel",
+"duration": "2:20"
+},
+{
+"n": 55,
+"title": "We Could've Been Sweethearts",
+"duration": "2:46"
+},
+{
+"n": 56,
+"title": "Young Man",
+"duration": "1:58"
+},
+{
+"n": 57,
+"title": "Mr. Winchester's Gun",
+"duration": "2:48"
+},
+{
+"n": 58,
+"title": "If You're a Cowboy",
+"duration": "3:54"
+},
+{
+"n": 59,
+"title": "American Dreams",
+"duration": "3:20"
+},
+{
+"n": 60,
+"title": "Mountain Right",
+"duration": "3:35"
+},
+{
+"n": 61,
+"title": "Cowboys on Horses with Wings",
+"duration": "3:32"
+},
+{
+"n": 62,
+"title": "I Collect Hearts",
+"duration": "3:13"
+},
+{
+"n": 63,
+"title": "We Were Buccaneers",
+"duration": "3:19"
+},
+{
+"n": 64,
+"title": "The Weight",
+"duration": "5:26"
+},
+{
+"n": 65,
+"title": "Thank You Lord",
+"duration": "4:27"
+},
+{
+"n": 66,
+"title": "Blue Prelude",
+"duration": "1:16"
+}
+]
+},
+{
+"id": "2020-let-s-spend-an-evening-with-hoyt-axton",
+"title": "Let's Spend an Evening with Hoyt Axton",
+"year": "2020",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2020 - Let's Spend an Evening with Hoyt Axton",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar",
+"duration": "3:18"
+},
+{
+"n": 2,
+"title": "The Balladeer",
+"duration": "2:36"
+},
+{
+"n": 3,
+"title": "Thunder 'n' Lightnin'",
+"duration": "2:45"
+},
+{
+"n": 4,
+"title": "House of the Rising Sun",
+"duration": "2:46"
+},
+{
+"n": 5,
+"title": "Midnight Special",
+"duration": "3:17"
+},
+{
+"n": 6,
+"title": "Gamblers Blues",
+"duration": "3:18"
+},
+{
+"n": 7,
+"title": "Hoochie Coochie Man",
+"duration": "4:34"
+},
+{
+"n": 8,
+"title": "Voodoo Blues",
+"duration": "3:06"
+},
+{
+"n": 9,
+"title": "Saturday's Child",
+"duration": "3:00"
+},
+{
+"n": 10,
+"title": "Five Hundred Miles",
+"duration": "4:00"
+},
+{
+"n": 11,
+"title": "Walking to Georgia",
+"duration": "2:07"
+},
+{
+"n": 12,
+"title": "Swannanoa Tunnel",
+"duration": "2:54"
+},
+{
+"n": 13,
+"title": "Rise Up",
+"duration": "2:31"
+},
+{
+"n": 14,
+"title": "We'll Sing in the Sunshine",
+"duration": "2:11"
+},
+{
+"n": 15,
+"title": "They've Been on Their Jobs Too Long",
+"duration": "2:42"
+},
+{
+"n": 16,
+"title": "Movin' Down the Line",
+"duration": "2:42"
+},
+{
+"n": 17,
+"title": "The Happy Song",
+"duration": "1:38"
+},
+{
+"n": 18,
+"title": "Willie Jean",
+"duration": "3:17"
+},
+{
+"n": 19,
+"title": "Make Me a Pallet on Your Floor",
+"duration": "2:17"
+},
+{
+"n": 20,
+"title": "Angel Cake and Wine",
+"duration": "3:37"
+}
+]
+},
+{
+"id": "2021-everybody-s-going-on-the-road",
+"title": "Everybody's Going on the Road",
+"year": "2021",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2021 - Everybody's Going on the Road",
+"tracks": [
+{
+"n": 1,
+"title": "Everybody's Going on the Road",
+"duration": "3:07"
+},
+{
+"n": 2,
+"title": "Where Did the Money Go?",
+"duration": "3:22"
+},
+{
+"n": 3,
+"title": "In a Young Girl's Mind",
+"duration": "2:37"
+},
+{
+"n": 4,
+"title": "Smile As You Go By",
+"duration": "2:31"
+},
+{
+"n": 5,
+"title": "Gotta Keep Rollin'",
+"duration": "2:53"
+},
+{
+"n": 6,
+"title": "When You Dance You Do Not Tango",
+"duration": "2:52"
+},
+{
+"n": 7,
+"title": "Torpedo",
+"duration": "3:19"
+},
+{
+"n": 8,
+"title": "Betty La Rue",
+"duration": "2:57"
+},
+{
+"n": 9,
+"title": "Battle of New Orleans",
+"duration": "3:22"
+},
+{
+"n": 10,
+"title": "Ease Your Pain",
+"duration": "2:26"
+},
+{
+"n": 11,
+"title": "Young Man",
+"duration": "2:20"
+},
+{
+"n": 12,
+"title": "Never Gonna Work",
+"duration": "2:08"
+},
+{
+"n": 13,
+"title": "Bring Your Lovin'",
+"duration": "2:24"
+},
+{
+"n": 14,
+"title": "Tiger In The Closet",
+"duration": "2:17"
+},
+{
+"n": 15,
+"title": "Red, White and Blue (Was His Shroud)",
+"duration": "2:28"
+},
+{
+"n": 16,
+"title": "Heartbreak Hotel",
+"duration": "2:23"
+},
+{
+"n": 17,
+"title": "Big Red",
+"duration": "1:49"
+},
+{
+"n": 18,
+"title": "Look Down That Lonesome Road",
+"duration": "3:04"
+},
+{
+"n": 19,
+"title": "I'll Be There",
+"duration": "2:02"
+},
+{
+"n": 20,
+"title": "Double Double Dare",
+"duration": "2:33"
+},
+{
+"n": 21,
+"title": "J.C. Holmes Blues",
+"duration": "2:11"
+},
+{
+"n": 22,
+"title": "Jailhouse Blues",
+"duration": "3:00"
+}
+]
+},
+{
+"id": "2021-explodes",
+"title": "Explodes!",
+"year": "2021",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2021 - Explodes!",
+"tracks": [
+{
+"n": 1,
+"title": "Never Gonna Work",
+"duration": "2:01"
+},
+{
+"n": 2,
+"title": "Bring Your Lovin' (When You Come)",
+"duration": "2:24"
+},
+{
+"n": 3,
+"title": "Tiger in the Closet",
+"duration": "2:14"
+},
+{
+"n": 4,
+"title": "Red White and Blue",
+"duration": "2:25"
+},
+{
+"n": 5,
+"title": "L.A. Town",
+"duration": "2:28"
+},
+{
+"n": 6,
+"title": "Heartbreak Hotel",
+"duration": "2:18"
+},
+{
+"n": 7,
+"title": "Big Red",
+"duration": "1:51"
+},
+{
+"n": 8,
+"title": "Lonesome Road",
+"duration": "3:04"
+},
+{
+"n": 9,
+"title": "I'll be There",
+"duration": "2:01"
+},
+{
+"n": 10,
+"title": "Double Dare",
+"duration": "2:32"
+},
+{
+"n": 11,
+"title": "ABC Song (Put on)",
+"duration": "2:48"
+},
+{
+"n": 12,
+"title": "Young Man",
+"duration": "2:14"
+}
+]
+},
+{
+"id": "2021-greenback-dollar",
+"title": "Greenback Dollar",
+"year": "2021",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2021 - Greenback Dollar",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar",
+"duration": "3:20"
+},
+{
+"n": 2,
+"title": "Thunder'n Lightnin'",
+"duration": "2:47"
+},
+{
+"n": 3,
+"title": "This Little Light",
+"duration": "2:38"
+},
+{
+"n": 4,
+"title": "Trombone Charlie",
+"duration": "2:44"
+},
+{
+"n": 5,
+"title": "Ox Driver's Song",
+"duration": "3:36"
+},
+{
+"n": 6,
+"title": "Gambler's Blues",
+"duration": "3:26"
+},
+{
+"n": 7,
+"title": "Sing in the Sunshine",
+"duration": "2:15"
+},
+{
+"n": 8,
+"title": "Five Hundred Miles",
+"duration": "4:00"
+},
+{
+"n": 9,
+"title": "Grizzley Bear",
+"duration": "1:58"
+},
+{
+"n": 10,
+"title": "Hoochie Koochie Man",
+"duration": "4:38"
+},
+{
+"n": 11,
+"title": "They've Been on Their Jobs Too Long",
+"duration": "2:46"
+},
+{
+"n": 12,
+"title": "Voodoo Blues",
+"duration": "3:11"
+}
+]
+},
+{
+"id": "2021-the-many-faces-of-hoyt-axton",
+"title": "The Many Faces of Hoyt Axton",
+"year": "2021",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2021 - The Many Faces of Hoyt Axton",
+"tracks": [
+{
+"n": 1,
+"title": "Blue Spirit Blues",
+"duration": "3:35"
+},
+{
+"n": 2,
+"title": "Poor Man's Blues",
+"duration": "2:59"
+},
+{
+"n": 3,
+"title": "Nobody Knows You When You're Down and Out",
+"duration": "3:11"
+},
+{
+"n": 4,
+"title": "Hush Hush Sweet Charlotte",
+"duration": "2:02"
+},
+{
+"n": 5,
+"title": "Greenback Dollar",
+"duration": "3:17"
+},
+{
+"n": 6,
+"title": "Thunder 'n Lightnin'",
+"duration": "2:45"
+},
+{
+"n": 7,
+"title": "This Little Light (I'm Gonna Let My Little Light Shine)",
+"duration": "2:32"
+},
+{
+"n": 8,
+"title": "Trombone Cholly",
+"duration": "2:40"
+},
+{
+"n": 9,
+"title": "Ox Driver's Song",
+"duration": "3:23"
+},
+{
+"n": 10,
+"title": "We'll Sing in the Sunshine",
+"duration": "2:08"
+},
+{
+"n": 11,
+"title": "Five Hundred Miles",
+"duration": "3:56"
+},
+{
+"n": 12,
+"title": "Grizzly Bear",
+"duration": "1:55"
+},
+{
+"n": 13,
+"title": "Hoochie Coochie Man",
+"duration": "4:35"
+},
+{
+"n": 14,
+"title": "ABC Song",
+"duration": "2:51"
+},
+{
+"n": 15,
+"title": "L.A. Town",
+"duration": "2:31"
+},
+{
+"n": 16,
+"title": "Black Mountain",
+"duration": "3:10"
+},
+{
+"n": 17,
+"title": "Send Me to the Electric Chair",
+"duration": "3:50"
+},
+{
+"n": 18,
+"title": "After You've Gone",
+"duration": "2:44"
+},
+{
+"n": 19,
+"title": "Me and My Gin",
+"duration": "3:34"
+}
+]
+},
+{
+"id": "2022-joy-to-the-world-the-definitive-collection",
+"title": "Joy to the World - The Definitive Collection",
+"year": "2022",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2022 - Joy to the World - The Definitive Collection",
+"tracks": [
+{
+"n": 1,
+"title": "When the Morning Comes",
+"duration": "3:35"
+},
+{
+"n": 2,
+"title": "Joy to the World",
+"duration": "2:49"
+},
+{
+"n": 3,
+"title": "Never Been to Spain",
+"duration": "3:29"
+},
+{
+"n": 4,
+"title": "Alice in Wonderland",
+"duration": "3:22"
+},
+{
+"n": 5,
+"title": "Geronimo\u2019s Cadillac",
+"duration": "3:46"
+},
+{
+"n": 6,
+"title": "Jambalaya (On the Bayou)",
+"duration": "3:10"
+},
+{
+"n": 7,
+"title": "Lion in the Winter (feat. Linda Ronstadt)",
+"duration": "3:24"
+},
+{
+"n": 8,
+"title": "Country Anthem",
+"duration": "1:27"
+},
+{
+"n": 9,
+"title": "Roll Your Own",
+"duration": "2:15"
+},
+{
+"n": 10,
+"title": "Southbound",
+"duration": "2:35"
+},
+{
+"n": 11,
+"title": "Telephone Booth",
+"duration": "3:30"
+},
+{
+"n": 12,
+"title": "Flash of Fire",
+"duration": "2:45"
+},
+{
+"n": 13,
+"title": "Speedtrap (Out of State Cars)",
+"duration": "2:30"
+},
+{
+"n": 14,
+"title": "Snowblind Friend",
+"duration": "2:56"
+},
+{
+"n": 15,
+"title": "Poncho and Lefty",
+"duration": "3:09"
+},
+{
+"n": 16,
+"title": "Pet Parade",
+"duration": "3:05"
+},
+{
+"n": 17,
+"title": "Funeral of the King",
+"duration": "2:59"
+},
+{
+"n": 18,
+"title": "Sweet Misery",
+"duration": "3:26"
+},
+{
+"n": 19,
+"title": "Whisper in a Velvet Night",
+"duration": "3:26"
+},
+{
+"n": 20,
+"title": "Hey Mr. Pilot Man",
+"duration": "2:54"
+},
+{
+"n": 21,
+"title": "Evangelina",
+"duration": "3:36"
+},
+{
+"n": 22,
+"title": "My Carolina Sunshine Girl",
+"duration": "0:55"
+},
+{
+"n": 23,
+"title": "The Heart You Brake (May Be Your Own)",
+"duration": "3:05"
+},
+{
+"n": 24,
+"title": "Billy\u2019s Theme",
+"duration": "2:40"
+},
+{
+"n": 25,
+"title": "You\u2019re the Hangnail in My Life",
+"duration": "2:03"
+},
+{
+"n": 26,
+"title": "I Love to Sing",
+"duration": "1:57"
+},
+{
+"n": 27,
+"title": "Boney Fingers",
+"duration": "3:10"
+},
+{
+"n": 28,
+"title": "Better Lovin\u2019 Man",
+"duration": "5:18"
+},
+{
+"n": 29,
+"title": "I Dream of Highways",
+"duration": "2:38"
+},
+{
+"n": 30,
+"title": "Lay, Lady, Lay",
+"duration": "3:07"
+},
+{
+"n": 31,
+"title": "Ease Your Pain",
+"duration": "2:48"
+},
+{
+"n": 32,
+"title": "Idol of the Band",
+"duration": "3:15"
+},
+{
+"n": 33,
+"title": "No No Song",
+"duration": "2:36"
+},
+{
+"n": 34,
+"title": "The Way of the World",
+"duration": "2:25"
+},
+{
+"n": 35,
+"title": "You Taught Me How to Cry",
+"duration": "3:18"
+},
+{
+"n": 36,
+"title": "Lightnin\u2019 Bar Blues",
+"duration": "3:06"
+},
+{
+"n": 37,
+"title": "Left My Girl in the Mountains",
+"duration": "2:40"
+},
+{
+"n": 38,
+"title": "In a Young Girl\u2019s Mind",
+"duration": "3:31"
+},
+{
+"n": 39,
+"title": "Little White Moon",
+"duration": "2:41"
+},
+{
+"n": 40,
+"title": "Life Machine",
+"duration": "3:37"
+},
+{
+"n": 41,
+"title": "Oklahoma Song",
+"duration": "2:23"
+},
+{
+"n": 42,
+"title": "Darrell & Judy",
+"duration": "2:30"
+},
+{
+"n": 43,
+"title": "Free Sailing",
+"duration": "2:52"
+},
+{
+"n": 44,
+"title": "Nashville",
+"duration": "3:43"
+},
+{
+"n": 45,
+"title": "Penny Whistle Song",
+"duration": "1:25"
+},
+{
+"n": 46,
+"title": "Water for My Horses",
+"duration": "3:08"
+},
+{
+"n": 47,
+"title": "The Devil",
+"duration": "1:56"
+},
+{
+"n": 48,
+"title": "Paid in Advance",
+"duration": "2:32"
+},
+{
+"n": 49,
+"title": "The Pusher",
+"duration": "5:24"
+},
+{
+"n": 50,
+"title": "Less Than the Song",
+"duration": "3:03"
+}
+]
+},
+{
+"id": "2022-loves-to-sing",
+"title": "Loves to Sing",
+"year": "2022",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2022 - Loves to Sing",
+"tracks": [
+{
+"n": 1,
+"title": "Sweet Evangelina",
+"duration": "3:12"
+},
+{
+"n": 2,
+"title": "Hush, Hush Sweet Charlotte",
+"duration": "1:59"
+},
+{
+"n": 3,
+"title": "Della and the Dealer",
+"duration": "3:17"
+},
+{
+"n": 4,
+"title": "Boney Fingers",
+"duration": "2:19"
+},
+{
+"n": 5,
+"title": "I Love to Sing",
+"duration": "1:52"
+},
+{
+"n": 6,
+"title": "Lion in the Winter",
+"duration": "3:01"
+},
+{
+"n": 7,
+"title": "No No Song",
+"duration": "2:37"
+},
+{
+"n": 8,
+"title": "Nashville",
+"duration": "3:37"
+},
+{
+"n": 9,
+"title": "Southbound",
+"duration": "2:30"
+},
+{
+"n": 10,
+"title": "Joy to the World",
+"duration": "2:57"
+}
+]
+},
+{
+"id": "2025-brisbane-balladeer",
+"title": "Brisbane Balladeer",
+"year": "2025",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2025 - Brisbane Balladeer",
+"tracks": [
+{
+"n": 1,
+"title": "Walkin' To Georgia",
+"duration": "2:04"
+},
+{
+"n": 2,
+"title": "Brisbane Ladies",
+"duration": "3:21"
+},
+{
+"n": 3,
+"title": "John Henry",
+"duration": "6:50"
+},
+{
+"n": 4,
+"title": "The Balladeer",
+"duration": "2:41"
+},
+{
+"n": 5,
+"title": "Vandy",
+"duration": "2:18"
+},
+{
+"n": 6,
+"title": "Peggy-O",
+"duration": "3:18"
+},
+{
+"n": 7,
+"title": "Five Hundred Miles",
+"duration": "3:53"
+},
+{
+"n": 8,
+"title": "Ox Driver's Song",
+"duration": "3:29"
+},
+{
+"n": 9,
+"title": "Greenback Dollar",
+"duration": "3:17"
+}
+]
+},
+{
+"id": "2026-gambler-s-blues",
+"title": "Gambler's Blues",
+"year": "2026",
+"kind": "Albums",
+"shuffle": true,
+"folder": "2026 - Gambler's Blues",
+"tracks": [
+{
+"n": 1,
+"title": "Saturday's Child",
+"duration": "3:00"
+},
+{
+"n": 2,
+"title": "Trombone Charlie",
+"duration": "2:36"
+},
+{
+"n": 3,
+"title": "St. James Infirmary",
+"duration": "3:02"
+},
+{
+"n": 4,
+"title": "Hoochie Koochieman",
+"duration": "4:28"
+},
+{
+"n": 5,
+"title": "Willie Jean",
+"duration": "3:13"
+},
+{
+"n": 6,
+"title": "Movin' Down the Line",
+"duration": "2:37"
+},
+{
+"n": 7,
+"title": "They've Been on Their Jobs Too Long",
+"duration": "2:35"
+},
+{
+"n": 8,
+"title": "Gamblers Blues",
+"duration": "3:17"
+},
+{
+"n": 9,
+"title": "Voodoo Blues",
+"duration": "2:55"
+},
+{
+"n": 10,
+"title": "Angel Cake and Wine",
+"duration": "3:26"
+},
+{
+"n": 11,
+"title": "Make Me a Pallet",
+"duration": "3:08"
+},
+{
+"n": 12,
+"title": "Rise Up",
+"duration": "2:22"
+}
+]
+},
+{
+"id": "2026-greenback-dollar",
+"title": "Greenback Dollar",
+"year": "2026",
+"kind": "Albums",
+"shuffle": false,
+"folder": "2026 - Greenback Dollar",
+"tracks": [
+{
+"n": 1,
+"title": "Greenback Dollar",
+"duration": "2:48"
+},
+{
+"n": 2,
+"title": "Shepherd",
+"duration": "3:16"
+},
+{
+"n": 3,
+"title": "Sing in the Sunshine",
+"duration": "2:10"
+},
+{
+"n": 4,
+"title": "Crawdad",
+"duration": "2:32"
+},
+{
+"n": 5,
+"title": "Mountain High, Valley Low",
+"duration": "3:16"
+},
+{
+"n": 6,
+"title": "The Fifth Day of July",
+"duration": "6:08"
+},
+{
+"n": 7,
+"title": "Jane, Jane, Jane",
+"duration": "3:01"
+},
+{
+"n": 8,
+"title": "The Happy Song",
+"duration": "1:36"
+},
+{
+"n": 9,
+"title": "The Far Side of the Hill",
+"duration": "4:11"
+},
+{
+"n": 10,
+"title": "I Feel a Warmth",
+"duration": "2:53"
+}
+]
+}
+]
+}

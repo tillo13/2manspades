@@ -62,6 +62,7 @@
     </script>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='jukebox.css') }}">
 
     <!-- PWA and Mobile App Settings -->
     <link rel="manifest" href="/static/manifest.json">
@@ -308,6 +309,41 @@
         </div>
     </div>
 
+    <!-- Hoyt Axton jukebox (bubble bottom-left; panel = bottom sheet on mobile, side rail on desktop) -->
+    <div class="jb-bubble" id="jbBubble" title="Hoyt Axton jukebox">
+        <img id="jbBubbleImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="Hoyt Axton jukebox">
+        <span class="jb-bubble-label" id="jbBubbleLabel"></span>
+    </div>
+    <div class="jb-toast" id="jbToast"></div>
+    <div class="jb-panel" id="jbPanel">
+        <div class="jb-header">
+            <span>Hoyt Axton</span>
+            <div class="jb-tabs">
+                <button id="jbTabNow" class="active">Now playing</button>
+                <button id="jbTabBrowse">Records</button>
+            </div>
+            <button class="jb-close" id="jbClose" aria-label="Close">×</button>
+        </div>
+        <div class="jb-now" id="jbNow">
+            <img id="jbCover" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
+            <div class="jb-title" id="jbTitle">Hoyt Axton</div>
+            <div class="jb-album" id="jbAlbum">Tap play for some Hoyt</div>
+            <div class="jb-barwrap" id="jbBarWrap"><div class="jb-bar" id="jbBar"></div></div>
+            <div class="jb-time" id="jbTime"></div>
+            <div class="jb-controls">
+                <button id="jbPrev" aria-label="Previous">⏮</button>
+                <button id="jbPlay" class="jb-big" aria-label="Play">▶</button>
+                <button id="jbNext" aria-label="Next">⏭</button>
+            </div>
+            <div class="jb-mode" id="jbMode"></div>
+            <button class="jb-shuffle" id="jbShuffle">Shuffle all the records</button>
+        </div>
+        <div class="jb-browse" id="jbBrowse" hidden>
+            <input class="jb-search" id="jbSearch" type="search" placeholder="Find a song or record…">
+            <div class="jb-albums" id="jbAlbums"></div>
+        </div>
+    </div>
+
     <!-- Difficulty Modal -->
     <div id="difficultyModal" class="difficulty-modal" onclick="closeDifficultyModal(event)">
         <div class="difficulty-content" onclick="event.stopPropagation()">
@@ -344,6 +380,7 @@
     </footer>
 
     <script src="{{ url_for('static', filename='game.js') }}"></script>
+    <script src="{{ url_for('static', filename='jukebox.js') }}"></script>
 </body>
 
 </html>

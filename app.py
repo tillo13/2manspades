@@ -318,6 +318,11 @@ def chat_response():
         print(f"[CHAT] Using fallback: '{fallback}'")
         return jsonify({'response': fallback})
 
+@app.route('/jukebox/audio/<album_id>/<int:n>')
+def jukebox_audio(album_id, n):
+    from utilities.jukebox import stream_track
+    return stream_track(album_id, n)
+
 @app.route('/state')
 def get_state():
     global session_tracker
