@@ -85,3 +85,14 @@ body.jb-open .jb-bubble, body.jb-open .jb-toast, body.jb-open .chat-bubble-icon,
 
 .jb-all-tile { width: 100%; aspect-ratio: 1; border-radius: 6px; background: #222; color: #f6c453; font-size: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
 .jb-album.current .jb-all-tile { outline: 3px solid #f6c453; }
+
+/* now-playing strip inside Marta's chat (narrow layouts only: on desktop the jukebox is docked beside it) */
+.jb-mini { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #222; color: #fff; border-bottom: 2px solid #f6c453; }
+.jb-mini img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex: none; cursor: pointer; }
+.jb-mini-text { flex: 1; min-width: 0; cursor: pointer; }
+.jb-mini-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jb-mini-album { font-size: 12px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jb-mini-btn { flex: none; width: 40px; height: 40px; min-width: 0; max-width: 40px; padding: 0; margin: 0; border: none; border-radius: 50%; background: #f6c453; color: #222; font-size: 18px; line-height: 1; cursor: pointer; }
+#jbMiniNext { background: #444; color: #fff; }
+.jb-mini[hidden] { display: none; }
+@media (min-width: 1150px) { .jb-mini { display: none !important; } }

@@ -99,6 +99,10 @@
             toast.textContent = `${t.title} — ${a.title}`; toast.dataset.last = `${cur.album}/${cur.n}`;
             toast.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
         }
+        const mini = $('jbMini'); if (mini) {
+            mini.hidden = !t;
+            if (t) { $('jbMiniImg').src = cover; $('jbMiniTitle').textContent = t.title; $('jbMiniAlbum').textContent = `${a.title} · ${a.year}`; $('jbMiniPlay').textContent = playing ? '❚❚' : '▶'; }
+        }
         document.querySelectorAll('#jbAlbums .jb-album').forEach(el => el.classList.toggle('current', el.dataset.id === '__all__' ? (state.mode === 'shuffle' && !!a) : (!!a && state.mode === 'album' && el.dataset.id === a.id)));
     }
     function renderAlbums(filter) {
@@ -164,6 +168,11 @@
         $('jbBubble').onclick = () => { if ($('jbBubble').classList.contains('needs-tap')) { toggle(); return; } if (!state.album) { toggle(); return; } openPanel(!panelOpen); };
         $('jbClose').onclick = () => openPanel(false);
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
+        if ($('jbMini')) {
+            $('jbMiniPlay').onclick = toggle; $('jbMiniNext').onclick = () => next();
+            const toJukebox = () => { if (typeof chatOpen !== 'undefined' && chatOpen && typeof toggleChat === 'function') toggleChat(); showPanel('now'); openPanel(true); };
+            $('jbMiniImg').onclick = toJukebox; $('jbMiniText').onclick = toJukebox;
+        }
         $('jbTabNow').onclick = () => showPanel('now');
         $('jbTabBrowse').onclick = () => { showPanel('browse'); $('jbSearch').blur(); };
         $('jbTabSearch').onclick = () => { showPanel('browse'); $('jbSearch').focus(); };

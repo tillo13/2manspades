@@ -300,6 +300,12 @@
             <span>Chat with Marta</span>
             <button class="chat-close" onclick="toggleChat()">×</button>
         </div>
+        <div class="jb-mini" id="jbMini" hidden>
+            <img id="jbMiniImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
+            <div class="jb-mini-text" id="jbMiniText"><div class="jb-mini-title" id="jbMiniTitle"></div><div class="jb-mini-album" id="jbMiniAlbum"></div></div>
+            <button class="jb-mini-btn" id="jbMiniPlay" aria-label="Play or pause">▶</button>
+            <button class="jb-mini-btn" id="jbMiniNext" aria-label="Next">⏭</button>
+        </div>
         <div class="chat-messages" id="chatMessages">
             <div class="marta-message">Hey there! Ready to play some spades?</div>
         </div>
