@@ -1,0 +1,247 @@
+/* /game/<id> page, on top of stats.css. */
+.game-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+}
+.game-result {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0.5rem 0;
+}
+.game-result.won { color: #28a745; }
+.game-result.lost { color: #dc3545; }
+.game-meta {
+    color: #666;
+    font-size: 0.9rem;
+}
+.final-score {
+    font-size: 1.5rem;
+    margin: 0.75rem 0;
+}
+.final-score .player-score { color: #667eea; font-weight: bold; }
+.final-score .computer-score { color: #fd7e14; font-weight: bold; }
+
+.hand-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #dee2e6;
+}
+.hand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.hand-number {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+}
+.hand-score {
+    font-size: 0.95rem;
+}
+.hand-score .player { color: #667eea; font-weight: 600; }
+.hand-score .computer { color: #fd7e14; font-weight: 600; }
+
+.bids-section {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+}
+.bid-item {
+    display: inline;
+}
+.bid-item.blind .bid-amount {
+    color: #667eea;
+    font-weight: bold;
+}
+.bid-item.nil .bid-amount {
+    color: #fd7e14;
+    font-weight: bold;
+}
+.bid-player {
+    color: #333;
+}
+.bid-amount {
+    font-weight: 600;
+    color: #333;
+}
+
+.tricks-section {
+    margin-bottom: 0.75rem;
+}
+.tricks-hint {
+    font-size: 0.75rem;
+    color: #999;
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+.tricks-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+.trick {
+    text-align: center;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    min-width: 32px;
+}
+.trick.player-won {
+    background: #e8f4fd;
+    border: 1px solid #667eea;
+    color: #667eea;
+}
+.trick.computer-won {
+    background: #fff3e6;
+    border: 1px solid #fd7e14;
+    color: #fd7e14;
+}
+.trick-number {
+    font-weight: bold;
+}
+
+.trick-detail {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.trick-detail-item {
+    background: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    border: 1px solid #e9ecef;
+}
+.trick-detail-item.winner {
+    border-color: #28a745;
+}
+.card-played {
+    font-size: 0.9rem;
+}
+.card-played .hearts, .card-played .diamonds { color: #dc3545; }
+.card-played .spades, .card-played .clubs { color: #333; }
+
+.scoring-explanation {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.5;
+    border: 1px solid #e9ecef;
+}
+
+.game-end-message {
+    text-align: center;
+    padding: 1rem;
+    background: #d4edda;
+    border: 1px solid #28a745;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+.game-end-message.lost {
+    background: #f8d7da;
+    border-color: #dc3545;
+}
+.game-end-text {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.expand-tricks {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    color: #666;
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+}
+.expand-tricks:hover {
+    background: #dee2e6;
+}
+.trick-history {
+    display: none;
+    margin-top: 0.75rem;
+}
+.trick-history.show {
+    display: block;
+}
+
+.incomplete-data-note {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    color: #856404;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.game-timing {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.85rem;
+}
+.timing-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+}
+.timing-label {
+    color: #666;
+}
+.timing-value {
+    color: #333;
+    font-weight: 500;
+}
+.timing-highlight {
+    color: #fd7e14;
+    font-weight: bold;
+}
+
+.time-gap-indicator {
+    text-align: center;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    background: #fff3cd;
+    border-radius: 6px;
+    color: #856404;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.hand-timing-info {
+    font-size: 0.75rem;
+    color: #999;
+    margin-bottom: 0.5rem;
+    font-style: italic;
+}
+
+@media (max-width: 480px) {
+    .trick-detail {
+        grid-template-columns: 1fr;
+    }
+}
+    

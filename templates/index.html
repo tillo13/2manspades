@@ -1,29 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two-Man Spades - Free Online 2-Player Spades Card Game</title>
-    <meta name="description" content="Play Two-Man Spades free online. A unique 2-player trick-taking card game with blind bidding, parity scoring, and AI opponent Marta. No download required.">
+{% extends "base.html" %}
+{% block title %}Two-Man Spades - Free Online 2-Player Spades Card Game{% endblock %}
+{% block meta %}
+        <meta name="description" content="Play Two-Man Spades free online. A unique 2-player trick-taking card game with blind bidding, parity scoring, and AI opponent Marta. No download required.">
     <link rel="canonical" href="https://2manspades.com/">
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="Two-Man Spades - Free Online 2-Player Card Game">
     <meta property="og:description" content="Play Two-Man Spades free online. Trick-taking card game with blind bidding, parity scoring, and AI opponent Marta.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://2manspades.com/">
-    <meta property="og:image" content="https://2manspades.com/static/og-card.svg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="Two-Man Spades">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Two-Man Spades - Free Online 2-Player Card Game">
     <meta name="twitter:description" content="Play Two-Man Spades free online. Trick-taking card game with blind bidding, parity scoring, and AI opponent Marta.">
-    <meta name="twitter:image" content="https://2manspades.com/static/og-card.svg">
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -52,27 +43,19 @@
     }
     </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'G-F5VP0CXERK');
-    </script>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='jukebox.css') }}">
-
     <!-- PWA and Mobile App Settings -->
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Two-Man Spades">
-</head>
-
-<body>
+{% endblock %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jukebox.css') }}">
+{% endblock %}
+{% block body_attrs %} data-logged-in="{{ 'true' if session.get('user') else 'false' }}"{% endblock %}
+{% block content %}
     <h1 class="sr-only">Two-Man Spades - Free Online 2-Player Card Game</h1>
     {% if suspected_player %}
     <!-- Login prompt for suspected known player -->
@@ -385,20 +368,8 @@
             <div class="difficulty-note">Takes effect next game</div>
         </div>
     </div>
-
-    <!-- Cross-links footer -->
-    <footer class="site-footer">
-        <nav aria-label="Site navigation">
-            <a href="/">Play</a>
-            <a href="/instructions">How to Play</a>
-            <a href="/stats">Leaderboard</a>
-        </nav>
-        <p>&copy; 2026 <a href="https://2manspades.com">2manspades.com</a></p>
-    </footer>
-
-    <script>window.JB_LOGGED_IN = {{ 'true' if session.get('user') else 'false' }};</script>
-    <script src="{{ url_for('static', filename='game.js') }}"></script>
-    <script src="{{ url_for('static', filename='jukebox.js') }}"></script>
-</body>
-
-</html>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jukebox.js') }}"></script>
+{% endblock %}

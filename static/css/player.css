@@ -1,0 +1,117 @@
+/* /player/<name> page, on top of stats.css. */
+.player-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    color: white;
+}
+.player-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+}
+.player-summary {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+.summary-stat {
+    text-align: center;
+}
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+.summary-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.game-row {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    gap: 1rem;
+    transition: background 0.15s;
+}
+.game-row:hover {
+    background: #f8f9fa;
+}
+.game-date {
+    min-width: 100px;
+    font-size: 0.9rem;
+}
+.game-date a {
+    color: #667eea;
+    text-decoration: none;
+}
+.game-date a:hover {
+    text-decoration: underline;
+}
+.game-result {
+    font-weight: bold;
+    min-width: 50px;
+    text-align: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+.game-result.won {
+    background: #d4edda;
+    color: #155724;
+}
+.game-result.lost {
+    background: #f8d7da;
+    color: #721c24;
+}
+.game-result.abandoned {
+    background: #e9ecef;
+    color: #6c757d;
+}
+.game-row.abandoned {
+    opacity: 0.7;
+}
+.game-score {
+    font-size: 1rem;
+    min-width: 80px;
+}
+.game-score .player-score { color: #667eea; font-weight: 600; }
+.game-score .computer-score { color: #fd7e14; font-weight: 600; }
+.game-meta {
+    color: #666;
+    font-size: 0.85rem;
+    flex: 1;
+}
+.game-reason {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+@media (max-width: 600px) {
+    .game-row {
+        flex-wrap: wrap;
+    }
+    .game-date {
+        min-width: auto;
+        flex: 1;
+    }
+    .game-meta {
+        width: 100%;
+        margin-top: 0.25rem;
+    }
+    .player-summary {
+        gap: 1rem;
+    }
+}
+    

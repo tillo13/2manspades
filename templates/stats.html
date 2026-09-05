@@ -1,41 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaderboard &amp; Stats - Two-Man Spades</title>
-    <meta name="description" content="Two-Man Spades leaderboard and player statistics. See win rates, achievements, special card stats, and per-hand breakdowns.">
+{% extends "base.html" %}
+{% block title %}Leaderboard &amp; Stats - Two-Man Spades{% endblock %}
+{% block meta %}
+        <meta name="description" content="Two-Man Spades leaderboard and player statistics. See win rates, achievements, special card stats, and per-hand breakdowns.">
     <link rel="canonical" href="https://2manspades.com/stats">
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="Leaderboard &amp; Stats - Two-Man Spades">
     <meta property="og:description" content="Two-Man Spades leaderboard and player statistics. See win rates, achievements, and per-hand breakdowns.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://2manspades.com/stats">
-    <meta property="og:image" content="https://2manspades.com/static/og-card.svg">
-    <meta property="og:site_name" content="Two-Man Spades">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Leaderboard &amp; Stats - Two-Man Spades">
     <meta name="twitter:description" content="Two-Man Spades leaderboard and player statistics. See win rates, achievements, and per-hand breakdowns.">
-    <meta name="twitter:image" content="https://2manspades.com/static/og-card.svg">
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'G-F5VP0CXERK');
-    </script>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}">
-</head>
-
-<body>
+{% endblock %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
+{% endblock %}
+{% block content %}
     <a href="/" class="back-button">← Back to Game</a>
 
     <div class="container">
@@ -712,47 +694,7 @@
         {% endif %}
 
     </div>
-
-    <script>
-        function toggleSection(sectionId) {
-            const section = document.getElementById(sectionId);
-            const chevronId = sectionId.replace('Section', 'Chevron');
-            const chevron = document.getElementById(chevronId);
-
-            section.classList.toggle('expanded');
-
-            if (section.classList.contains('expanded')) {
-                chevron.textContent = '▲';
-            } else {
-                chevron.textContent = '▼';
-            }
-        }
-
-        // Add smooth scrolling for mobile and touch interactions
-        document.addEventListener('DOMContentLoaded', function () {
-            // Add click handlers for cards on mobile for better interaction
-            if (window.innerWidth <= 767) {
-                document.querySelectorAll('.player-card').forEach(card => {
-                    card.addEventListener('click', function () {
-                        this.style.transform = 'scale(0.98)';
-                        setTimeout(() => {
-                            this.style.transform = '';
-                        }, 150);
-                    });
-                });
-            }
-        });
-    </script>
-
-    <!-- Cross-links footer -->
-    <footer class="site-footer" style="text-align:center;padding:2rem 1rem;margin-top:2rem;border-top:1px solid #ddd;font-size:14px;color:#666;">
-        <nav aria-label="Site navigation" style="margin-bottom:0.5rem;">
-            <a href="/" style="color:#3182ce;margin:0 12px;">Play</a>
-            <a href="/instructions" style="color:#3182ce;margin:0 12px;">How to Play</a>
-            <a href="/stats" style="color:#3182ce;margin:0 12px;">Leaderboard</a>
-        </nav>
-        <p style="margin:0;">&copy; 2026 <a href="https://2manspades.com" style="color:#3182ce;">2manspades.com</a></p>
-    </footer>
-</body>
-
-</html>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+{% endblock %}

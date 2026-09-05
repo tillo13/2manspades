@@ -223,7 +223,7 @@
         if (state.album && state.playing) play(current(), state.pos);
     }
 
-    if (!window.JB_LOGGED_IN) {
+    if (!(document.body.dataset.loggedIn === 'true')) {
         // logged out: the sheet still opens (Marta works), the Hoyt tab shows the login card,
         // nothing is fetched or resumed, and the bubble is Marta's speech icon until they sign in
         const lock = () => { const l = $('jbLocked'); if (l) l.hidden = false; document.body.classList.add('jb-locked-mode');

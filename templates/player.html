@@ -1,149 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ player.player_name }} - Game History | Two-Man Spades</title>
-    <meta name="description" content="{{ player.player_name }}'s game history and stats on Two-Man Spades. Win rate, scores, and hand-by-hand breakdowns.">
+{% extends "base.html" %}
+{% block title %}{{ player.player_name }} - Game History | Two-Man Spades{% endblock %}
+{% block meta %}
+        <meta name="description" content="{{ player.player_name }}'s game history and stats on Two-Man Spades. Win rate, scores, and hand-by-hand breakdowns.">
     <link rel="canonical" href="https://2manspades.com/player/{{ player.player_name }}">
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="{{ player.player_name }} - Game History | Two-Man Spades">
     <meta property="og:description" content="{{ player.player_name }}'s game history and stats on Two-Man Spades.">
     <meta property="og:type" content="profile">
     <meta property="og:url" content="https://2manspades.com/player/{{ player.player_name }}">
-    <meta property="og:image" content="https://2manspades.com/static/og-card.svg">
-    <meta property="og:site_name" content="Two-Man Spades">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ player.player_name }} - Game History | Two-Man Spades">
     <meta name="twitter:description" content="{{ player.player_name }}'s game history and stats on Two-Man Spades.">
-    <meta name="twitter:image" content="https://2manspades.com/static/og-card.svg">
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}">
-    <style>
-        .player-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            padding: 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-            color: white;
-        }
-        .player-header h1 {
-            margin: 0 0 0.5rem 0;
-            font-size: 2rem;
-        }
-        .player-summary {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-        }
-        .summary-stat {
-            text-align: center;
-        }
-        .summary-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .summary-label {
-            font-size: 0.85rem;
-            opacity: 0.9;
-        }
-
-        .games-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .game-row {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            gap: 1rem;
-            transition: background 0.15s;
-        }
-        .game-row:hover {
-            background: #f8f9fa;
-        }
-        .game-date {
-            min-width: 100px;
-            font-size: 0.9rem;
-        }
-        .game-date a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        .game-date a:hover {
-            text-decoration: underline;
-        }
-        .game-result {
-            font-weight: bold;
-            min-width: 50px;
-            text-align: center;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-        .game-result.won {
-            background: #d4edda;
-            color: #155724;
-        }
-        .game-result.lost {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .game-result.abandoned {
-            background: #e9ecef;
-            color: #6c757d;
-        }
-        .game-row.abandoned {
-            opacity: 0.7;
-        }
-        .game-score {
-            font-size: 1rem;
-            min-width: 80px;
-        }
-        .game-score .player-score { color: #667eea; font-weight: 600; }
-        .game-score .computer-score { color: #fd7e14; font-weight: 600; }
-        .game-meta {
-            color: #666;
-            font-size: 0.85rem;
-            flex: 1;
-        }
-        .game-reason {
-            font-size: 0.8rem;
-            color: #999;
-        }
-
-        @media (max-width: 600px) {
-            .game-row {
-                flex-wrap: wrap;
-            }
-            .game-date {
-                min-width: auto;
-                flex: 1;
-            }
-            .game-meta {
-                width: 100%;
-                margin-top: 0.25rem;
-            }
-            .player-summary {
-                gap: 1rem;
-            }
-        }
-    </style>
-</head>
-
-<body>
+{% endblock %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+{% endblock %}
+{% block content %}
     <a href="/stats" class="back-button">&larr; Back to Stats</a>
 
     <div class="container">
@@ -209,15 +84,4 @@
             </div>
         </div>
     </div>
-
-    <!-- Cross-links footer -->
-    <footer class="site-footer" style="text-align:center;padding:2rem 1rem;margin-top:2rem;border-top:1px solid #ddd;font-size:14px;color:#666;">
-        <nav aria-label="Site navigation" style="margin-bottom:0.5rem;">
-            <a href="/" style="color:#3182ce;margin:0 12px;">Play</a>
-            <a href="/instructions" style="color:#3182ce;margin:0 12px;">How to Play</a>
-            <a href="/stats" style="color:#3182ce;margin:0 12px;">Leaderboard</a>
-        </nav>
-        <p style="margin:0;">&copy; 2026 <a href="https://2manspades.com" style="color:#3182ce;">2manspades.com</a></p>
-    </footer>
-</body>
-</html>
+{% endblock %}

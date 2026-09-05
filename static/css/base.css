@@ -1,0 +1,10 @@
+/* Shared by every page (base.html): the cross-links footer and the 404 card.
+   Page styles load after this and may override (the game page hides the footer). */
+.site-footer { text-align: center; padding: 2rem 1rem; margin-top: 2rem; border-top: 1px solid #ddd; font-size: 14px; color: #666; }
+.site-footer nav { margin-bottom: 0.5rem; }
+.site-footer a { color: #3182ce; margin: 0 12px; }
+.site-footer p { margin: 0; }
+.notfound { text-align: center; padding: 3rem; }
+.notfound h1 { font-size: 4rem; color: #64748b; }
+.notfound p { font-size: 1.2rem; color: #94a3b8; }
+.notfound a { color: #60a5fa; }

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Two-Man Spades{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <meta property="og:image" content="https://2manspades.com/static/og-card.svg">
+    <meta property="og:site_name" content="Two-Man Spades">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://2manspades.com/static/og-card.svg">
+    {% block meta %}{% endblock %}
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
+    <script src="{{ url_for('static', filename='js/ga.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    {% block styles %}{% endblock %}
+</head>
+<body{% block body_attrs %}{% endblock %}>
+{% block content %}{% endblock %}
+    <footer class="site-footer">
+        <nav aria-label="Site navigation">
+            <a href="/">Play</a>
+            <a href="/instructions">How to Play</a>
+            <a href="/stats">Leaderboard</a>
+        </nav>
+        <p>&copy; 2026 <a href="https://2manspades.com">2manspades.com</a></p>
+    </footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>
