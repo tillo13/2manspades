@@ -1,3 +1,5 @@
+"""Core card mechanics: deck creation, dealing, play validation and trick resolution.
+No Flask, no DB; app_helpers drives these from the session game dict."""
 import random
 
 def create_deck():

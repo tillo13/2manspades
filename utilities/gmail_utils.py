@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Gmail utilities for sending emails and notifications
-100% self-contained - NO sibling imports allowed.
+Secrets come from the one get_secret in postgres_utils.connection.
 """
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from google.cloud import secretmanager
+from .postgres_utils.connection import get_secret
 from os import path
 import logging
 from typing import List, Optional, Dict, Any
@@ -31,28 +31,11 @@ EMAIL_DEFAULTS = {
 
 # CORE FUNCTIONS
 
-_secrets_cache = {}
-_sm_client = None
-
-def get_secret_version(project_id: str, secret_id: str, version_id: str = "latest") -> str:
-    """Get secret from Google Cloud Secret Manager (cached)."""
-    cache_key = f"{project_id}:{secret_id}:{version_id}"
-    if cache_key in _secrets_cache:
-        return _secrets_cache[cache_key]
-    global _sm_client
-    if _sm_client is None:
-        _sm_client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-    response = _sm_client.access_secret_version(request={"name": name})
-    val = response.payload.data.decode('UTF-8')
-    _secrets_cache[cache_key] = val
-    return val
-
 def get_gmail_credentials() -> Dict[str, str]:
     """Get Gmail credentials from Google Cloud Secret Manager."""
     return {
-        'user': get_secret_version(PROJECT_ID, GMAIL_USERNAME_SECRET_ID),
-        'password': get_secret_version(PROJECT_ID, GMAIL_APP_PASSWORD_SECRET_ID),
+        'user': get_secret(GMAIL_USERNAME_SECRET_ID, project_id=PROJECT_ID),
+        'password': get_secret(GMAIL_APP_PASSWORD_SECRET_ID, project_id=PROJECT_ID),
     }
 
 def send_email(

@@ -1,3 +1,5 @@
+"""House rules on top of standard spades: parity discard pile, bags and their bonuses/penalties,
+blind bidding when far behind, and the 7♦ / 10♣ bag-removal cards. Pure functions over the game dict."""
 import random
 
 def get_display_score(base_score, bags):

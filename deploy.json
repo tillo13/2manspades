@@ -18,6 +18,10 @@
     {
       "src": "schema_guard/schema_guard.py",
       "dst": "utilities/schema_guard.py"
+    },
+    {
+      "src": "visitor_logging/visitor_logging.py",
+      "dst": "utilities/visitor_logging.py"
     }
   ],
   "pre_deploy_test": "venv_2man/bin/python -m unittest discover -s tests -q && /Users/at/Desktop/code/_local_infrastructure/anthropic_logger/check_violations.sh .",

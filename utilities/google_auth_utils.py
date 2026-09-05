@@ -7,24 +7,7 @@ import requests
 from flask import session, redirect, url_for, request
 from authlib.integrations.flask_client import OAuth
 from functools import wraps
-from google.cloud import secretmanager
-
-_secrets_cache = {}
-_sm_client = None
-
-def get_secret(secret_name, project_id="twomanspades"):
-    """Get secret from Google Secret Manager (cached)"""
-    cache_key = f"{project_id}:{secret_name}"
-    if cache_key in _secrets_cache:
-        return _secrets_cache[cache_key]
-    global _sm_client
-    if _sm_client is None:
-        _sm_client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
-    response = _sm_client.access_secret_version(request={"name": name})
-    val = response.payload.data.decode("UTF-8")
-    _secrets_cache[cache_key] = val
-    return val
+from .postgres_utils.connection import get_secret
 
 class SimpleGoogleAuth:
     def __init__(self, app):
@@ -34,8 +17,8 @@ class SimpleGoogleAuth:
         # Configure Google OAuth using Secret Manager
         self.google = self.oauth.register(
             name='google',
-            client_id=get_secret('GOOGLE_CLIENT_ID'),
-            client_secret=get_secret('GOOGLE_CLIENT_SECRET'),
+            client_id=get_secret('GOOGLE_CLIENT_ID', project_id='twomanspades'),
+            client_secret=get_secret('GOOGLE_CLIENT_SECRET', project_id='twomanspades'),
             server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
             client_kwargs={
                 'scope': 'openid email profile'

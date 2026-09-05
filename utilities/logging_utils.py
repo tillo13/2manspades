@@ -29,7 +29,7 @@ LOG_GAME_EVENTS = True
 
 CONSOLE_LOG_LEVEL = 'ALL'  # 'ALL', 'ACTIONS_ONLY', 'AI_ONLY', 'EVENTS_ONLY', 'OFF'
 
-LOGS_DIRECTORY = 'logging' if IS_LOCAL_DEVELOPMENT else None
+LOGS_DIRECTORY = '_oneoff/_test_logs' if IS_LOCAL_DEVELOPMENT else None   # scratch, never the repo root
 CURRENT_LOG_FILE = None
 
 # Production logging placeholder

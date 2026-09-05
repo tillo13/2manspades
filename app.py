@@ -1,4 +1,5 @@
 """Two-Man Spades HTTP routes. Run locally with Flask; ship with deploy."""
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, render_template, request, session, jsonify, redirect, Response, abort
 import sys
 import os
@@ -28,6 +29,12 @@ from utilities.google_auth_utils import SimpleGoogleAuth
 
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+try:
+    from utilities.visitor_logging import install_middleware as _install_visitor_logging
+    _install_visitor_logging(app, 'twomanspades')
+except Exception as _e:
+    print(f"[VISITORS] logging not installed: {_e}")
 
 # GA4 tag injection — registers `ga_snippet(slug)` for use in base.html
 try:
@@ -40,16 +47,15 @@ google_auth = SimpleGoogleAuth(app)
 # kumori free-tier LLM router (Marta chat). The key lives in kumori-404602, not this
 # project's Secret Manager, so the project id is forced. KUMORI_API_KEY env overrides.
 try:
-    from utilities.google_auth_utils import get_secret as _get_secret
+    from utilities.postgres_utils.connection import get_secret as _get_secret
     from utilities.kumori_api_client import init as _kumori_init
-    _kumori_init(get_secret_fn=lambda name: _get_secret(name, project_id='kumori-404602'),
+    _kumori_init(get_secret_fn=_get_secret,
                  api_key_name='TWOMANSPADES_KUMORI_API_KEY')
     print("[KUMORI] api client initialized (TWOMANSPADES_KUMORI_API_KEY)")
 except Exception as _e:
     print(f"[KUMORI] api client init failed: {_e}")
 
-app.secret_key = os.environ.get('TWOMANSPADES_FLASK_SECRET') or _get_secret(
-    'TWOMANSPADES_FLASK_SECRET', project_id='kumori-404602')
+app.secret_key = _get_secret('TWOMANSPADES_FLASK_SECRET')   # env override honored inside get_secret
 
 # Session configuration - keep users logged in for 30 days
 from datetime import timedelta
