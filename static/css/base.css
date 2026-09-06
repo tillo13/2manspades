@@ -1,8 +1,32 @@
-/* Shared by every page (base.html): the cross-links footer and the 404 card.
+/* Shared by every page (base.html): the palette, the cross-links footer and the 404 card.
    Page styles load after this and may override (the game page hides the footer). */
-.site-footer { text-align: center; padding: 2rem 1rem; margin-top: 2rem; border-top: 1px solid #ddd; font-size: 14px; color: #666; }
+
+/* The palette (2026-09-06). One place for every color; stylesheets use the tokens, never
+   raw hex. The purple pair is the game's identity; the semantic names are what the stats
+   read as: green = win / made it, red = loss / set, orange = bags, gold = records. */
+:root {
+    --accent: #667eea;
+    --accent-2: #764ba2;
+    --accent-soft: #f0f4ff;
+    --gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    --win: #28a745;
+    --loss: #dc3545;
+    --bags: #fd7e14;
+    --gold: #ffd700;
+    --ink: #333;
+    --ink-2: #4a5568;
+    --muted: #666;
+    --line: #dee2e6;
+    --line-soft: #e9ecef;
+    --surface: #ffffff;
+    --surface-2: #f8f9fa;
+    --on-dark: rgba(255, 255, 255, 0.85);
+}
+
+.site-footer { text-align: center; padding: 2rem 1rem; margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.25); font-size: 14px; color: var(--on-dark); }
 .site-footer nav { margin-bottom: 0.5rem; }
-.site-footer a { color: #3182ce; margin: 0 12px; }
+.site-footer a { color: #fff; margin: 0 12px; text-decoration: underline; text-underline-offset: 3px; }
+.site-footer a:hover { color: var(--gold); }
 .site-footer p { margin: 0; }
 .notfound { text-align: center; padding: 3rem; }
 .notfound h1 { font-size: 4rem; color: #64748b; }

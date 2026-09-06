@@ -54,6 +54,11 @@ function openDifficultyModal() {
         .then(data => {
             const current = data.difficulty || 'easy';
             document.querySelector(`input[name="difficulty"][value="${current}"]`).checked = true;
+            // your completed-game record on each rung (logged-in players only)
+            (data.levels || []).forEach(l => {
+                const el = document.querySelector(`.difficulty-record[data-level="${l.level}"]`);
+                if (el) el.textContent = (l.wins || l.losses) ? `You: ${l.wins}-${l.losses}` : '';
+            });
             document.getElementById('difficultyModal').classList.add('show');
         });
 }

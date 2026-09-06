@@ -11,17 +11,83 @@ from .custom_rules import (
 )
 
 from .logging_utils import log_game_event
+import threading
+
+# Decision tap (2026-09-06, Otto). Every strategy function reports WHY it chose what it
+# chose to a thread-local sink, so a headless bot game (utilities/otto.py) can log the
+# branch that fired without duplicating any strategy code. Thread-local, not global: a
+# human's game on another gunicorn thread never sees or feeds another game's sink.
+# When no sink is set (every live game today) this is a no-op.
+_tap = threading.local()
+
+def set_decision_sink(fn, seat=None):
+    """fn(kind, seat, data) or None. seat labels who is deciding ('marta' / 'otto')."""
+    _tap.sink = fn
+    _tap.seat = seat
+
+def set_decision_seat(seat):
+    _tap.seat = seat
+
+def _note(kind, data):
+    sink = getattr(_tap, 'sink', None)
+    if sink:
+        sink(kind, getattr(_tap, 'seat', None), data)
+
+def _c(card):
+    return f"{card['rank']}{card['suit']}" if card else None
 
 # DIFFICULTY SYSTEM
+# Marta's strength is ONE dial (0-100) that the named levels are presets on. Every knob was
+# measured with Otto (utilities/otto.py, 2026-09-06, 2,000-game head-to-heads vs easy) so the
+# rungs are spaced by what a player can feel, not by guesswork. Easy is pinned to the exact
+# pre-dial behaviour: the family's whole record was earned against it.
+#   bid_boost    flat add to the hand evaluation (the pre-dial knob)
+#   bid_offset   calibration add: the evaluator underestimates by ~1.5 tricks/hand at 0
+#   bag_avoid    multiplier on the bid when sitting on 5+ bags
+#   max_bid      cap on a regular bid
+#   nil_deficit  points behind before nil is considered (80 = the original rule)
+#   nil_loose    drop the two-twos / all-low-cards gates (measured: nil still only 8% made,
+#                so no preset uses it; the knob stays for experiments)
+#   lead_high    probability of leading the highest safe card while tricks are still owed
+#   mistake_chance  probability a follow is a random legal card (0 everywhere today)
+# Measured vs easy, 2,000 games each: bid_offset peaks at +1.0 (58%), lead_high alone 57%,
+# both together 65-66%; a bid cap above 6 and bag_avoid changes bought nothing. 65% is the
+# ceiling of this brain, so four rungs, not five — a fifth needs a smarter follow strategy.
+#   nil_hunt     probability of playing to SET an opponent's nil (duck under their card so they
+#                are forced to win a trick) instead of playing her own hand
+_EASY = {'bid_boost': 0.3, 'bag_avoid': 0.92, 'max_bid': 6, 'mistake_chance': 0,
+         'bid_offset': 0.0, 'nil_deficit': 80, 'nil_loose': False, 'lead_high': 0.0, 'nil_hunt': 0.0}
+
+DIFFICULTY_LEVELS = ('easy', 'medium', 'hard', 'ruthless')
+# Measured vs easy (2,000 games): medium 58%, hard 62%, ruthless 64%. The top step is small
+# because this brain saturates at ~65%; it widens when the follow strategy improves.
+STRENGTH_PRESETS = {'easy': 0, 'medium': 30, 'hard': 60, 'ruthless': 100}
+LEVEL_BLURBS = {
+    'easy': 'The Marta the family grew up on. Bids a trick under her hand and leads low.',
+    'medium': 'Bids a little closer to her hand; sometimes leads high when she still owes tricks.',
+    'hard': 'Bids near her hand and usually leads high while tricks are owed.',
+    'ruthless': 'Bids to her hand and leads high whenever a trick is owed. Beats easy Marta 2 games in 3.',
+}
+
+
+def strength_params(strength):
+    """Knob values for a strength 0-100, linear between easy (0) and the measured ceiling (100)."""
+    s = max(0, min(100, float(strength)))
+    def lerp(a, b):
+        return round(a + (b - a) * s / 100.0, 3)
+    return dict(_EASY, bid_offset=lerp(0.0, 1.0), lead_high=lerp(0.0, 1.0), nil_hunt=lerp(0.0, 1.0))
+
+
 def get_difficulty_params(difficulty='easy'):
-    """Returns parameter adjustments based on difficulty level.
-    Easy = current behavior, Medium = smarter, Ruthless = optimal play"""
-    if difficulty == 'medium':
-        return {'bid_boost': 0.5, 'bag_avoid': 0.95, 'max_bid': 7, 'mistake_chance': 0}
-    elif difficulty == 'ruthless':
-        return {'bid_boost': 0.7, 'bag_avoid': 0.98, 'max_bid': 8, 'mistake_chance': 0}
-    # easy (default) - current behavior
-    return {'bid_boost': 0.3, 'bag_avoid': 0.92, 'max_bid': 6, 'mistake_chance': 0}
+    """Knobs for a level name, a numeric strength, or an explicit dict of overrides
+    (Otto experiments pass dicts). Unknown names fall back to easy."""
+    if isinstance(difficulty, dict):
+        return dict(_EASY, **difficulty)
+    if isinstance(difficulty, (int, float)) and not isinstance(difficulty, bool):
+        return strength_params(difficulty)
+    if difficulty == 'easy' or difficulty not in STRENGTH_PRESETS:
+        return dict(_EASY)
+    return strength_params(STRENGTH_PRESETS[difficulty])
 
 # GLOBAL AI DIFFICULTY SETTINGS
 
@@ -237,7 +303,11 @@ def computer_discard_strategy(computer_hand, game_state):
         discard_candidates.append((i, score))
     
     # Return index of card with highest discard score
-    return max(discard_candidates, key=lambda x: x[1])[0]
+    best = max(discard_candidates, key=lambda x: x[1])
+    _note('discard', {'card': _c(computer_hand[best[0]]), 'score': best[1],
+                      'spades': suit_distribution['♠']['count'],
+                      'singleton': suit_distribution[computer_hand[best[0]]['suit']]['is_singleton']})
+    return best[0]
 
 # BIDDING STRATEGY
 
@@ -248,52 +318,52 @@ def should_bid_nil(hand, game_state):
     player_score = game_state.get('player_score', 0)
     computer_score = game_state.get('computer_score', 0)
     player_bid = game_state.get('player_bid', 0)
-    
+    params = get_difficulty_params(game_state.get('difficulty', 'easy'))
+
     # Get hand strength
     sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
     total_expectation = sure_tricks + probable_tricks + special_bonus
-    
+
     # Use configurable nil threshold
     if total_expectation > NIL_STRICTNESS:
         return False
-    
+
     # Must have very few spades and they must be low
     spades = [card for card in hand if card['suit'] == '♠']
     if len(spades) > 3:  # At most 3 spades
         return False
-    
+
     # No high spades allowed
     for spade in spades:
         if spade['value'] >= 11:  # No J, Q, K, A of spades
             return False
-    
-    # Must have at least 2 twos for safety
-    twos = [card for card in hand if card['rank'] == '2']
-    if len(twos) < 2:
-        return False
-    
-    # Must have mostly very low cards (2-7) in other suits
+
     other_suits = [card for card in hand if card['suit'] != '♠']
-    low_cards = [card for card in other_suits if card['value'] <= 7]
-    
-    if len(low_cards) < len(other_suits) - 1:
-        return False
-    
+    if not params['nil_loose']:
+        # Original gates. Otto measured them at 0 nil bids in 87,000 hands (2026-09-06):
+        # a deal never carries two twos AND all-low side suits AND a sub-0.8 expectation.
+        # Must have at least 2 twos for safety
+        twos = [card for card in hand if card['rank'] == '2']
+        if len(twos) < 2:
+            return False
+
+        # Must have mostly very low cards (2-7) in other suits
+        low_cards = [card for card in other_suits if card['value'] <= 7]
+
+        if len(low_cards) < len(other_suits) - 1:
+            return False
+
     # No aces or kings in other suits
     high_other_suits = [card for card in other_suits if card['value'] >= 13]
     if len(high_other_suits) > 0:
         return False
-    
+
     # Don't nil if player already bid nil
     if player_bid == 0:
         return False
-    
-    # Only nil when significantly behind
-    if computer_score >= player_score - 50:
-        return False
-    
-    # Conservative probability - only when truly desperate
-    return computer_score < player_score - 80
+
+    # Only nil when behind by the level's deficit (80 = the original rule)
+    return computer_score < player_score - params['nil_deficit']
 
 def should_bid_blind(hand, game_state):
     """
@@ -324,21 +394,28 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
     computer_score = game_state.get('computer_score', 0)
     computer_bags = game_state.get('computer_bags', 0)
 
+    sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(computer_hand)
+    why = {'sure': sure_tricks, 'probable': probable_tricks, 'special': special_bonus,
+           'opp_bid': player_bid, 'score_diff': computer_score - player_score,
+           'bags': computer_bags, 'difficulty': difficulty,
+           'spades': sum(1 for c in computer_hand if c['suit'] == '♠')}
+
     # Check for nil opportunity first
     if should_bid_nil(computer_hand, game_state):
+        _note('bid', dict(why, branch='nil', bid=0))
         return 0, False
 
     # Check for blind bidding opportunity
     should_blind, blind_amount = should_bid_blind(computer_hand, game_state)
     if should_blind:
+        _note('bid', dict(why, branch='blind', bid=blind_amount))
         return blind_amount, True
 
     # Regular bidding logic
-    sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(computer_hand)
     base_expectation = sure_tricks + probable_tricks + special_bonus
 
-    # Apply difficulty-based accuracy boost
-    base_expectation += diff_params['bid_boost']
+    # Apply difficulty-based accuracy boost + the measured calibration offset
+    base_expectation += diff_params['bid_boost'] + diff_params['bid_offset']
 
     # Score-based adjustments
     score_diff = computer_score - player_score
@@ -362,6 +439,7 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
 
     # Convert to bid
     raw_bid = max(0, min(10, round(base_expectation)))
+    why.update(expectation=round(base_expectation, 2), rounded=raw_bid, coin=None)
 
     # Apply difficulty-based maximum bid cap
     max_bid = diff_params['max_bid']
@@ -373,20 +451,34 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
             raw_bid = 3  # Minimum reasonable bid is 3
         elif raw_bid == 5 and random.random() < 0.4:
             raw_bid = 4  # Sometimes prefer 4 over 5
+            why['coin'] = 'prefer4'
 
     # Avoid obvious total-10 scenarios
     if player_bid is not None and abs((raw_bid + player_bid) - 10) <= 1 and random.random() < 0.3:
         if raw_bid > 3:
             raw_bid -= 1
+            why['coin'] = 'avoid10'
 
     # Final bounds check with difficulty max
     raw_bid = max(1, min(max_bid, raw_bid))
 
+    _note('bid', dict(why, branch='regular', bid=raw_bid))
     return raw_bid, False
 
 # PLAYING STRATEGY
 
 def computer_lead_strategy(computer_hand, spades_broken, game_state=None):
+    """Lead a card; see _lead_impl. Reports the choice to the decision tap."""
+    idx = _lead_impl(computer_hand, spades_broken, game_state)
+    if idx is not None:
+        g = game_state or {}
+        _note('lead', {'card': _c(computer_hand[idx]), 'hand_size': len(computer_hand),
+                       'spades_broken': spades_broken, 'bid': g.get('computer_bid'),
+                       'tricks': g.get('computer_tricks'), 'opp_bags': g.get('player_bags')})
+    return idx
+
+
+def _lead_impl(computer_hand, spades_broken, game_state=None):
     """
     Enhanced leading strategy with absolute special card protection
     """
@@ -426,17 +518,38 @@ def computer_lead_strategy(computer_hand, spades_broken, game_state=None):
     # Advanced bag forcing logic (only if we have non-special cards)
     if game_state and leads_to_consider == non_special_leads:
         computer_bid = game_state.get('computer_bid', 0)
-        computer_tricks = game_state.get('computer_tricks', 0) 
+        computer_tricks = game_state.get('computer_tricks', 0)
         player_bags = game_state.get('player_bags', 0)
-        
+
         # If we've made our bid and player has 5+ bags, lead high to force them
         if computer_tricks >= computer_bid > 0 and player_bags >= 5:
             return max(leads_to_consider, key=lambda x: x[1]['value'])[0]
+        # Stronger levels: while tricks are still owed, lead the highest safe card (with the
+        # level's probability). Leading low hands the follower the trick: the leader won
+        # 32.5% of tricks (Otto, 2026-09-06). No random draw at 0 so easy stays replayable.
+        if computer_tricks < computer_bid:
+            lh = get_difficulty_params(game_state.get('difficulty', 'easy'))['lead_high']
+            if lh and (lh >= 1 or random.random() < lh):
+                return max(leads_to_consider, key=lambda x: x[1]['value'])[0]
     
     # Normal strategy: lead lowest safe card
     return min(leads_to_consider, key=lambda x: x[1]['value'])[0]
 
 def computer_follow_strategy(computer_hand, current_trick, game_state):
+    """Follow a lead; see _follow_impl. Reports the choice + its options to the decision tap."""
+    idx = _follow_impl(computer_hand, current_trick, game_state)
+    if idx is not None:
+        lead = current_trick[0]['card']
+        bid = game_state.get('computer_bid', 0)
+        _note('follow', {'card': _c(computer_hand[idx]), 'lead': _c(lead), 'hand_size': len(computer_hand),
+                         'could_follow': any(c['suit'] == lead['suit'] for c in computer_hand),
+                         'could_trump': lead['suit'] != '♠' and any(c['suit'] == '♠' for c in computer_hand),
+                         'made_bid': game_state.get('computer_tricks', 0) >= bid > 0,
+                         'bid': bid, 'tricks': game_state.get('computer_tricks', 0)})
+    return idx
+
+
+def _follow_impl(computer_hand, current_trick, game_state):
     """
     Enhanced following strategy with special card protection and acquisition
     Returns index of best card to play
@@ -446,15 +559,33 @@ def computer_follow_strategy(computer_hand, current_trick, game_state):
 
     from .custom_rules import is_special_card
 
-    computer_bid = game_state.get('computer_bid', 0)
+    computer_bid = game_state.get('computer_bid') or 0
     computer_tricks = game_state.get('computer_tricks', 0)
-    
-    # Check if computer has already made their bid
-    made_bid = computer_tricks >= computer_bid and computer_bid > 0
+
+    # Check if computer has already made their bid. A nil bid counts as "made" from the
+    # first trick: the whole point is to lose every trick. Before 2026-09-06 a nil hand fell
+    # into the needs-tricks branch and played to WIN — Otto measured 0 nils made in 91 tries.
+    made_bid = (computer_tricks >= computer_bid and computer_bid > 0) or computer_bid == 0
 
     lead_card = current_trick[0]['card']
     lead_suit = lead_card['suit']
     lead_value = lead_card['value']
+
+    # Nil hunting (stronger levels): the opponent bid nil and is still clean, so the trick is
+    # worth 100 points to THEM if they lose it. Duck: follow suit under their card, or dump
+    # off-suit, so they are forced to win. Special cards are never spent on the duck.
+    if game_state.get('player_bid') == 0 and game_state.get('player_tricks', 0) == 0:
+        hunt = get_difficulty_params(game_state.get('difficulty', 'easy'))['nil_hunt']
+        if hunt and (hunt >= 1 or random.random() < hunt):
+            in_suit = [(i, c) for i, c in enumerate(computer_hand)
+                       if c['suit'] == lead_suit and c['value'] < lead_value and not is_special_card(c)[0]]
+            if in_suit:
+                return max(in_suit, key=lambda x: x[1]['value'])[0]
+            if not any(c['suit'] == lead_suit for c in computer_hand):
+                dump = [(i, c) for i, c in enumerate(computer_hand)
+                        if c['suit'] != '♠' and not is_special_card(c)[0]]
+                if dump:
+                    return max(dump, key=lambda x: x[1]['value'])[0]
 
     # Check if player played a special card that we want to win
     player_has_special = is_special_card(lead_card)[0]

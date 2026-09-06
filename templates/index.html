@@ -294,9 +294,7 @@
             <button class="jb-mini-btn" id="jbMiniPlay" aria-label="Play or pause">▶</button>
             <button class="jb-mini-btn" id="jbMiniNext" aria-label="Next">⏭</button>
         </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="marta-message">Hey there! Ready to play some spades?</div>
-        </div>
+        <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-pills" id="chatPills" hidden></div>
         <div class="chat-input-area">
             <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
@@ -346,24 +344,18 @@
     <div id="difficultyModal" class="difficulty-modal" data-action="closeDifficultyModal">
         <div class="difficulty-content" data-action="stop">
             <div class="difficulty-title">Marta's Difficulty</div>
-            <div class="difficulty-options">
+            <div class="difficulty-options" id="difficultyOptions">
+                {% for lvl in difficulty_levels %}
                 <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="easy" data-change="setDifficulty">
-                    <span class="difficulty-label">Easy</span>
-                    <span class="difficulty-desc">Current Marta</span>
+                    <input type="radio" name="difficulty" value="{{ lvl }}" data-change="setDifficulty">
+                    <span class="difficulty-label">{{ lvl|title }}</span>
+                    <span class="difficulty-desc">{{ difficulty_blurbs[lvl] }}</span>
+                    <span class="difficulty-record" data-level="{{ lvl }}"></span>
                 </label>
-                <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="medium" data-change="setDifficulty">
-                    <span class="difficulty-label">Medium</span>
-                    <span class="difficulty-desc">Smarter bidding</span>
-                </label>
-                <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="ruthless" data-change="setDifficulty">
-                    <span class="difficulty-label">Ruthless</span>
-                    <span class="difficulty-desc">No mercy</span>
-                </label>
+                {% endfor %}
             </div>
-            <div class="difficulty-note">Takes effect next game</div>
+            <div class="difficulty-note">Takes effect next game. Each step up is a Marta that beat the one below it
+                on the practice table.</div>
         </div>
     </div>
 {% endblock %}

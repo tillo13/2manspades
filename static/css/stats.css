@@ -7,9 +7,9 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--gradient);
     min-height: 100vh;
-    color: #333;
+    color: var(--ink);
     line-height: 1.6;
     padding: 20px 8px;
 }
@@ -27,17 +27,17 @@ body {
     text-align: center;
     margin-bottom: 25px;
     padding-bottom: 15px;
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--line-soft);
 }
 
 .header h1 {
-    color: #4a5568;
+    color: var(--ink-2);
     font-size: 24px;
     margin-bottom: 8px;
 }
 
 .header .subtitle {
-    color: #666;
+    color: var(--muted);
     font-size: 14px;
 }
 
@@ -45,7 +45,7 @@ body {
     position: fixed;
     top: 15px;
     left: 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--gradient);
     color: white;
     border: none;
     padding: 10px 16px;
@@ -65,38 +65,38 @@ body {
 }
 
 .stats-section {
-    background: #f8f9fa;
+    background: var(--surface-2);
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 20px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--line-soft);
 }
 
 .section-title {
     font-size: 18px;
     font-weight: bold;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 12px;
     padding-bottom: 6px;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid var(--line);
     text-align: center;
 }
 
 .no-stats {
     text-align: center;
-    color: #666;
+    color: var(--muted);
     font-style: italic;
     padding: 20px;
-    background: #f8f9fa;
+    background: var(--surface-2);
     border-radius: 8px;
-    border: 2px dashed #dee2e6;
+    border: 2px dashed var(--line);
 }
 
 .collapsible-section {
     margin-bottom: 25px;
-    background: #f8f9fa;
+    background: var(--surface-2);
     border-radius: 10px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line);
     overflow: hidden;
 }
 
@@ -106,7 +106,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     user-select: none;
     transition: background 0.3s ease;
@@ -159,7 +159,7 @@ body {
 
 .winloss-explanation p {
     margin-bottom: 10px;
-    color: #333;
+    color: var(--ink);
 }
 
 .winloss-explanation ul {
@@ -168,7 +168,7 @@ body {
 
 .winloss-explanation li {
     margin-bottom: 6px;
-    color: #333;
+    color: var(--ink);
 }
 
 .winloss-explanation strong {
@@ -202,10 +202,10 @@ body {
 .legend-category {
     font-weight: bold;
     font-size: 14px;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--line-soft);
 }
 
 .legend-item {
@@ -221,13 +221,13 @@ body {
 
 .legend-label {
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
     display: block;
     margin-bottom: 3px;
 }
 
 .legend-description {
-    color: #666;
+    color: var(--muted);
     font-size: 13px;
     display: block;
 }
@@ -238,8 +238,8 @@ body {
     border-radius: 8px;
     margin-top: 15px;
     font-size: 13px;
-    color: #666;
-    border-left: 4px solid #667eea;
+    color: var(--muted);
+    border-left: 4px solid var(--accent);
 }
 
 .desktop-table {
@@ -255,7 +255,7 @@ body {
 .table-container {
     max-height: 400px;
     overflow-y: auto;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line);
     border-radius: 8px;
 }
 
@@ -269,11 +269,11 @@ body {
 .stats-table td {
     padding: 8px 4px;
     text-align: center;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--line-soft);
 }
 
 .stats-table th {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     font-weight: 600;
     position: sticky;
@@ -282,16 +282,16 @@ body {
 }
 
 .stats-table tr:hover {
-    background: #f8f9fa;
+    background: var(--surface-2);
 }
 
 .player-link {
-    color: #667eea;
+    color: var(--accent);
     text-decoration: none;
     transition: color 0.15s;
 }
 .player-link:hover {
-    color: #764ba2;
+    color: var(--accent-2);
     text-decoration: underline;
 }
 
@@ -299,7 +299,7 @@ body {
     background: white;
     border-radius: 8px;
     padding: 15px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -310,7 +310,7 @@ body {
 }
 
 .player-card.rank-2 {
-    background: linear-gradient(135deg, #e2e3e5 0%, #f8f9fa 100%);
+    background: linear-gradient(135deg, #e2e3e5 0%, var(--surface-2) 100%);
     border-color: #6c757d;
 }
 
@@ -329,7 +329,7 @@ body {
 }
 
 .player-rank {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 4px 8px;
     border-radius: 12px;
@@ -347,7 +347,7 @@ body {
 }
 
 .player-hands {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 4px 8px;
     border-radius: 12px;
@@ -373,7 +373,7 @@ body {
 
 .stat-label {
     font-size: 11px;
-    color: #666;
+    color: var(--muted);
     font-weight: 600;
     margin-bottom: 2px;
     text-transform: uppercase;
@@ -389,18 +389,18 @@ body {
 }
 
 .stat-value.nil-stat {
-    color: #dc3545;
+    color: var(--loss);
 }
 
 .stat-value.bags-stat {
-    color: #fd7e14;
+    color: var(--bags);
 }
 
 .competitive-card {
     background: white;
     border-radius: 8px;
     padding: 15px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -432,22 +432,22 @@ body {
 .win-loss-record {
     font-size: 14px;
     font-weight: bold;
-    color: #667eea;
+    color: var(--accent);
     text-align: center;
 }
 
 .win-loss-stat {
-    color: #333;
+    color: var(--ink);
     font-weight: bold;
 }
 
 .win-stat {
-    color: #28a745;
+    color: var(--win);
     font-weight: 600;
 }
 
 .loss-stat {
-    color: #dc3545;
+    color: var(--loss);
     font-weight: 600;
 }
 
@@ -460,7 +460,7 @@ body {
     padding: 12px;
     border-radius: 8px;
     background: white;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line);
 }
 
 .month-card.current-month {
@@ -474,13 +474,13 @@ body {
     align-items: center;
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--line-soft);
 }
 
 .month-title {
     font-weight: bold;
     font-size: 15px;
-    color: #333;
+    color: var(--ink);
 }
 
 .current-badge {
@@ -500,7 +500,7 @@ body {
 
 .table-note {
     font-size: 11px;
-    color: #666;
+    color: var(--muted);
     text-align: center;
     margin-top: 8px;
     font-style: italic;

@@ -422,9 +422,11 @@ def _create_game_with_player_async(game, client_info):
 
 def finalize_game_logging(game):
     """Called when a game ends to finalize the log file and database"""
+    if game.get('_no_log'):
+        return
     # File logging finalization
     _finalize_current_log_file(game)
-    
+
     # NEW: Async database game finalization (production)
     if IS_PRODUCTION:
         queue_db_operation(
@@ -454,11 +456,16 @@ def start_new_hand_logging(game):
 
 # CORE LOGGING FUNCTIONS - NOW WITH ASYNC DATABASE OPERATIONS
 
+def _silenced(session):
+    """A headless bot game (utilities/otto.py) marks its game dict _no_log so none of its
+    actions/events reach the human tables or the console; it keeps its own ledger."""
+    return bool(session) and isinstance(session, dict) and (session.get('game') or {}).get('_no_log')
+
 def log_action(action_type, player, action_data, session=None, additional_context=None, request=None):
     """Central logging function for all player/system game actions with ASYNC database integration"""
-    if not LOGGING_ENABLED or not LOG_GAME_ACTIONS:
+    if not LOGGING_ENABLED or not LOG_GAME_ACTIONS or _silenced(session):
         return
-    
+
     client_info = get_client_info(request) if request else None
     
     # CRITICAL: Refresh Google auth from session
@@ -522,9 +529,9 @@ def log_action(action_type, player, action_data, session=None, additional_contex
 
 def log_game_event(event_type, event_data, session=None):
     """Central logging function for major game events with ASYNC database integration"""
-    if not LOGGING_ENABLED or not LOG_GAME_EVENTS:
+    if not LOGGING_ENABLED or not LOG_GAME_EVENTS or _silenced(session):
         return
-    
+
     event_record = _build_event_record(event_type, event_data, session)
     
     # File logging (development) - synchronous, fast

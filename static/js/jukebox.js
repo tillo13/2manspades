@@ -7,8 +7,8 @@
     const $ = (id) => document.getElementById(id);
     let PL = null, audio = null, state = null, order = [], lastPanel = 'now';
     let playId = null, lastSource = 'shuffle', lastBeat = 0;
-    const PILLS = ["What's this song about?", "When did Hoyt record this?", "Tell me about this record", "Play something like this"];
-    const IDLE_PILLS = ["Tell me about Hoyt Axton", "What record should I start with?", "What's his best song?"];
+    const PILLS = ["About this song", "When was this cut?", "About this record", "More like this"];
+    const IDLE_PILLS = ["Who's Hoyt Axton?", "Where do I start?", "What's his best song?"];
 
     const norm = (s) => s.toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
     const albumById = (id) => PL.albums.find(a => a.id === id);
@@ -70,6 +70,7 @@
     }
     function toggle() {
         if (!state.album) return play(neighbor(+1));
+        if (!audio.src) return play(current(), state.pos, 'resume');   // saved-but-paused state: nothing loaded yet
         if (audio.paused) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true)); }
         else { state.playing = false; audio.pause(); }
         saveState(); render();

@@ -14,11 +14,18 @@ function toggleChat() {
     if (window.TableSheet) { TableSheet.toggle('marta'); return; }
 }
 
+// one greeting, built from what the jukebox already knows so she acknowledges the music
+function greeting() {
+    const np = window.HoytJukebox ? HoytJukebox.nowPlaying() : null;
+    if (np) return `${np.title} on the box, good pick. Ready when you are.`;
+    return "Nothing on the box yet. Hoyt's next door if you want a soundtrack. Ready when you are.";
+}
+
 // called by TableSheet whenever the Marta tab becomes visible / hidden
 function onChatVisibility(visible) {
     chatOpen = visible;
     if (visible) {
-        if (!chatInitialized) { addMessage("Ready when you are.", 'marta'); chatInitialized = true; }
+        if (!chatInitialized) { addMessage(greeting(), 'marta'); chatInitialized = true; }
         unreadMessages = 0;
         updateChatBadge();
     }

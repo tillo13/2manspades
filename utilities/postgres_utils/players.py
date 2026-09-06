@@ -144,9 +144,39 @@ def get_user_difficulty(google_email: str) -> Optional[str]:
             return_db_connection(conn)
 
 
+def get_user_level_record(google_email: str) -> Dict[str, Dict[str, int]]:
+    """{level: {wins, losses}} of completed games for one player, keyed by the difficulty
+    the deciding hand was played at. Empty for anonymous players or on any failure."""
+    if not google_email:
+        return {}
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT h.difficulty,
+                   COUNT(*) FILTER (WHERE ge.event_data->>'winner' = 'player')   AS wins,
+                   COUNT(*) FILTER (WHERE ge.event_data->>'winner' = 'computer') AS losses
+              FROM twomanspades.game_events ge
+              JOIN twomanspades.hands h ON h.hand_id = ge.hand_id
+             WHERE ge.event_type = 'game_completed' AND h.google_email = %s
+             GROUP BY h.difficulty
+        """, (google_email,))
+        out = {row[0]: {'wins': row[1], 'losses': row[2]} for row in cur.fetchall()}
+        cur.close()
+        return out
+    except Exception as e:
+        print(f"[DB] Error getting level record: {e}")
+        return {}
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
 def save_user_difficulty(google_email: str, difficulty: str) -> bool:
     """Save user's difficulty preference."""
-    if not google_email or difficulty not in ('easy', 'medium', 'ruthless'):
+    from utilities.computer_logic import DIFFICULTY_LEVELS
+    if not google_email or difficulty not in DIFFICULTY_LEVELS:
         return False
     conn = None
     try:

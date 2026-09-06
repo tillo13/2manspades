@@ -262,8 +262,7 @@ body.sheet-open .chat-bubble-icon, body.sheet-open .jb-toast { display: none; }
 }
 
 /* song-question pills above Marta's input while Hoyt is playing */
-.chat-pills { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding: 6px 12px 4px; scrollbar-width: none; }
-.chat-pills::-webkit-scrollbar { display: none; }
+.chat-pills { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 12px 4px; }
 .chat-pills[hidden] { display: none; }
 .chat-pill { flex: none; white-space: nowrap; background: #fff7dd; color: #333; border: 1px solid #f6c453; border-radius: 16px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
 .chat-pill:hover { background: #f6c453; }

@@ -1,0 +1,8 @@
+cron:
+  # Otto vs Marta, one headless game per tick = 20 a day. Reaches a +/-5 point win-rate
+  # estimate in ~3 weeks and keeps the Robot League on /stats moving. Thousand-game
+  # analysis runs happen on a laptop (python -m utilities.otto), never here.
+  - description: Otto plays Marta one game for the Robot League
+    url: /cron/otto
+    schedule: every 72 minutes
+    timezone: America/Los_Angeles

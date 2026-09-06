@@ -307,3 +307,8 @@
     body:has(.login-prompt-banner) .floating-game-score { top: 45px; }
     body:has(.login-prompt-banner) .floating-hand-score { top: 93px; }
 }
+
+/* Marta ladder (2026-09-06): the gear shows every rung, its blurb, and your record on it */
+.difficulty-option { flex-wrap: wrap; }
+.difficulty-desc { flex-basis: 100%; margin-left: 1.6rem; }
+.difficulty-record { margin-left: auto; font-size: 0.8rem; font-weight: 600; color: #667eea; }

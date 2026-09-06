@@ -289,12 +289,27 @@ def index():
         if client_ip and IS_PRODUCTION:
             suspected_player = get_suspected_player_from_ip(client_ip)
 
-    return render_template('index.html', suspected_player=suspected_player)
+    from utilities.computer_logic import DIFFICULTY_LEVELS, LEVEL_BLURBS
+    return render_template('index.html', suspected_player=suspected_player,
+                           difficulty_levels=DIFFICULTY_LEVELS, difficulty_blurbs=LEVEL_BLURBS)
 
 @app.route('/new_game', methods=['POST'])
 def new_game():
     session['game'] = process_new_game_request(session, request)
     return jsonify({'success': True})
+
+@app.route('/cron/otto')
+def cron_otto():
+    """Otto plays Marta one full game (cron.yaml, every 72 min = 20/day) and files it in the
+    Robot League tables. App Engine strips X-Appengine-Cron from outside traffic, so the
+    header IS the auth. No LLM anywhere in a bot game: Marta's chat is never invoked."""
+    if request.headers.get('X-Appengine-Cron') != 'true':
+        abort(403)
+    from utilities.otto import play_game
+    result = play_game(persist=True, source='cron')
+    return jsonify({'ok': True, 'winner': result['winner'], 'hands': result['hands'],
+                    'otto': result['otto_score'], 'marta': result['marta_score'],
+                    'decisions': result['decision_count'], 'ms': result['ms']})
 
 @app.route('/chat_response', methods=['POST'])
 def chat_response():
@@ -402,9 +417,10 @@ def get_state():
 @app.route('/set_difficulty', methods=['POST'])
 def set_difficulty():
     """Set Marta's difficulty level"""
+    from utilities.computer_logic import DIFFICULTY_LEVELS
     data = request.get_json() or {}
     difficulty = data.get('difficulty', 'easy')
-    if difficulty not in ('easy', 'medium', 'ruthless'):
+    if difficulty not in DIFFICULTY_LEVELS:
         return jsonify({'error': 'Invalid difficulty'}), 400
     session['difficulty'] = difficulty
     # Update current game if exists
@@ -419,8 +435,14 @@ def set_difficulty():
 
 @app.route('/get_difficulty')
 def get_difficulty():
-    """Get current difficulty setting"""
-    return jsonify({'difficulty': session.get('difficulty', 'easy')})
+    """Current level plus the ladder: every level with its blurb and, for a logged-in
+    player, their completed-game record on it — so the gear shows Marta getting better."""
+    from utilities.computer_logic import DIFFICULTY_LEVELS, LEVEL_BLURBS
+    from utilities.postgres_utils import get_user_level_record
+    record = get_user_level_record(session.get('user', {}).get('email')) if IS_PRODUCTION else {}
+    levels = [{'level': lvl, 'blurb': LEVEL_BLURBS[lvl], **record.get(lvl, {'wins': 0, 'losses': 0})}
+              for lvl in DIFFICULTY_LEVELS]
+    return jsonify({'difficulty': session.get('difficulty', 'easy'), 'levels': levels})
 
 @app.route('/toggle_computer_hand', methods=['POST'])
 def toggle_computer_hand():

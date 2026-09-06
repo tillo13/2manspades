@@ -1,27 +1,32 @@
 /* /stats only: overall banner, achievements, special cards, all-time records, Hoyt. Loads after stats.css. */
 /* Overall Stats Banner */
 .overall-banner {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--gradient);
     color: white;
     padding: 20px;
 }
 
+/* Tiles size to their content: a "672-62" or "7.2 hands" never wraps or overflows (2026-09-06) */
 .overall-stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 12px;
     text-align: center;
 }
 
 .overall-stat {
-    padding: 10px;
+    padding: 10px 6px;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 8px;
+    min-width: 0;
 }
 
 .overall-value {
-    font-size: 24px;
+    font-size: clamp(18px, 4.2vw, 28px);
     font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    line-height: 1.2;
 }
 
 .overall-label {
@@ -49,26 +54,32 @@
     background: white;
     border-radius: 8px;
     padding: 15px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line);
 }
 
 .achievement-title {
     font-weight: bold;
     font-size: 14px;
-    color: #667eea;
+    color: var(--accent);
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--line-soft);
 }
 
+/* Rows are a real grid (name | value | detail) so every card's columns line up; the old
+   space-between flex ragged at each long value (2026-09-06, was already fixed for Hoyt only) */
 .achievement-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) auto minmax(0, 1.1fr);
+    gap: 10px;
+    align-items: baseline;
     padding: 6px 0;
     font-size: 13px;
     border-bottom: 1px solid #f0f0f0;
 }
+.achievement-row .achievement-value { white-space: nowrap; text-align: right; }
+.achievement-row .achievement-detail { text-align: right; overflow-wrap: anywhere; }
+.achievement-row .achievement-player { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .achievement-row:last-child {
     border-bottom: none;
@@ -76,33 +87,33 @@
 
 .achievement-player {
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
 }
 
 .achievement-value {
     font-weight: bold;
-    color: #28a745;
+    color: var(--win);
 }
 
 .achievement-value.streak-value {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .achievement-value.bags-value {
-    color: #fd7e14;
+    color: var(--bags);
 }
 
 .achievement-value.loss-value {
-    color: #dc3545;
+    color: var(--loss);
 }
 
 .achievement-detail {
     font-size: 11px;
-    color: #666;
+    color: var(--muted);
 }
 
 .streak-game-link {
-    color: #667eea;
+    color: var(--accent);
     text-decoration: none;
 }
 .streak-game-link:hover {
@@ -110,48 +121,35 @@
 }
 
 @media (min-width: 768px) {
-    .overall-stats-grid {
-        grid-template-columns: repeat(6, 1fr);
-    }
-
-    .overall-value {
-        font-size: 32px;
-    }
-
     .achievements-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 480px) {
-    .overall-value {
-        font-size: 20px;
-    }
-
     .overall-label {
         font-size: 10px;
     }
 
     .achievement-row {
-        flex-wrap: wrap;
-        gap: 4px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        row-gap: 2px;
     }
-
-    .achievement-detail {
-        width: 100%;
-        text-align: right;
+    .achievement-row .achievement-detail {
+        grid-column: 1 / -1;
+        text-align: left;
     }
 }
 
 /* Special Cards Section */
 .special-cards-section {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: linear-gradient(135deg, var(--surface-2) 0%, var(--line-soft) 100%);
 }
 
 .special-cards-intro {
     text-align: center;
     font-size: 13px;
-    color: #666;
+    color: var(--muted);
     margin-bottom: 15px;
     padding: 10px;
     background: white;
@@ -170,11 +168,11 @@
     border-radius: 10px;
     padding: 15px;
     text-align: center;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--line);
 }
 
 .special-card-box.ten-clubs {
-    border-color: #333;
+    border-color: var(--ink);
 }
 
 .special-card-box.seven-diamonds {
@@ -188,7 +186,7 @@
 }
 
 .ten-clubs .card-icon {
-    color: #333;
+    color: var(--ink);
 }
 
 .seven-diamonds .card-icon {
@@ -198,18 +196,18 @@
 .card-name {
     font-weight: bold;
     font-size: 12px;
-    color: #333;
+    color: var(--ink);
 }
 
 .card-effect {
     font-size: 11px;
-    color: #28a745;
+    color: var(--win);
     margin-bottom: 8px;
 }
 
 .capture-stat {
     font-size: 12px;
-    color: #666;
+    color: var(--muted);
     padding: 2px 0;
 }
 
@@ -241,7 +239,7 @@
 }
 
 .ten-capture {
-    color: #333;
+    color: var(--ink);
     font-weight: 600;
 }
 
@@ -251,7 +249,7 @@
 }
 
 .bags-saved {
-    color: #28a745;
+    color: var(--win);
     font-weight: bold;
     font-size: 12px;
 }
@@ -259,11 +257,11 @@
 .marta-comparison {
     text-align: center;
     font-size: 12px;
-    color: #666;
+    color: var(--muted);
     padding: 10px;
     background: white;
     border-radius: 8px;
-    border-left: 3px solid #dc3545;
+    border-left: 3px solid var(--loss);
 }
 
 @media (max-width: 480px) {
@@ -296,7 +294,7 @@
 }
 
 .overall-records-section .section-title {
-    color: #ffd700;
+    color: var(--gold);
     border-bottom-color: rgba(255, 215, 0, 0.3);
     font-size: 22px;
 }
@@ -332,7 +330,7 @@
 .big-number {
     font-size: 28px;
     font-weight: 800;
-    color: #ffd700;
+    color: var(--gold);
     line-height: 1.1;
     margin-bottom: 8px;
 }
@@ -383,7 +381,7 @@
 }
 
 .record-value.highlight-value {
-    color: #ffd700;
+    color: var(--gold);
 }
 
 .first-game-note {
@@ -474,7 +472,7 @@
 
 /* Game detail links */
 .game-link {
-    color: #667eea;
+    color: var(--accent);
     text-decoration: none;
     transition: color 0.2s;
 }
@@ -497,27 +495,27 @@
     padding: 10px 12px;
     background: white;
     border-radius: 6px;
-    border: 1px solid #dee2e6;
-    border-left: 3px solid #667eea;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
 }
 
 .time-record-item.fastest {
-    border-left-color: #28a745;
+    border-left-color: var(--win);
 }
 
 .time-record-item.slowest {
-    border-left-color: #fd7e14;
+    border-left-color: var(--bags);
 }
 
 .time-record-label {
     font-size: 13px;
-    color: #666;
+    color: var(--muted);
 }
 
 .time-record-value {
     font-weight: 600;
     font-size: 14px;
-    color: #333;
+    color: var(--ink);
 }
 
 @media (min-width: 768px) {
@@ -539,3 +537,18 @@
     .hoyt-section .achievement-detail { grid-column: 1 / -1; text-align: left; }
     .hoyt-section .overall-stats-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* Robot League (2026-09-06): Otto vs Marta, the house algorithm playing itself */
+#robotLeague .robot-blurb { font-size: 13px; color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+#robotLeague .overall-stats-grid { grid-template-columns: repeat(6, 1fr); margin-bottom: 16px; }
+@media (max-width: 767px) { #robotLeague .overall-stats-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* Playing styles + Marta levels (2026-09-06): humans next to the bot control rows */
+.styles-table td:first-child { text-align: left; font-weight: 600; }
+.styles-table tr.control td { color: var(--muted); font-style: italic; background: #f3f4fb; }
+.section-blurb { font-size: 13px; color: var(--muted); margin: -4px 0 12px; line-height: 1.45; text-align: center; }
+.level-bars { display: grid; gap: 6px; margin-bottom: 12px; }
+.level-bar { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) 4.5em; gap: 8px; align-items: center; font-size: 13px; }
+.level-bar .bar { height: 10px; background: var(--line-soft); border-radius: 5px; overflow: hidden; }
+.level-bar .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.level-bar .pct { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }

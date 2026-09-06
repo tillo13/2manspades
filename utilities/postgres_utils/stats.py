@@ -30,6 +30,7 @@ def stats_payload():
         if time.time() - _PAYLOAD['ts'] < _PAYLOAD_TTL:
             return _PAYLOAD['data']
         from utilities.jukebox import jukebox_stats
+        from .robots import robot_league
         data = {
             'google_leaders': get_unified_leaderboard(),
             'fun_stats': get_fun_stats(),
@@ -38,9 +39,72 @@ def stats_payload():
             'overall_stats': get_overall_game_stats(),
             'per_hand_stats': get_per_hand_stats(),
             'hoyt': jukebox_stats(),
+            'robots': robot_league(),
+            'marta_levels': get_marta_levels(),
         }
+        data['styles'] = player_styles(data['google_leaders'], data['achievements'],
+                                       data['per_hand_stats'], data['robots'])
         _PAYLOAD.update(data=data, ts=time.time())
         return data
+
+
+def get_marta_levels():
+    """Completed hands by Marta level, plus the average strength (0-100) people play her at."""
+    from utilities.computer_logic import STRENGTH_PRESETS, DIFFICULTY_LEVELS
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COALESCE(difficulty, 'easy'), COUNT(*)
+              FROM twomanspades.hands WHERE completed_at IS NOT NULL GROUP BY 1
+        """)
+        counts = dict(cur.fetchall())
+        cur.close()
+        total = sum(counts.values()) or 1
+        rows = [{'level': lvl, 'hands': counts.get(lvl, 0), 'pct': round(100.0 * counts.get(lvl, 0) / total, 1)}
+                for lvl in DIFFICULTY_LEVELS]
+        avg = sum(STRENGTH_PRESETS.get(k, 0) * n for k, n in counts.items()) / total
+        return {'levels': rows, 'avg_strength': round(avg, 1), 'total': total,
+                'above_easy_pct': round(100.0 * (total - counts.get('easy', 0)) / total, 1)}
+    except Exception as e:
+        print(f"Marta level stats failed: {e}")
+        return {}
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+def player_styles(leaders, achievements, per_hand, robots):
+    """One row per player with the numbers that define how they play, plus Otto and Marta
+    (the bot mirror match) as the control rows. Pure merge of payloads already computed."""
+    rows = {}
+    def row(name):
+        return rows.setdefault(name, {'player': name})
+    for p in leaders or []:
+        row(p['player_name']).update(games=p.get('total_games'), win_rate=p.get('win_rate'))
+    a = achievements or {}
+    for p in a.get('bid_accuracy', []):
+        row(p['player']).update(exact_pct=p['exact_pct'], hands=p['hands'])
+    for p in a.get('favorite_bids', []):
+        row(p['player']).update(fav_bid=p['favorite_bid'])
+    for p in a.get('bag_stats', []):
+        row(p['player']).update(bags_per_hand=p['bags_per_hand'])
+    for p in a.get('nil_stats', []):
+        row(p['player']).update(nil=f"{p['successful']}/{p['attempts']}")
+    for p in a.get('blind_stats', []):
+        row(p['player']).update(blind=f"{p['blind_successes']}/{p['times_went_blind']}")
+    for p in (per_hand or {}).get('player_tricks_per_hand', []):
+        row(p['player']).update(tricks=p['avg_tricks'])
+    humans = [r for n, r in rows.items() if n and n != 'Other' and r.get('hands')]
+    humans.sort(key=lambda r: -(r.get('hands') or 0))
+    controls = []
+    for s in (robots or {}).get('seats', []):
+        controls.append({'player': f"{s['seat']} (bot)", 'hands': s['hands'], 'exact_pct': s['exact_pct'],
+                         'bags_per_hand': s['avg_bags'], 'nil': f"{s['nil_made']}/{s['nil_tried']}",
+                         'blind': f"{s['blind_made']}/{s['blind_tried']}", 'avg_bid': s['avg_bid'],
+                         'control': True})
+    return humans + controls
 
 def get_fun_stats() -> Dict[str, Any]:
     """Get fun/interesting stats for display.
