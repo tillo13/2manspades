@@ -31,14 +31,20 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         if not summary:
             return None
 
-        # Get all events for this game
+        # Every hand of the game: each hand has its own hand_id, and the hands of one game share
+        # the player and the game's start time (the page used to read only the last hand's
+        # events and then call the game "older, incomplete logging", 2026-09-06). Identical
+        # rows are collapsed: events were being written twice.
         cur.execute("""
-            SELECT event_type, hand_number, player, timestamp, event_data
-            FROM twomanspades.game_events
-            WHERE hand_id = %s
-            ORDER BY timestamp
+            SELECT DISTINCT ON (e.hand_number, e.event_type, e.event_data::text)
+                   e.event_type, e.hand_number, e.player, e.timestamp, e.event_data
+              FROM twomanspades.game_events e
+              JOIN twomanspades.hands h ON h.hand_id = e.hand_id
+              JOIN twomanspades.hands me ON me.hand_id = %s
+             WHERE h.player_id = me.player_id AND h.started_at = me.started_at
+             ORDER BY e.hand_number, e.event_type, e.event_data::text, e.timestamp
         """, (hand_id,))
-        events = cur.fetchall()
+        events = sorted(cur.fetchall(), key=lambda e: e['timestamp'])
 
         # Organize events by hand
         hands = {}

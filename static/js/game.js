@@ -443,13 +443,14 @@ function updateActionButtons() {
     if (gameState.hand_over && !gameState.game_over) {
         actionButton.style.display = 'none';
     } else {
+        // the click is handled once, by the delegated data-action="performAction" (ui.js). An
+        // onclick here as well fired every discard/play twice: two POSTs, every event logged
+        // twice, from the 2026-09-05 14:04 deploy until 2026-09-06.
         if (gameState.phase === 'discard') {
             actionButton.textContent = 'Discard Selected';
-            actionButton.onclick = discardCard;
             actionButton.style.display = 'inline-block';
         } else if (gameState.phase === 'playing') {
             actionButton.textContent = 'Play Selected';
-            actionButton.onclick = playCard;
             actionButton.style.display = 'inline-block';
         } else {
             actionButton.style.display = 'none';
@@ -575,9 +576,13 @@ function updateHandOver() {
     document.getElementById('hoTricks').innerHTML = tricks.map(t => {
         const youLed = t.leader === 'You';
         const led = youLed ? t.player_card : t.computer_card, ans = youLed ? t.computer_card : t.player_card;
+        // hands scored before 2026-09-06 12:30 don't carry the leader: show both cards, no "led"
+        const cards = t.leader
+            ? `<b>${t.leader}</b> led ${suit(led)} · ${youLed ? 'Marta' : 'You'} ${suit(ans)}`
+            : `You ${suit(t.player_card)} · Marta ${suit(t.computer_card)}`;
         return `<div class="trick-line">
             <span class="trick-number">${t.number}</span>
-            <span class="trick-cards"><b>${t.leader || '?'}</b> led ${suit(led)} · ${youLed ? 'Marta' : 'You'} ${suit(ans)}</span>
+            <span class="trick-cards">${cards}</span>
             <span class="trick-winner ${t.winner === 'You' ? 'you' : 'marta'}">${t.winner}</span>
         </div>`;
     }).join('');
