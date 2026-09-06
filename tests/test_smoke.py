@@ -128,3 +128,13 @@ class GameTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MartaReplyShapeTests(unittest.TestCase):
+    def test_clipped_reply_is_cut_at_last_sentence(self):
+        from utilities.marta_chat import _finish_sentence
+        clipped = ("Della and the Dealer is one of Hoyt's story-songs about a hustler. That's not a bluff, sugar, "
+                   "that's a funeral. Ten tricks to two, and I didn't even have to")
+        self.assertTrue(_finish_sentence(clipped).endswith("that's a funeral."))
+        self.assertEqual(_finish_sentence("Your lead."), "Your lead.")
+        self.assertEqual(_finish_sentence("Nice hand, I guess"), "Nice hand, I guess")

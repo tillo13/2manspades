@@ -27,6 +27,16 @@ APP_NAME = 'twomanspades'
 _RESERVE_DISABLED = {'flag': False}
 
 
+def _finish_sentence(text):
+    """A reply that hit the token cap ends mid-sentence ("...and I didn't even have to");
+    cut back to the last full stop so she never trails off. Short replies pass untouched."""
+    t = text.rstrip()
+    if not t or t[-1] in '.!?"\')' or len(t) < 60:
+        return t
+    cut = max(t.rfind('. '), t.rfind('! '), t.rfind('? '), t.rfind('.\n'), t.rfind('!\n'), t.rfind('?\n'))
+    return t[:cut + 1] if cut > 40 else t
+
+
 class MartaChat:
     def __init__(self):
         # 'medium' (2026-09-05 evening): kumori's high tier resolves to two lanes graded unfit over
@@ -35,7 +45,9 @@ class MartaChat:
         # 100% / p50 2.6 s. Caller-side workaround; the real fix is budget-aware eligibility in kumori.
         self.min_quality_tier = 'medium'
         self.budget_ms = 8000   # a failing cascade must return the canned fallback fast, not stall the table
-        self.max_tokens = 200
+        # 350, was 200: Sonnet (Reserve) writes fuller replies than the free lanes and a song
+        # answer + game aside clipped mid-sentence at 200 (2026-09-06). ~0.1 cents a reply.
+        self.max_tokens = 350
         self.temperature = 0.8
         self.user_id = None
         self.user_sub = None    # Google `sub` from the login session; gates the Reserve tier
@@ -59,7 +71,8 @@ class MartaChat:
             "(with or without a NOW_PLAYING block), drop the snark and answer warmly and plainly in 2-4 sentences, "
             "like a friend who loves his music. Use only the NOW_PLAYING facts (title, record, year, track number) plus "
             "what you genuinely know about Hoyt Axton; if you do not know a fact, say so rather than inventing lyrics, "
-            "dates, studios or stories. Then you may add one short game aside."
+            "dates, studios or stories. Then you may add one short game aside. "
+            "LENGTH: keep every reply under 90 words and always finish your last sentence."
         )
         
         print(f"[MARTA] kumori tier={self.min_quality_tier} max_tokens={self.max_tokens} temp={self.temperature}")
@@ -174,7 +187,8 @@ class MartaChat:
             if not api_response:
                 print(f"[MARTA] WARNING: Empty response from API")
                 return self._fallback_marta_response(game_context)
-            
+
+            api_response = _finish_sentence(api_response)
             print(f"[MARTA] SUCCESS: Returning Marta's response")
             return api_response
             
