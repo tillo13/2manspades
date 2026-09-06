@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Otto Matic, the Referee - Two-Man Spades{% endblock %}
+{% block meta %}
+    <meta name="description" content="How Two-Man Spades calls a lay down: the rule, how the referee decides, and forty calls from ten thousand test games, each checked by playing the hand out.">
+    <link rel="canonical" href="https://2manspades.com/referee">
+{% endblock %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/instructions.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/referee.css') }}">
+{% endblock %}
+{% block content %}
+{% set S = proof.summary %}
+{% macro cards(list) %}{% for c in list %}<span class="rc{% if c[-1] in '♥♦' %} red{% endif %}">{{ c }}</span>{% endfor %}{% endmacro %}
+<div class="container">
+    <a href="/instructions" class="back-button">← How to Play</a>
+    <h1>Otto Matic, the referee</h1>
+    <p class="lede">When the rest of a hand can't go any other way, the referee says so. You can lay them down, or play it out and watch.</p>
+
+    <h2>The rule</h2>
+    <p>A hand is a <strong>lay down</strong> when one side takes every remaining trick <em>whatever either player does</em>.
+        Not "probably", not "with the right line": there is no card the losing side can play, and no card the winning side can
+        play, that changes a single trick. It can happen anywhere from the first lead down to two cards left. The last trick is
+        always played.</p>
+
+    <div class="pos example">
+        <div class="pos-title">The hand that started it · September 6, 2026, hand 3, Marta on lead after trick 6</div>
+        <div class="pos-hands">
+            <div><span class="who">You</span> {{ cards(['3♥', '5♥', '9♥', 'J♥']) }}</div>
+            <div><span class="who">Marta</span> {{ cards(['4♣', '7♦', '8♦', '8♠']) }}</div>
+        </div>
+        <div class="pos-call"><b>Marta takes the last 4.</b> You are not on lead; Marta has no hearts left, so your hearts never get led into; you have no spades to trump with.</div>
+        <p class="pos-note">Every trick from here has the same shape: she leads a club, a diamond or her spade, you can't follow and can't trump, you throw a heart, she takes it and leads again. Four tricks, no line of play changes it.</p>
+    </div>
+
+    <h2>How the referee decides</h2>
+    <p>Otto Matic sees both hands, which Marta's own play never does. After every trick, with the winner about to lead, it asks one
+        question: can the other side take a trick from here, no matter what anyone does? It answers by trying every legal lead and
+        every legal reply, all the way down. Two shapes come up:</p>
+    <ul>
+        <li><strong>The follower can never win.</strong> They hold no spades, and in every suit the leader still has, the follower either
+            has none of it or only cards under the leader's lowest.</li>
+        <li><strong>The follower trumps everything.</strong> They hold nothing but spades and the leader has none, so every lead gets
+            trumped and the spades run the rest.</li>
+    </ul>
+    <p>A looser test was tried first, "does a winning line exist". It called a hand where the winner could still throw a trick away
+        by leading a low spade, and playing the hand out proved it wrong. So the rule is the strict one, and the reasons the referee
+        gives are the ones you can check against your own cards.</p>
+
+    <h2>The proof</h2>
+    <p>Otto played Marta {{ '{:,}'.format(S.games) }} seeded games twice: once laying hands down when the referee called them, once
+        playing every card to the end. Every hand's bids, tricks, scores and bags had to match between the two runs.</p>
+    <div class="tiles">
+        <div class="tile"><b>{{ '{:,}'.format(S.hands) }}</b><small>hands</small></div>
+        <div class="tile"><b>{{ '{:,}'.format(S.lay_downs) }}</b><small>lay downs called</small></div>
+        <div class="tile"><b>{{ '{:,}'.format(S.held) }}</b><small>held when played out</small></div>
+        <div class="tile"><b>{{ S.games_differ }}</b><small>games that differ</small></div>
+        <div class="tile"><b>{{ S.referee_ms_avg }} ms</b><small>per call, average</small></div>
+        <div class="tile"><b>{{ S.referee_ms_max }} ms</b><small>worst call</small></div>
+    </div>
+    <p class="dist">Called with this many cards left:
+        {% for k, v in S.by_cards_left.items() %}<span><b>{{ k }}</b> {{ '{:,}'.format(v) }}</span>{% endfor %}</p>
+
+    <h2>Forty calls, played out</h2>
+    <p>Chosen for variety: every size from ten cards down to two, both winners, the special cards in play. Otto sits in the player's
+        seat. Under each call is the played-out result from the second run.</p>
+    {% for x in proof.calls %}
+    <div class="pos">
+        <div class="pos-title">Game {{ x.seed }}, hand {{ x.hand }} · {{ 'from the first lead' if x.after_trick == 0 else 'after trick ' ~ x.after_trick }} · {{ x.otto|length }} cards left · {{ 'Otto' if x.leader == 'player' else 'Marta' }} on lead{% if x.spades_broken %}, spades broken{% endif %}</div>
+        <div class="pos-hands">
+            <div><span class="who">Otto</span> {{ cards(x.otto) }}</div>
+            <div><span class="who">Marta</span> {{ cards(x.marta) }}</div>
+        </div>
+        <div class="pos-call"><b>{{ 'Otto takes' if x.call.winner == 'player' else 'Marta takes' }} the last {{ x.call.tricks }}.</b> {{ x.call.why|replace('You are', 'Otto is')|replace('you are', 'Otto is')|replace('your ', "Otto's ")|replace('Your ', "Otto's ")|replace('you have', 'Otto has')|replace('you hold', 'Otto holds')|replace('you run', 'Otto runs')|replace('yours', "Otto's")|replace('you', 'Otto') }}</div>
+        <div class="pos-dealt">{% for t in x.dealt %}<span class="tk">{{ t[0] }}: {{ cards([t[1]]) }}·{{ cards([t[2]]) }} <em>{{ 'O' if t[3] == 'player' else 'M' }}</em></span>{% endfor %}</div>
+        <div class="pos-verdict {{ 'ok' if x.held else 'bad' }}">Played out: Otto {{ x.played_out.otto_tricks }}, Marta {{ x.played_out.marta_tricks }} · {{ 'held' if x.held else 'did not hold' }}</div>
+    </div>
+    {% endfor %}
+    <p class="foot">Regenerated by <code>utilities/referee_proof.py</code>, last run {{ S.run_at }}.</p>
+</div>
+{% endblock %}

@@ -601,7 +601,9 @@ def process_auto_resolution(game, session, leader=None, offer=True):
         game['turn'] = 'player'
         who = 'you take' if ld['winner'] == 'player' else 'Marta takes'
         game['message'] = f"Otto Matic has called a lay down: {who} the last {ld['tricks']}. Lay them down, or play it out."
-        log_game_event('lay_down_called', dict(ld, after_trick=ld['after_trick']), session)
+        log_game_event('lay_down_called', dict(ld, player_hand=[_card(c) for c in game['player_hand']],
+                                               computer_hand=[_card(c) for c in game['computer_hand']],
+                                               spades_broken=bool(game.get('spades_broken'))), session)
         return 'offered'
     game['lay_down_offer'] = ld
     return lay_them_down(game, session)

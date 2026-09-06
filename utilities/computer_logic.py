@@ -889,7 +889,8 @@ def _why(loser, w_hand, l_hand, loser_leads):
             parts.append(f"{them} {t_has} no {_suit_list(dead)} left, so {your} {_suit_list(dead)} never get led into")
         if under:
             parts.append(f"{your} {_suit_list(under)} are all under {theirs}")
-        parts.append(f"{you} {have} no spades to trump with" if '♠' not in l else f"{your} spades are all under {theirs}" if '♠' in under else '')
+        if '♠' not in l:
+            parts.append(f"{you} {have} no spades to trump with")   # (spades in the all-under list are already said)
     else:
         trumped = [x for x in dead if '♠' in w]
         if trumped:

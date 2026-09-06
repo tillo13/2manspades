@@ -874,6 +874,17 @@ def next_hand():
 def instructions():
     return render_template('instructions.html')
 
+@app.route('/referee')
+def referee():
+    """Otto Matic: the lay-down rule, how the referee decides, and a set of calls from Otto's
+    games with the played-out result beside each (static/referee_proof.json, made by
+    utilities/referee_proof.py)."""
+    import json
+    with open(os.path.join(os.path.dirname(__file__), 'static', 'referee_proof.json')) as f:
+        proof = json.load(f)
+    return render_template('referee.html', proof=proof)
+
+
 @app.route('/stats')
 def stats():
     from utilities.postgres_utils.stats import stats_payload

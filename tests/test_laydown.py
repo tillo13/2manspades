@@ -118,6 +118,16 @@ class LayDownTests(unittest.TestCase):
         self.assertEqual(g['computer_bags'], 1)            # 7♦ (2) and 10♣ (1) both land with Marta
         self.assertEqual(g['computer_trick_special_cards'], 3)
 
+    def test_referee_page_renders_the_proof(self):
+        client = A.app.test_client()
+        r = client.get('/referee')
+        self.assertEqual(r.status_code, 200)
+        body = r.get_data(as_text=True)
+        self.assertIn('lay downs called', body)
+        self.assertIn('Played out: Otto', body)
+        self.assertNotIn('did not hold', body)
+        self.assertIn('/referee', A.app.test_client().get('/instructions').get_data(as_text=True))
+
     def test_last_trick_is_never_called(self):
         from utilities.computer_logic import lay_down
         self.assertIsNone(lay_down(self.game(['3♥'], ['4♣']), 'computer'))

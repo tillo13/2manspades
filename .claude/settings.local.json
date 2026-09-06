@@ -39,7 +39,9 @@
       "Bash(KUMORI_API_KEY=x venv_2man/bin/python -m unittest discover -s tests -q)",
       "Bash(venv_2man/bin/python -m unittest discover -s tests -q)",
       "Bash(pw /private/tmp/claude-501/-Users-at-Desktop-code-2manspades/60a69671-3dac-41da-937d-149016b3c1ac/scratchpad/gameover.js)",
-      "Bash(pkill *)"
+      "Bash(pkill *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://2manspades.com/referee)",
+      "Bash(curl -s https://2manspades.com/referee)"
     ]
   }
 }
