@@ -309,11 +309,8 @@ def cron_otto():
     header IS the auth. No LLM anywhere in a bot game: Marta's chat is never invoked."""
     if request.headers.get('X-Appengine-Cron') != 'true':
         abort(403)
-    from utilities.otto import play_game
-    result = play_game(persist=True, source='cron')
-    return jsonify({'ok': True, 'winner': result['winner'], 'hands': result['hands'],
-                    'otto': result['otto_score'], 'marta': result['marta_score'],
-                    'decisions': result['decision_count'], 'ms': result['ms']})
+    from utilities.otto import play_cron_tick
+    return jsonify({'ok': True, **play_cron_tick()})
 
 @app.route('/chat_response', methods=['POST'])
 def chat_response():

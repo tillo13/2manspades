@@ -63,10 +63,16 @@ def robot_league():
             s['exact_pct'] = round(100.0 * s['exact'] / s['hands'], 1) if s['hands'] else 0
         out['seats'] = seats
         cur.execute("""
-            SELECT game_id, played_at, winner, otto_score, marta_score, hands, first_leader, seed
+            SELECT game_id, played_at, winner, otto_score, marta_score, hands, first_leader, seed, marta_strength
               FROM twomanspades.bot_games ORDER BY played_at DESC LIMIT 12
         """)
         out['recent'] = [dict(r) for r in cur.fetchall()]
+        if table_exists(cur, 'twomanspades', 'bot_state'):
+            cur.execute("SELECT value FROM twomanspades.bot_state WHERE key = 'marta_strength_vs_otto'")
+            row = cur.fetchone()
+            out['marta_strength'] = row['value'] if row else 0
+        from utilities.otto import daily_target
+        out['target_today'] = daily_target()
         cur.close()
         return out
     except Exception as e:

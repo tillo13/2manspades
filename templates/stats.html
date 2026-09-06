@@ -231,11 +231,14 @@
             <div class="overall-stats-grid">
                 {{ tile(robots.otto_wins ~ '-' ~ robots.marta_wins ~ ('-' ~ robots.ties if robots.ties else ''), 'Otto vs Marta') }}
                 {{ tile("{:,}".format(robots.games|int), 'Games') }}
-                {{ tile(robots.games_today, 'Today') }}
+                {{ tile(robots.games_today ~ ' of ' ~ robots.target_today, 'Today') }}
                 {{ tile(robots.streak_holder ~ ' ' ~ robots.streak, 'Streak') }}
-                {{ tile(robots.avg_hands ~ ' hands', 'Avg Game') }}
+                {% if robots.marta_strength is defined %}{{ tile(robots.marta_strength ~ '/100', 'Marta vs Otto') }}{% endif %}
                 {{ tile(robots.first_leader_win_pct ~ '%', 'First Leader Wins') }}
             </div>
+            <p class="section-blurb">Otto picks a fresh number of games each day, 1 to 100, and Marta ratchets against
+                him the same way she does against a person: up when he wins, down when he loses. Her strength against
+                him settles wherever he wins half the time.</p>
             <div class="achievements-grid">
                 {% if robots.seats %}{% call card('How the Bots Play') %}
                     {% for s in robots.seats %}{{ row(s.seat, s.exact_pct ~ '% exact bids', s.avg_bags ~ ' bags/hand · avg bid ' ~ s.avg_bid ~ ' · nil ' ~ s.nil_made ~ '/' ~ s.nil_tried ~ ' · blind ' ~ s.blind_made ~ '/' ~ s.blind_tried) }}{% endfor %}

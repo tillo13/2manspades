@@ -56,13 +56,26 @@ class OttoTests(unittest.TestCase):
     def test_cron_route_requires_appengine_header(self):
         client = A.app.test_client()
         self.assertEqual(client.get('/cron/otto').status_code, 403)
-        with patch('utilities.otto.play_game', return_value={
-                'winner': 'otto', 'hands': 8, 'otto_score': 301, 'marta_score': 240,
-                'decision_count': 150, 'ms': 90}) as pg:
+        with patch('utilities.otto.play_cron_tick', return_value={'target_today': 42, 'played_now': 3,
+                                                                    'games': []}) as tick:
             r = client.get('/cron/otto', headers={'X-Appengine-Cron': 'true'})
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.get_json()['winner'], 'otto')
-        pg.assert_called_once_with(persist=True, source='cron')
+        self.assertEqual(r.get_json()['target_today'], 42)
+        tick.assert_called_once_with()
+
+    def test_daily_quota_is_fixed_per_day_and_spread(self):
+        import datetime
+        from utilities.otto import daily_target, games_due
+        d = datetime.date(2026, 9, 6)
+        t = daily_target(d)
+        self.assertEqual(t, daily_target(d))
+        self.assertTrue(1 <= t <= 100)
+        self.assertNotEqual(sorted({daily_target(datetime.date(2026, 9, i)) for i in range(1, 30)}), [t])
+        noon = datetime.datetime(2026, 9, 6, 12, 0)
+        self.assertEqual(games_due(100, 50, noon), 0)      # on pace
+        self.assertEqual(games_due(100, 40, noon), 2)      # behind: catch up two at a time
+        self.assertEqual(games_due(1, 1, noon), 0)         # quota done
+        self.assertEqual(games_due(4, 0, datetime.datetime(2026, 9, 6, 23, 59)), 2)
 
 
 

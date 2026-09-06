@@ -207,6 +207,79 @@ def _record_hand(game, decisions):
     })
 
 
+# ─── The daily drip (cron) ─────────────────────────────────────────────────────
+# Andy, 2026-09-06: "let it pick between 1-100 games a day at random to mix it up", and
+# "Otto should get ratcheted the same way when playing Marta". So: one quota per calendar
+# day drawn from the date (every instance agrees), spread across the 96 cron ticks; and
+# Marta's strength against Otto moves with each result like it does for a person, so it
+# settles wherever Otto wins half the time — a live measure of how strong easy-Otto is.
+import datetime as _dt
+
+CRON_TICKS_PER_DAY = 96          # cron.yaml: every 15 minutes
+
+
+def daily_target(day=None):
+    """How many games Otto plays today, 1-100, fixed for the day."""
+    day = day or _dt.date.today()
+    return random.Random(f"otto-{day.isoformat()}").randint(1, 100)
+
+
+def games_due(target, played_today, now=None):
+    """How many games this tick should play so the day's quota lands evenly: 0, 1 or 2."""
+    now = now or _dt.datetime.now()
+    frac = (now.hour * 60 + now.minute + 1) / (24 * 60)
+    behind = int(round(target * frac)) - played_today
+    return max(0, min(2, behind))
+
+
+def play_cron_tick():
+    """One cron tick: draw today's quota, play what's due, ratchet Marta against Otto."""
+    from utilities.computer_logic import ratchet, level_name
+    from utilities.postgres_utils import get_db_connection, return_db_connection
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        _ensure_schema(cur)
+        cur.execute("SELECT COUNT(*) FROM twomanspades.bot_games WHERE played_at::date = CURRENT_DATE")
+        played = cur.fetchone()[0]
+        cur.execute("SELECT value FROM twomanspades.bot_state WHERE key = 'marta_strength_vs_otto'")
+        row = cur.fetchone()
+        strength = row[0] if row else 0
+        cur.close()
+    finally:
+        return_db_connection(conn)
+    target = daily_target()
+    due = games_due(target, played)
+    results = []
+    for _ in range(due):
+        r = play_game(marta_difficulty=strength, source='cron')
+        r['marta_strength'] = strength
+        before = strength
+        strength = ratchet(strength, r['winner'] == 'otto', r['otto_score'] - r['marta_score'])
+        r['marta_strength_after'] = strength
+        _persist(r)
+        _save_state('marta_strength_vs_otto', strength)
+        results.append({'winner': r['winner'], 'otto': r['otto_score'], 'marta': r['marta_score'],
+                        'hands': r['hands'], 'marta_strength': f"{before} -> {strength} ({level_name(strength)})"})
+    return {'target_today': target, 'played_before': played, 'played_now': played + due, 'games': results,
+            'marta_strength_vs_otto': strength}
+
+
+def _save_state(key, value):
+    from utilities.postgres_utils import get_db_connection, return_db_connection
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO twomanspades.bot_state (key, value, updated_at) VALUES (%s, %s, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+        """, (key, int(value)))
+        conn.commit()
+        cur.close()
+    finally:
+        return_db_connection(conn)
+
+
 # ─── Ledger ───────────────────────────────────────────────────────────────────
 _SCHEMA_OK = False
 
@@ -247,6 +320,16 @@ def _ensure_schema(cur):
                 data     JSONB NOT NULL
             )
         """)
+    if not table_exists(cur, 'twomanspades', 'bot_state'):
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS twomanspades.bot_state (
+                key        TEXT PRIMARY KEY,
+                value      INTEGER NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+    from utilities.schema_guard import add_column_if_missing
+    add_column_if_missing(cur, 'twomanspades', 'bot_games', 'marta_strength', 'INTEGER')
     create_index_if_missing(cur, 'twomanspades', 'idx_bot_games_played', 'bot_games', '(played_at DESC)')
     create_index_if_missing(cur, 'twomanspades', 'idx_bot_decisions_game', 'bot_decisions', '(game_id)')
     create_index_if_missing(cur, 'twomanspades', 'idx_bot_decisions_kind', 'bot_decisions', '(kind, seat)')
@@ -259,14 +342,16 @@ def _persist(r):
     try:
         cur = conn.cursor()
         _ensure_schema(cur)
+        from utilities.computer_logic import level_name
         cur.execute("""
             INSERT INTO twomanspades.bot_games
                 (game_id, source, seed, otto_difficulty, marta_difficulty, first_leader, winner, hands,
-                 otto_score, marta_score, otto_bags, marta_bags, ms, app_version)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (r['game_id'], r['source'], r['seed'], r['otto_difficulty'], r['marta_difficulty'],
-              r['first_leader'], r['winner'], r['hands'], r['otto_score'], r['marta_score'],
-              r['otto_bags'], r['marta_bags'], r['ms'], r['app_version']))
+                 otto_score, marta_score, otto_bags, marta_bags, ms, app_version, marta_strength)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (r['game_id'], r['source'], r['seed'], level_name(r['otto_difficulty']),
+              level_name(r['marta_difficulty']), r['first_leader'], r['winner'], r['hands'],
+              r['otto_score'], r['marta_score'], r['otto_bags'], r['marta_bags'], r['ms'],
+              r['app_version'], r.get('marta_strength')))
         cur.executemany("""
             INSERT INTO twomanspades.bot_decisions (game_id, hand, seat, kind, data)
             VALUES (%s,%s,%s,%s,%s)
