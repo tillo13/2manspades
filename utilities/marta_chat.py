@@ -14,12 +14,17 @@ from typing import Dict, Optional, Any
 import logging
 import json
 
-from utilities.kumori_api_client import llm_chat_resilient
+from utilities.kumori_api_client import llm_chat_resilient, llm_chat_reserve, KumoriAPIError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 APP_NAME = 'twomanspades'
+
+# Reserve tier (Claude Sonnet via kumori) for every table, 2026-09-05. The grant is
+# the llm.reserve scope on this app's kumori key, bounded by that key's daily cap.
+# A 403 means the scope was pulled: stop asking for the life of this process.
+_RESERVE_DISABLED = {'flag': False}
 
 
 class MartaChat:
@@ -33,6 +38,7 @@ class MartaChat:
         self.max_tokens = 200
         self.temperature = 0.8
         self.user_id = None
+        self.user_sub = None    # Google `sub` from the login session; gates the Reserve tier
         
         self.system_prompt = (
             "You are Marta, playing Two-Man Spades against a human opponent. "
@@ -127,15 +133,36 @@ class MartaChat:
                 )
             
             print(f"[MARTA] Prompt length: {len(user_prompt)} chars")
-            print(f"[MARTA] kumori llm_chat_resilient tier={self.min_quality_tier}")
-            text, backend, attempts, _ = llm_chat_resilient(
-                messages=[{"role": "user", "content": user_prompt}],
-                system=self.system_prompt,
-                max_tokens=self.max_tokens, temperature=self.temperature,
-                min_quality_tier=self.min_quality_tier, allow_degrade=True,
-                budget_ms=self.budget_ms, min_chars=5, app_name=APP_NAME,
-                retry_on_5xx=False,   # router already cascaded; a second try only doubles the stall
-            )
+            text, backend, attempts = None, None, []
+            if not _RESERVE_DISABLED['flag']:
+                # Reserve first: Sonnet knew the Hoyt Axton catalog cold in testing (6/8 right,
+                # 0 invented, ~1.3 s) where every free lane invented a duet partner. Any failure
+                # falls to the free arm.
+                try:
+                    text, backend = llm_chat_reserve(
+                        messages=[{"role": "user", "content": user_prompt}],
+                        system=self.system_prompt, auth_sub=self.user_sub,
+                        max_tokens=self.max_tokens, temperature=self.temperature,
+                        app_name=APP_NAME)
+                    print(f"[MARTA] reserve backend={backend}")
+                except KumoriAPIError as e:
+                    if e.status_code == 403:
+                        _RESERVE_DISABLED['flag'] = True
+                        print(f"[MARTA] reserve: scope missing on this key, free arm from now on")
+                    else:
+                        print(f"[MARTA] reserve failed ({e.status_code}): {e} — falling back to free arm")
+                except Exception as e:
+                    print(f"[MARTA] reserve error: {e} — falling back to free arm")
+            if not (text or '').strip():
+                print(f"[MARTA] kumori llm_chat_resilient tier={self.min_quality_tier}")
+                text, backend, attempts, _ = llm_chat_resilient(
+                    messages=[{"role": "user", "content": user_prompt}],
+                    system=self.system_prompt,
+                    max_tokens=self.max_tokens, temperature=self.temperature,
+                    min_quality_tier=self.min_quality_tier, allow_degrade=True,
+                    budget_ms=self.budget_ms, min_chars=5, app_name=APP_NAME,
+                    retry_on_5xx=False,   # router already cascaded; a second try only doubles the stall
+                )
             print(f"[MARTA] backend={backend} attempts={len(attempts or [])}")
             api_response = (text or '').strip()
             print(f"[MARTA] Raw API response: '{api_response}'")
@@ -438,11 +465,12 @@ def get_marta_chat() -> MartaChat:
         _marta_chat = MartaChat()
     return _marta_chat
 
-def get_smart_marta_response(player_message: str, game_state: Dict[str, Any], user_id: str = None, now_playing: Dict[str, Any] = None) -> str:
+def get_smart_marta_response(player_message: str, game_state: Dict[str, Any], user_id: str = None, now_playing: Dict[str, Any] = None, user_sub: str = None) -> str:
     """Convenience function to get Marta's response as active player"""
     print(f"[MARTA] get_smart_marta_response: '{player_message}'")
     marta = get_marta_chat()
     marta.user_id = user_id
+    marta.user_sub = user_sub
     response = marta.get_marta_response(player_message, game_state, now_playing=now_playing)
     print(f"[MARTA] Final Marta response: '{response}'")
     return response

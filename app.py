@@ -320,6 +320,7 @@ def chat_response():
             print("[CHAT] Calling Marta via kumori...")
             response = get_smart_marta_response(player_message, game_state,
                                                 user_id=session.get('user', {}).get('email'),
+                                                user_sub=session.get('user', {}).get('google_id'),
                                                 now_playing=data.get('now_playing'))
             print(f"[CHAT] Final response: '{response}'")
             if response == "__RETRY__":

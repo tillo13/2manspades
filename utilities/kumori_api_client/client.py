@@ -368,6 +368,25 @@ def llm_chat_resilient(backends=None, messages=None, max_tokens=500, temperature
     return data.get('text'), data.get('backend'), data.get('attempts', []), data.get('_debug')
 
 
+def llm_chat_reserve(messages, system=None, max_tokens=300, temperature=0.7,
+                     auth_sub=None, app_name=None, timeout=(5, 30)):
+    """Reserve tier — paid Claude (kumori's MODEL_TIERS['sonnet']) for this APP's
+    users. The grant is the `llm.reserve` scope on your key; spend is bounded by
+    the key's daily cap. auth_sub (your login's Google `sub`) is optional and
+    only tags usage for attribution. Raises KumoriAPIError on 403 (no scope),
+    429 (cap) or 5xx — catch it and fall back to llm_chat_resilient. Returns
+    (text, backend). No client-side retry: a paid call is never doubled."""
+    body = {'messages': messages, 'max_tokens': max_tokens, 'temperature': temperature}
+    if auth_sub:
+        body['auth_sub'] = auth_sub
+    if system:
+        body['system'] = system
+    if app_name:
+        body['app_name'] = app_name
+    data = _request('POST', '/api/v1/llm/reserve', body, timeout=timeout, retry_on_5xx=False)
+    return data.get('text'), data.get('backend')
+
+
 def llm_chat_eval(prompt, system=None, caller=None):
     """Eval-pool scoring call. Signature mirrors kumori_free_llms.chat_eval.
     Returns (text, backend_name)."""
