@@ -1,8 +1,10 @@
 cron:
-  # Otto vs Marta, one headless game per tick = 20 a day. Reaches a +/-5 point win-rate
-  # estimate in ~3 weeks and keeps the Robot League on /stats moving. Thousand-game
-  # analysis runs happen on a laptop (python -m utilities.otto), never here.
+  # Otto vs Marta, one headless game per tick = 96 a day (Andy, 2026-09-06: "let him play
+  # 100 games a day"). Rows: ~150 decisions/game -> ~15K rows/day in bot_decisions, about
+  # 1 GB/year on the shared Cloud SQL disk. Thousand-game analysis runs still happen on a
+  # laptop (python -m utilities.otto), never here. Needs the Cloud Scheduler API enabled
+  # on the project (done 2026-09-06); App Engine cron.yaml jobs are not billed as Scheduler jobs.
   - description: Otto plays Marta one game for the Robot League
     url: /cron/otto
-    schedule: every 72 minutes
+    schedule: every 15 minutes
     timezone: America/Los_Angeles

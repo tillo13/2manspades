@@ -173,6 +173,67 @@ def get_user_level_record(google_email: str) -> Dict[str, Dict[str, int]]:
             return_db_connection(conn)
 
 
+_STRENGTH_COL_OK = False
+
+
+def _ensure_strength_column(cur):
+    """players.marta_strength (0-100): where the ratchet lives. players.difficulty keeps the
+    rung NAME for display and older code; this is the exact number."""
+    global _STRENGTH_COL_OK
+    if _STRENGTH_COL_OK:
+        return
+    from utilities.schema_guard import add_column_if_missing
+    add_column_if_missing(cur, 'twomanspades', 'players', 'marta_strength', 'INTEGER')
+    _STRENGTH_COL_OK = True
+
+
+def get_user_strength(google_email: str) -> Optional[int]:
+    """The player's ratcheted Marta strength, or None if never set."""
+    if not google_email:
+        return None
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        _ensure_strength_column(cur)
+        conn.commit()
+        cur.execute("SELECT marta_strength FROM twomanspades.players WHERE google_email = %s", (google_email,))
+        row = cur.fetchone()
+        cur.close()
+        return row[0] if row and row[0] is not None else None
+    except Exception as e:
+        print(f"[DB] Error getting strength: {e}")
+        return None
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+def save_user_strength(google_email: str, strength: int) -> bool:
+    """Persist the ratchet and keep players.difficulty in step (as the rung name)."""
+    from utilities.computer_logic import level_name
+    if not google_email:
+        return False
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        _ensure_strength_column(cur)
+        cur.execute("""
+            UPDATE twomanspades.players SET marta_strength = %s, difficulty = %s
+            WHERE google_email = %s
+        """, (int(strength), level_name(strength), google_email))
+        conn.commit()
+        cur.close()
+        return True
+    except Exception as e:
+        print(f"[DB] Error saving strength: {e}")
+        return False
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
 def save_user_difficulty(google_email: str, difficulty: str) -> bool:
     """Save user's difficulty preference."""
     from utilities.computer_logic import DIFFICULTY_LEVELS

@@ -236,6 +236,14 @@
                 {{ tile(robots.avg_hands ~ ' hands', 'Avg Game') }}
                 {{ tile(robots.first_leader_win_pct ~ '%', 'First Leader Wins') }}
             </div>
+            <div class="achievements-grid">
+                {% if robots.seats %}{% call card('How the Bots Play') %}
+                    {% for s in robots.seats %}{{ row(s.seat, s.exact_pct ~ '% exact bids', s.avg_bags ~ ' bags/hand · avg bid ' ~ s.avg_bid ~ ' · nil ' ~ s.nil_made ~ '/' ~ s.nil_tried ~ ' · blind ' ~ s.blind_made ~ '/' ~ s.blind_tried) }}{% endfor %}
+                {% endcall %}{% endif %}
+                {% if robots.recent %}{% call card("Otto's Recent Games") %}
+                    {% for g in robots.recent %}{{ row(g.winner|title ~ ' won', g.otto_score ~ ' to ' ~ g.marta_score, g.hands ~ ' hands, ' ~ g.first_leader ~ ' led first, ' ~ (g.played_at.strftime('%b %-d %H:%M') if g.played_at else ''), 'streak-value' if g.winner == 'otto' else 'loss-value') }}{% endfor %}
+                {% endcall %}{% endif %}
+            </div>
             {% endif %}
         </div>
         {% endif %}

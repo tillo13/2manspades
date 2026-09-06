@@ -343,6 +343,11 @@
     <!-- Difficulty Modal -->
     <div id="difficultyModal" class="difficulty-modal" data-action="closeDifficultyModal">
         <div class="difficulty-content" data-action="stop">
+            <div class="difficulty-you" id="difficultyYou" hidden>
+                <span class="you-name"></span>
+                <a class="you-page" href="/stats">Your games</a>
+                <a class="you-logout" href="/logout">Log out</a>
+            </div>
             <div class="difficulty-title">Marta's Difficulty</div>
             <div class="difficulty-options" id="difficultyOptions">
                 {% for lvl in difficulty_levels %}
@@ -354,8 +359,8 @@
                 </label>
                 {% endfor %}
             </div>
-            <div class="difficulty-note">Takes effect next game. Each step up is a Marta that beat the one below it
-                on the practice table.</div>
+            <div class="difficulty-note" id="difficultyNote">Takes effect next game. Each step up is a Marta that beat
+                the one below it on the practice table.</div>
         </div>
     </div>
 {% endblock %}

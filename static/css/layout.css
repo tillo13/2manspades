@@ -312,3 +312,7 @@
 .difficulty-option { flex-wrap: wrap; }
 .difficulty-desc { flex-basis: 100%; margin-left: 1.6rem; }
 .difficulty-record { margin-left: auto; font-size: 0.8rem; font-weight: 600; color: #667eea; }
+.difficulty-you { display: flex; align-items: center; gap: 12px; margin: -4px 0 12px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; }
+.difficulty-you .you-name { font-weight: 700; color: #333; margin-right: auto; }
+.difficulty-you a { color: #667eea; text-decoration: none; font-size: 0.85rem; }
+.difficulty-you a:hover { text-decoration: underline; }

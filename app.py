@@ -109,15 +109,19 @@ def auth_callback():
         session.permanent = True
         print(f"[AUTH] User logged in: {session.get('user')}")
 
-        # Load user's saved difficulty preference
+        # Load Marta's setting: the ratcheted strength number if the player has one,
+        # else their saved rung name. Either shape works everywhere downstream.
         user_email = session.get('user', {}).get('email')
         if user_email:
-            saved_difficulty = get_user_difficulty(user_email)
-            if saved_difficulty:
+            from utilities.postgres_utils import get_user_strength
+            saved_difficulty = get_user_strength(user_email)
+            if saved_difficulty is None:
+                saved_difficulty = get_user_difficulty(user_email)
+            if saved_difficulty is not None:
                 session['difficulty'] = saved_difficulty
                 if 'game' in session:
                     session['game']['difficulty'] = saved_difficulty
-                print(f"[AUTH] Loaded difficulty preference: {saved_difficulty}")
+                print(f"[AUTH] Loaded Marta setting: {saved_difficulty}")
 
         # CRITICAL: Update game client_info with Google auth
         if 'game' in session:
@@ -300,7 +304,7 @@ def new_game():
 
 @app.route('/cron/otto')
 def cron_otto():
-    """Otto plays Marta one full game (cron.yaml, every 72 min = 20/day) and files it in the
+    """Otto plays Marta one full game (cron.yaml, every 15 min = 96/day) and files it in the
     Robot League tables. App Engine strips X-Appengine-Cron from outside traffic, so the
     header IS the auth. No LLM anywhere in a bot game: Marta's chat is never invoked."""
     if request.headers.get('X-Appengine-Cron') != 'true':
@@ -417,32 +421,71 @@ def get_state():
 @app.route('/set_difficulty', methods=['POST'])
 def set_difficulty():
     """Set Marta's difficulty level"""
-    from utilities.computer_logic import DIFFICULTY_LEVELS
+    from utilities.computer_logic import DIFFICULTY_LEVELS, STRENGTH_PRESETS
     data = request.get_json() or {}
     difficulty = data.get('difficulty', 'easy')
     if difficulty not in DIFFICULTY_LEVELS:
         return jsonify({'error': 'Invalid difficulty'}), 400
-    session['difficulty'] = difficulty
-    # Update current game if exists
+    # A manual pick resets the ratchet to that rung's strength; it climbs/drops from there.
+    strength = STRENGTH_PRESETS[difficulty]
+    session['difficulty'] = strength
     if 'game' in session:
-        session['game']['difficulty'] = difficulty
+        session['game']['difficulty'] = strength
         session.modified = True
-    # Save to user profile if logged in
     user_email = session.get('user', {}).get('email')
     if user_email:
+        from utilities.postgres_utils import save_user_strength
         save_user_difficulty(user_email, difficulty)
-    return jsonify({'success': True, 'difficulty': difficulty})
+        save_user_strength(user_email, strength)
+    return jsonify({'success': True, 'difficulty': difficulty, 'strength': strength})
 
 @app.route('/get_difficulty')
 def get_difficulty():
-    """Current level plus the ladder: every level with its blurb and, for a logged-in
-    player, their completed-game record on it — so the gear shows Marta getting better."""
-    from utilities.computer_logic import DIFFICULTY_LEVELS, LEVEL_BLURBS
+    """Marta's current strength + rung, the ladder with the player's record on each rung,
+    and whether the ratchet applies to them yet."""
+    from utilities.computer_logic import DIFFICULTY_LEVELS, LEVEL_BLURBS, level_name, strength_of, RATCHET_MIN_GAMES
     from utilities.postgres_utils import get_user_level_record
-    record = get_user_level_record(session.get('user', {}).get('email')) if IS_PRODUCTION else {}
+    email = session.get('user', {}).get('email')
+    record = get_user_level_record(email) if (IS_PRODUCTION and email) else {}
+    games = sum(r['wins'] + r['losses'] for r in record.values())
     levels = [{'level': lvl, 'blurb': LEVEL_BLURBS[lvl], **record.get(lvl, {'wins': 0, 'losses': 0})}
               for lvl in DIFFICULTY_LEVELS]
-    return jsonify({'difficulty': session.get('difficulty', 'easy'), 'levels': levels})
+    setting = session.get('difficulty', 'easy')
+    user = session.get('user') or {}
+    first = (user.get('name') or '').split(' ')[0] or (email or '').split('@')[0]
+    return jsonify({'difficulty': level_name(setting), 'strength': strength_of(setting), 'levels': levels,
+                    'player': {'name': first, 'page': first} if email else None,
+                    'ratchet': {'eligible': bool(email) and games >= RATCHET_MIN_GAMES,
+                                'logged_in': bool(email), 'games': games, 'needed': RATCHET_MIN_GAMES}})
+
+
+def _ratchet_after_game(game):
+    """Game over: move Marta's strength for players with a track record and say so in the
+    end-of-game message. Anonymous players and newcomers (< RATCHET_MIN_GAMES) are exempt."""
+    from utilities.computer_logic import ratchet, level_name, strength_of, RATCHET_MIN_GAMES
+    from utilities.postgres_utils import get_user_level_record, save_user_strength
+    from utilities.custom_rules import get_display_score
+    email = session.get('user', {}).get('email')
+    if not email or game.get('winner') not in ('player', 'computer'):
+        return
+    record = get_user_level_record(email)
+    games = sum(r['wins'] + r['losses'] for r in record.values())
+    if games < RATCHET_MIN_GAMES:
+        return
+    won = game['winner'] == 'player'
+    margin = get_display_score(game['player_score'], game.get('player_bags', 0)) - \
+        get_display_score(game['computer_score'], game.get('computer_bags', 0))
+    before = strength_of(session.get('difficulty', 'easy'))
+    after = ratchet(before, won, margin)
+    session['difficulty'] = after
+    save_user_strength(email, after)
+    if after == before:
+        note = f" Marta stays at {after}/100 ({level_name(after).title()})."
+    else:
+        note = (f" Marta {'climbs' if after > before else 'drops'} to {after}/100 "
+                f"({level_name(after).title()}) for your next game.")
+    game['message'] = (game.get('message') or '') + note
+    game['ratchet'] = {'before': before, 'after': after, 'level': level_name(after)}
 
 @app.route('/toggle_computer_hand', methods=['POST'])
 def toggle_computer_hand():
@@ -683,7 +726,7 @@ def clear_trick():
         process_hand_completion(game, session)
     elif len(game['player_hand']) > 0 and len(game['computer_hand']) > 0:
         auto_resolved = process_auto_resolution(game, session)
-        
+
         if not auto_resolved:
             if winner == 'computer':
                 computer_lead_with_logging(game, session)
@@ -692,7 +735,10 @@ def clear_trick():
             else:
                 game['turn'] = 'player'
                 game['message'] = 'You won the trick! Your turn to lead.'
-    
+
+    if game.get('game_over') and not game.get('ratchet'):
+        _ratchet_after_game(game)
+
     session.modified = True
     return jsonify({'success': True})
 

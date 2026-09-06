@@ -60,7 +60,9 @@ PAYLOAD = {
     'robots': {'games': 40, 'otto_wins': 19, 'marta_wins': 20, 'ties': 1, 'games_today': 3, 'avg_hands': 8.7,
                'first_leader_win_pct': 48.1, 'streak_holder': 'Marta', 'streak': 2,
                'seats': [{'seat': 'Otto', 'hands': 348, 'exact': 66, 'exact_pct': 19.0, 'nil_tried': 0, 'nil_made': 0,
-                          'blind_tried': 28, 'blind_made': 18, 'avg_bags': 1.49, 'avg_bid': 3.66}]},
+                          'blind_tried': 28, 'blind_made': 18, 'avg_bags': 1.49, 'avg_bid': 3.66}],
+               'recent': [{'game_id': 'g1', 'played_at': D, 'winner': 'otto', 'otto_score': 312, 'marta_score': 240,
+                           'hands': 8, 'first_leader': 'marta', 'seed': 5}]},
     'marta_levels': {'levels': [{'level': 'easy', 'hands': 2321, 'pct': 99.6}, {'level': 'medium', 'hands': 0, 'pct': 0},
                                 {'level': 'hard', 'hands': 0, 'pct': 0}, {'level': 'ruthless', 'hands': 9, 'pct': 0.4}],
                      'avg_strength': 0.4, 'total': 2330, 'above_easy_pct': 0.4},
@@ -82,7 +84,7 @@ class StatsPageTests(unittest.TestCase):
         html = r.get_data(as_text=True)
         for needle in ('Player Leaderboard', 'Playing Styles', 'Otto (bot)', 'Records', 'Nail-Biters',
                        'Robot League', 'Ruthless', 'Special Cards', 'By the Numbers', 'Hoyt Axton Jukebox',
-                       '672-62', 'Avg Marta Level'):
+                       '672-62', 'Avg Marta Level', 'Recent Games', 'How the Bots Play'):
             self.assertIn(needle, html, needle)
         tom = next(p for p in payload['styles'] if p['player'] == 'Tom')
         self.assertEqual((tom['exact_pct'], tom['fav_bid'], tom['nil'], tom['tricks']), (40.4, 4, '22/32', 5.7))

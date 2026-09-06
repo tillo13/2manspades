@@ -62,6 +62,11 @@ def robot_league():
         for s in seats:
             s['exact_pct'] = round(100.0 * s['exact'] / s['hands'], 1) if s['hands'] else 0
         out['seats'] = seats
+        cur.execute("""
+            SELECT game_id, played_at, winner, otto_score, marta_score, hands, first_leader, seed
+              FROM twomanspades.bot_games ORDER BY played_at DESC LIMIT 12
+        """)
+        out['recent'] = [dict(r) for r in cur.fetchall()]
         cur.close()
         return out
     except Exception as e:

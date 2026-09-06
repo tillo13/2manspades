@@ -95,5 +95,66 @@ class LadderTests(unittest.TestCase):
         levels = self.client.get('/get_difficulty').get_json()['levels']
         self.assertEqual([l['level'] for l in levels], ['easy', 'medium', 'hard', 'ruthless'])
         self.assertTrue(all(l['blurb'] for l in levels))
+
+
+class RatchetTests(unittest.TestCase):
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(redirect_stdout(StringIO()))
+        isolate_services(self.stack)
+        self.stack.enter_context(patch.object(A, 'save_user_difficulty', return_value=True))
+        self.stack.enter_context(patch('utilities.postgres_utils.save_user_strength', return_value=True))
+        self.client = A.app.test_client()
+
+    def test_ratchet_math(self):
+        from utilities.computer_logic import ratchet, level_name, strength_of
+        self.assertEqual(ratchet(50, True, 10), 55)
+        self.assertEqual(ratchet(50, True, 300), 65)
+        self.assertEqual(ratchet(50, False, 120), 41)
+        self.assertEqual(ratchet(2, False, 400), 0)
+        self.assertEqual(ratchet('ruthless', True, 50), 100)
+        self.assertEqual([level_name(s) for s in (0, 14, 15, 44, 45, 79, 80, 100)],
+                         ['easy', 'easy', 'medium', 'medium', 'hard', 'hard', 'ruthless', 'ruthless'])
+        self.assertEqual(strength_of('hard'), 60)
+        self.assertEqual(strength_of(73), 73)
+
+    def _finish_game(self, email, games, winner='player'):
+        self.assertEqual(self.client.get('/?new=true').status_code, 200)   # fresh game each case
+        record = {'easy': {'wins': games, 'losses': 0}}
+        with self.client.session_transaction() as s:
+            if email:
+                s['user'] = {'email': email, 'google_id': 'x', 'name': 'Tom Tillo'}
+            else:
+                s.pop('user', None)
+            s['difficulty'] = 60
+            g = s['game']
+            g.update(game_over=True, winner=winner, trick_completed=True, trick_winner='player',
+                     player_hand=[{'rank': '2', 'suit': '♣', 'value': 2}], computer_hand=[],
+                     player_score=310, computer_score=200, player_bags=0, computer_bags=0, message='GAME OVER!')
+            s.modified = True
+        with patch('utilities.postgres_utils.get_user_level_record', return_value=record):
+            self.assertEqual(self.client.post('/clear_trick').status_code, 200)
+        with self.client.session_transaction() as s:
+            return s['game'].get('message', ''), s.get('difficulty')
+
+    def test_ratchet_moves_for_veterans_only(self):
+        msg, setting = self._finish_game('tom@example.com', 40)
+        self.assertIn('Marta climbs to 69/100 (Hard)', msg)
+        self.assertEqual(setting, 69)
+        msg, setting = self._finish_game('new@example.com', 3)
+        self.assertNotIn('Marta', msg)
+        self.assertEqual(setting, 60)
+        msg, setting = self._finish_game(None, 100)
+        self.assertNotIn('climbs', msg)
+        msg, setting = self._finish_game('tom@example.com', 40, winner='computer')
+        self.assertIn('Marta drops to 51/100 (Hard)', msg)
+
+    def test_gear_reports_strength_and_ratchet(self):
+        self.assertEqual(self.client.get('/').status_code, 200)
+        self.client.post('/set_difficulty', json={'difficulty': 'hard'})
+        d = self.client.get('/get_difficulty').get_json()
+        self.assertEqual((d['difficulty'], d['strength'], d['ratchet']['needed']), ('hard', 60, 25))
+
 if __name__ == '__main__':
     unittest.main()

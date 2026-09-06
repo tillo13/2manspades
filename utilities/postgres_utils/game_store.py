@@ -11,6 +11,13 @@ from typing import Dict, Any, Optional, List
 from .connection import get_db_connection
 from .connection import return_db_connection
 
+
+def _level(setting):
+    """hands.difficulty is varchar(10) and holds the rung NAME; the ratchet makes the game's
+    setting a number, so map it here (2026-09-06)."""
+    from utilities.computer_logic import level_name
+    return level_name(setting)
+
 def insert_hand(hand_data: Dict[str, Any]) -> bool:
     """Insert new hand record"""
     conn = None
@@ -33,7 +40,7 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
             hand_data['first_leader'],
             hand_data.get('client_info', {}).get('ip_address'),
             hand_data.get('client_info', {}).get('user_agent'),
-            hand_data.get('difficulty', 'easy')
+            _level(hand_data.get('difficulty', 'easy'))
         ))
         
         conn.commit()
@@ -253,7 +260,7 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             player_id,
             google_email,
             google_id,
-            hand_data.get('difficulty', 'easy')
+            _level(hand_data.get('difficulty', 'easy'))
         ))
         
         conn.commit()

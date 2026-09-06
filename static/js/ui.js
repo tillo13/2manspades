@@ -43,8 +43,10 @@ function handleLoginClick() {
             try { sessionStorage.setItem('hoyt_after_login', '1'); } catch (e) {}
         }
         window.location.href = '/login';
+        return;
     }
-    // Otherwise, button just shows name - do nothing on click
+    // Logged in: the name opens your panel — the same card as the gear, with your page + log out
+    openDifficultyModal();
 }
 
 // DIFFICULTY SETTINGS
@@ -59,6 +61,26 @@ function openDifficultyModal() {
                 const el = document.querySelector(`.difficulty-record[data-level="${l.level}"]`);
                 if (el) el.textContent = (l.wins || l.losses) ? `You: ${l.wins}-${l.losses}` : '';
             });
+            // who you are: name, your player page, log out (hidden when anonymous)
+            const you = document.getElementById('difficultyYou');
+            if (you) {
+                you.hidden = !data.player;
+                if (data.player) {
+                    you.querySelector('.you-name').textContent = data.player.name;
+                    you.querySelector('.you-page').href = '/player/' + encodeURIComponent(data.player.page);
+                }
+            }
+            // the ratchet line: where she is on the 0-100 dial and whether it moves for you yet
+            const note = document.getElementById('difficultyNote');
+            const r = data.ratchet || {};
+            if (note && data.strength !== undefined) {
+                const where = `Marta is at ${data.strength}/100 (${current.charAt(0).toUpperCase() + current.slice(1)}).`;
+                note.textContent = r.eligible
+                    ? `${where} She climbs when you win and drops when you lose. Picking a level resets her there.`
+                    : r.logged_in
+                        ? `${where} After ${r.needed} games she'll climb when you win and drop when you lose (you're at ${r.games}).`
+                        : `${where} Log in and she'll start climbing with your wins after ${r.needed} games.`;
+            }
             document.getElementById('difficultyModal').classList.add('show');
         });
 }

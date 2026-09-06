@@ -70,6 +70,40 @@ LEVEL_BLURBS = {
 }
 
 
+# The ratchet (2026-09-06, Andy): for players with a track record, Marta's strength moves
+# with every finished game — up when they win, down when they lose, bigger swings for bigger
+# margins — so the standing flex is beating her at 100 game after game. Newcomers are exempt
+# until RATCHET_MIN_GAMES completed games so learning the game never gets punished.
+RATCHET_MIN_GAMES = 25
+
+
+def level_name(strength):
+    """Nearest rung name for a strength number (or the name itself if that's what was given)."""
+    if isinstance(strength, str):
+        return strength if strength in DIFFICULTY_LEVELS else 'easy'
+    try:
+        s = float(strength)
+    except (TypeError, ValueError):
+        return 'easy'
+    return 'easy' if s < 15 else ('medium' if s < 45 else ('hard' if s < 80 else 'ruthless'))
+
+
+def strength_of(setting):
+    """Strength number for a session/profile setting that may be a name or a number."""
+    if isinstance(setting, str):
+        return STRENGTH_PRESETS.get(setting, 0)
+    try:
+        return max(0, min(100, int(round(float(setting)))))
+    except (TypeError, ValueError):
+        return 0
+
+
+def ratchet(strength, won, margin):
+    """New strength after a finished game. Step 5-15 scaled by the final margin."""
+    step = 5 + min(10, abs(int(margin or 0)) // 25)
+    return max(0, min(100, strength_of(strength) + (step if won else -step)))
+
+
 def strength_params(strength):
     """Knob values for a strength 0-100, linear between easy (0) and the measured ceiling (100)."""
     s = max(0, min(100, float(strength)))
