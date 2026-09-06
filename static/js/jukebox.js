@@ -235,6 +235,13 @@
         $('jbSearch').oninput = (e) => { renderAlbums(e.target.value); showPanel('browse'); };   // typing IS the search
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
         window.addEventListener('pagehide', () => { saveState(); beat(false, true, audio.paused ? null : 'pagehide'); });
+        // screen off, home button, app switcher: the music stops. Comes back when the page does.
+        // state.playing stays true so the next page (or this one, on return) resumes.
+        let hiddenPause = false;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) { if (!audio.paused) { hiddenPause = true; audio.pause(); saveState(); beat(false, true, 'hidden'); } }
+            else if (hiddenPause) { hiddenPause = false; audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true)); }
+        });
         renderAlbums(''); showPanel('now'); render(); renderPills(); loadStats(true);
         // pages without the game's delegated click handler (stats, player, ...): wire the sheet's buttons directly
         if (typeof ACTIONS === 'undefined') {

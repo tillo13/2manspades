@@ -106,7 +106,7 @@ def _ensure_schema(cur):
                 completed      BOOLEAN NOT NULL DEFAULT FALSE
             )
         """)
-    add_column_if_missing(cur, 'twomanspades', 'jukebox_plays', 'stop_reason', 'TEXT')   # paused | pagehide | blocked | ended
+    add_column_if_missing(cur, 'twomanspades', 'jukebox_plays', 'stop_reason', 'TEXT')   # paused | pagehide | hidden | blocked | ended | skipped
     create_index_if_missing(cur, 'twomanspades', 'idx_jukebox_plays_user_started', 'jukebox_plays', '(user_email, started_at DESC)')
     create_index_if_missing(cur, 'twomanspades', 'idx_jukebox_plays_track', 'jukebox_plays', '(album_id, track_n)')
     _SCHEMA_OK = True
@@ -145,7 +145,7 @@ def queue_play_event(ev, session, ip):
     if not re.fullmatch(r'[0-9a-f-]{36}', str(ev.get('play_id', ''))): return False
     if not _known(str(ev.get('album_id', '')), int(ev.get('n') or 0)): return False
     if ev.get('source') not in ('shuffle', 'album', 'search', 'resume', 'auto'): ev['source'] = 'unknown'
-    ev['stop'] = ev.get('stop') if ev.get('stop') in ('paused', 'pagehide', 'blocked', 'ended', 'skipped') else None
+    ev['stop'] = ev.get('stop') if ev.get('stop') in ('paused', 'pagehide', 'hidden', 'blocked', 'ended', 'skipped') else None
     user = (session.get('user') or {})
     ev['user_email'] = user.get('email'); ev['user_name'] = user.get('name'); ev['ip'] = ip
     for k in ('title', 'album_title', 'year'):
