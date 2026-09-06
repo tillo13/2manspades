@@ -137,7 +137,7 @@ const ACTIONS = {
     makeBlindBid: (el) => makeBlindBid(parseInt(el.dataset.arg, 10)),
     open: (el) => window.open(el.dataset.arg, '_blank'),
     closeDifficultyModal: (el, e) => closeDifficultyModal(e),
-    pickRung,
+    pickRung, layThemDown: () => layDownChoice('lay'), playItOut: () => layDownChoice('play'),
     stop: () => {},   // clicks inside the difficulty card must not reach the overlay's close
 };
 document.addEventListener('click', (e) => {

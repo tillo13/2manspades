@@ -773,108 +773,222 @@ def _follow_impl(computer_hand, current_trick, game_state):
             # Should never happen, but fallback to first card
             return 0
 
-def autoplay_remaining_cards(game, session_obj=None):
-    """
-    Check for mathematically certain scenarios and auto-resolve remaining tricks.
-    Only auto-resolves when 3-9 cards remain to preserve engagement.
-    Returns (was_auto_resolved, explanation)
-    """
-    player_hand_size = len(game['player_hand'])
-    computer_hand_size = len(game['computer_hand'])
-    
-    # Only auto-resolve if 3-9 cards remain (don't auto-play final 1-2 tricks)
-    if player_hand_size == 0 or computer_hand_size == 0:
+SUIT_NAMES = {'♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs'}
+
+def _suit_list(suits):
+    names = [SUIT_NAMES[x] for x in ('♣', '♦', '♥', '♠') if x in suits]
+    return names[0] if len(names) == 1 else ', '.join(names[:-1]) + ' and ' + names[-1]
+
+
+def _legal_leads(hand, broken):
+    non = [c for c in hand if c['suit'] != '♠']
+    return non if (not broken and non) else list(hand)
+
+
+def _legal_follows(hand, led):
+    same = [c for c in hand if c['suit'] == led['suit']]
+    return same or list(hand)
+
+
+def _takes(led, ans):
+    """Does the reply beat the lead?"""
+    if ans['suit'] == led['suit']:
+        return ans['value'] > led['value']
+    return ans['suit'] == '♠'
+
+
+def _key(lead, follow, broken):
+    return (tuple(sorted((c['rank'], c['suit']) for c in lead)), tuple(sorted((c['rank'], c['suit']) for c in follow)), broken)
+
+
+SEARCH_BUDGET = 20000   # positions examined per call; measured worst case is a few hundred
+
+
+class _Budget(Exception):
+    pass
+
+
+def _sweeps(lead, follow, broken, memo):
+    """Strict: the leader takes every remaining trick whatever EITHER side does. For every legal
+    lead, every legal reply loses and the position after it still sweeps. (A looser test, "some
+    winning line exists", was tried first: it called a hand where the winner could still throw
+    a trick away by leading a low spade, and the play-out disproved it. Andy's definition is the
+    strict one: no way the other side takes one, 2026-09-06.)"""
+    if not lead:
+        return True
+    if _plain(lead, follow):
+        return True
+    key = _key(lead, follow, broken)
+    if key in memo:
+        return memo[key]
+    memo['_n'] = memo.get('_n', 0) + 1
+    if memo['_n'] > SEARCH_BUDGET:          # never stall a turn: past the budget it's a live hand
+        raise _Budget()
+    ok = True
+    for led in _legal_leads(lead, broken):
+        rest = [c for c in lead if c is not led]
+        replies = _legal_follows(follow, led)
+        if any(_takes(led, ans) for ans in replies):   # cheap reject before any recursion
+            ok = False; break
+        for ans in replies:
+            nb = broken or led['suit'] == '♠' or ans['suit'] == '♠'
+            if not _sweeps(rest, [c for c in follow if c is not ans], nb, memo):
+                ok = False; break
+        if not ok:
+            break
+    memo[key] = ok
+    return ok
+
+
+def _plain(lead, follow):
+    """No search needed: the follower has no spades and, in every suit both hold, every follower
+    card is under every leader card. Nothing the follower holds ever takes a trick."""
+    if any(c['suit'] == '♠' for c in follow):
+        return False
+    lo = {}
+    for c in lead:
+        lo[c['suit']] = min(lo.get(c['suit'], 99), c['value'])
+    return all(c['suit'] not in lo or c['value'] < lo[c['suit']] for c in follow)
+
+
+def _follower_sweeps(lead, follow, broken, memo):
+    """Strict, the other way round: whatever is led, every legal reply takes it, and the follower,
+    now leading, sweeps the rest. (Nothing but spades against a hand with none, and the like.)"""
+    if not follow:
+        return True
+    leads = _legal_leads(lead, broken)
+    if any(not _takes(led, ans) for led in leads for ans in _legal_follows(follow, led)):   # cheap reject first
+        return False
+    for led in leads:
+        rest = [c for c in lead if c is not led]
+        for ans in _legal_follows(follow, led):
+            nb = broken or led['suit'] == '♠' or ans['suit'] == '♠'
+            if not _sweeps([c for c in follow if c is not ans], rest, nb, memo):
+                return False
+    return True
+
+
+def _why(loser, w_hand, l_hand, loser_leads):
+    """The referee's reasons, in words the loser can check against their own hand. Two shapes:
+    the loser follows and can never take a trick, or the loser leads and every lead gets beaten
+    after which the winner runs the rest."""
+    you = 'you' if loser == 'player' else 'Marta'
+    them = 'Marta' if loser == 'player' else 'you'
+    your = 'your' if loser == 'player' else "Marta's"
+    theirs = "Marta's" if loser == 'player' else 'yours'
+    are, have = ('are', 'have') if loser == 'player' else ('is', 'has')
+    t_has, t_hold = ('has', 'holds') if them == 'Marta' else ('have', 'hold')
+    w = {c['suit']: [x['value'] for x in w_hand if x['suit'] == c['suit']] for c in w_hand}
+    l = {c['suit']: [x['value'] for x in l_hand if x['suit'] == c['suit']] for c in l_hand}
+    dead = [x for x in l if x not in w and x != '♠']
+    under = [x for x in l if x in w and max(l[x]) < min(w[x])]
+    parts = []
+    if not loser_leads:
+        parts.append(f"{you} {are} not on lead")
+        if dead:
+            parts.append(f"{them} {t_has} no {_suit_list(dead)} left, so {your} {_suit_list(dead)} never get led into")
+        if under:
+            parts.append(f"{your} {_suit_list(under)} are all under {theirs}")
+        parts.append(f"{you} {have} no spades to trump with" if '♠' not in l else f"{your} spades are all under {theirs}" if '♠' in under else '')
+    else:
+        trumped = [x for x in dead if '♠' in w]
+        if trumped:
+            parts.append(f"{your} {_suit_list(trumped)} lead{'' if len(trumped) == 1 else 's'} get{'s' if len(trumped) == 1 else ''} trumped, {them} {t_has} none of {'it' if len(trumped) == 1 else 'them'} and {t_has} spades")
+        if under:
+            parts.append(f"{your} {_suit_list(under)} are all under {theirs}")
+        parts.append(f"after that {them} run{'s' if them == 'Marta' else ''} the rest and {you} {have} no spades to trump with" if '♠' not in l
+                     else f"after that {them} run{'s' if them == 'Marta' else ''} the rest")
+    parts = [x for x in parts if x]
+    if not (dead or under):
+        parts.append(f"no card {you} hold{'' if loser == 'player' else 's'} can take a trick against what {them} still {t_hold}")
+    out = '; '.join(parts)
+    return out[0].upper() + out[1:] + '.'
+
+
+def lay_down(game, leader=None):
+    """Otto Matic, the referee (Andy, 2026-09-06): the hand is a lay down when one side takes
+    every remaining trick whatever EITHER side does. Decided by searching the remaining cards
+    (the referee sees both hands; Marta's play never does), not by a list of shapes. Returns
+    {'winner', 'leader', 'tricks', 'why'} or None. Who leads next is part of the position:
+    the same cards with the other side on lead can be a live hand."""
+    leader = leader or game.get('trick_winner')
+    if leader not in ('player', 'computer'):
+        return None
+    follower = 'computer' if leader == 'player' else 'player'
+    lead, follow = game[f'{leader}_hand'], game[f'{follower}_hand']
+    if len(lead) < 2 or len(lead) != len(follow):   # the last trick is always played
+        return None
+    broken = bool(game.get('spades_broken'))
+    memo = {}
+    try:
+        if _sweeps(lead, follow, broken, memo):
+            return {'winner': leader, 'leader': leader, 'tricks': len(lead), 'why': _why(follower, lead, follow, False)}
+        if _follower_sweeps(lead, follow, broken, memo):
+            return {'winner': follower, 'leader': leader, 'tricks': len(follow), 'why': _why(leader, follow, lead, True)}
+    except _Budget:
+        print(f"[REFEREE] search budget hit ({SEARCH_BUDGET} positions); treating as a live hand")
+    return None
+
+
+def autoplay_remaining_cards(game, session_obj=None, leader=None):
+    """Lay them down: deal the remaining tricks out to the side that owns them, with the same
+    bookkeeping live tricks get (history with who led, special-card bags, events). Uses the
+    standing offer (game['lay_down_offer']) or decides afresh for `leader`. Returns
+    (was_auto_resolved, explanation)."""
+    from .custom_rules import check_special_cards_in_trick, reduce_bags_safely
+    n = len(game['player_hand'])
+    if n < 2 or len(game['computer_hand']) != n:
         return False, ""
-    if player_hand_size < 3 or player_hand_size > 9:
+    ld = game.pop('lay_down_offer', None) or lay_down(game, leader)
+    if not ld:
         return False, ""
-    
-    player_suits = set(card['suit'] for card in game['player_hand'])
-    computer_suits = set(card['suit'] for card in game['computer_hand'])
-    winner = game.get('trick_winner')
-    
-    auto_resolved = False
-    explanation = ""
-    tricks_to_award = 0
-    
-    # Case 1: One player only spades, other no spades
-    if player_suits == {'♠'} and '♠' not in computer_suits:
-        tricks_to_award = len(game['player_hand'])
-        game['player_tricks'] += tricks_to_award
-        auto_resolved = True
-        explanation = f"Auto-resolved: You had only spades ({tricks_to_award} cards), Marta had none"
-        winner_of_remaining = 'player'
-    elif computer_suits == {'♠'} and '♠' not in player_suits:
-        tricks_to_award = len(game['computer_hand'])
-        game['computer_tricks'] += tricks_to_award
-        auto_resolved = True
-        explanation = f"Auto-resolved: Marta had only spades ({tricks_to_award} cards), you had none"
-        winner_of_remaining = 'computer'
-    # Case 2: Trick winner has one suit, loser has none of it and no spades
-    elif winner == 'player' and len(player_suits) == 1:
-        player_suit = list(player_suits)[0]
-        if player_suit not in computer_suits and '♠' not in computer_suits:
-            tricks_to_award = len(game['player_hand'])
-            game['player_tricks'] += tricks_to_award
-            auto_resolved = True
-            explanation = f"Auto-resolved: You had only {player_suit} ({tricks_to_award} cards), Marta had none and no spades"
-            winner_of_remaining = 'player'
-    elif winner == 'computer' and len(computer_suits) == 1:
-        computer_suit = list(computer_suits)[0]
-        if computer_suit not in player_suits and '♠' not in player_suits:
-            tricks_to_award = len(game['computer_hand'])
-            game['computer_tricks'] += tricks_to_award
-            auto_resolved = True
-            explanation = f"Auto-resolved: Marta had only {computer_suit} ({tricks_to_award} cards), you had none and no spades"
-            winner_of_remaining = 'computer'
-    
-    if auto_resolved:
-        # Simulate the remaining tricks and add to history
-        player_cards = game['player_hand'].copy()
-        computer_cards = game['computer_hand'].copy()
-        current_trick_number = len(game.get('trick_history', [])) + 1
-        
-        # Log console message for auto-resolution
-        print(f"AUTO-RESOLVE: {explanation}")
-        
-        # Play out remaining tricks in any order since outcome is predetermined
-        while player_cards and computer_cards:
-            # Just take first card from each hand (order doesn't matter)
-            player_card = player_cards.pop(0)
-            computer_card = computer_cards.pop(0)
-            
-            # Add to trick history
-            game.setdefault('trick_history', []).append({
-                'number': current_trick_number,
-                'player_card': player_card,
-                'computer_card': computer_card,
-                'winner': winner_of_remaining  # Predetermined winner
-            })
-            
-            # Log each auto-played trick to console
-            p_text = f"{player_card['rank']}{player_card['suit']}"
-            c_text = f"{computer_card['rank']}{computer_card['suit']}"
-            winner_name = "You" if winner_of_remaining == 'player' else "Marta"
-            print(f"AUTO-TRICK {current_trick_number}: {p_text} vs {c_text} -> {winner_name} wins")
-            
-            current_trick_number += 1
-        
-        # Clear hands and mark as over
-        game['player_hand'] = []
-        game['computer_hand'] = []
-        game['hand_over'] = True
-        
-        # Log the auto-resolution
-        if session_obj:
-            log_game_event(
-                event_type='hand_auto_resolved',
-                event_data={
-                    'explanation': explanation,
-                    'tricks_simulated': tricks_to_award,
-                    'cards_remaining_when_triggered': player_hand_size,
-                    'final_player_tricks': game['player_tricks'],
-                    'final_computer_tricks': game['computer_tricks']
-                },
-                session=session_obj
-            )
-    
-    return auto_resolved, explanation
+    winner, leader = ld['winner'], ld['leader']
+    after = len(game.get('trick_history', []))
+    explanation = f"Lay down after trick {after}: {ld['why']}"
+    print(f"AUTO-RESOLVE: {explanation}")
+
+    # Play it out by the rules so the record reads right: the leader leads (non-spades first
+    # while spades are unbroken), the follower follows suit low if they can, else sheds low.
+    hands = {'player': list(game['player_hand']), 'computer': list(game['computer_hand'])}
+    low = lambda cards: min(cards, key=lambda c: c['value'])
+    tricks = 0
+    while hands['player'] and hands['computer']:
+        follower = 'computer' if leader == 'player' else 'player'
+        lh, fh = hands[leader], hands[follower]
+        leads = [c for c in lh if c['suit'] != '♠'] if not game.get('spades_broken') and any(c['suit'] != '♠' for c in lh) else lh
+        led = low(leads)
+        same = [c for c in fh if c['suit'] == led['suit']]
+        ans = low(same) if same else low([c for c in fh if c['suit'] != '♠'] or fh)
+        lh.remove(led); fh.remove(ans)
+        if led['suit'] == '♠' or ans['suit'] == '♠':
+            game['spades_broken'] = True
+        trick = [{'player': leader, 'card': led}, {'player': follower, 'card': ans}]
+        won = winner   # settled: the side the lay down belongs to takes every trick
+        if leader != winner and not _takes(led, ans):   # the sweeper is following this trick: pick a reply that takes it
+            ans_w = [c for c in fh + [ans] if c['suit'] == led['suit'] and c['value'] > led['value']] or [c for c in fh + [ans] if c['suit'] == '♠']
+            fh.append(ans); ans = low(ans_w); fh.remove(ans); trick[1]['card'] = ans
+        number = len(game.get('trick_history', [])) + 1
+        game.setdefault('trick_history', []).append({
+            'number': number, 'player_card': led if leader == 'player' else ans,
+            'computer_card': led if leader == 'computer' else ans, 'winner': won, 'laid_down': True})
+        special = check_special_cards_in_trick(trick, won)
+        if special['bag_reduction'] > 0:
+            game[f'{won}_bags'] = reduce_bags_safely(game.get(f'{won}_bags', 0), special['bag_reduction'])
+            game[f'{won}_trick_special_cards'] = game.get(f'{won}_trick_special_cards', 0) + special['bag_reduction']
+            if session_obj:
+                log_game_event('special_card_effect', {'trick_number': number, 'bag_reduction': special['bag_reduction'],
+                               'beneficiary': 'You' if won == 'player' else 'Marta', 'explanation': special['explanation']}, session_obj)
+        leader = won
+        tricks += 1
+    game[f'{winner}_tricks'] += tricks
+    game['player_hand'] = []
+    game['computer_hand'] = []
+    game['hand_over'] = True
+    game['lay_down'] = {'after_trick': after, 'winner': winner, 'why': ld['why'], 'tricks': tricks}
+    if session_obj:
+        log_game_event(
+            event_type='hand_auto_resolved',
+            event_data={'explanation': explanation, 'tricks_simulated': tricks, 'cards_remaining_when_triggered': n,
+                        'final_player_tricks': game['player_tricks'], 'final_computer_tricks': game['computer_tricks']},
+            session=session_obj)
+    return True, explanation

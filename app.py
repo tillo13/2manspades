@@ -731,6 +731,8 @@ def play_card():
     
     card = game['player_hand'][card_index]
     
+    if game.get('lay_down_offer'):
+        return jsonify({'error': 'Otto Matic has called a lay down: lay them down or play it out first'}), 400
     if not is_valid_play(card, game['player_hand'], game['current_trick'], game['spades_broken']):
         return jsonify({'error': 'Invalid play - must follow suit if possible'}), 400
     
@@ -789,9 +791,9 @@ def clear_trick():
         game['hand_over'] = True
         process_hand_completion(game, session)
     elif len(game['player_hand']) > 0 and len(game['computer_hand']) > 0:
-        auto_resolved = process_auto_resolution(game, session)
+        auto_resolved = process_auto_resolution(game, session, winner)
 
-        if not auto_resolved:
+        if not auto_resolved:   # 'offered' waits for the player's choice; nobody leads yet
             if winner == 'computer':
                 computer_lead_with_logging(game, session)
                 game['turn'] = 'player'
@@ -805,6 +807,28 @@ def clear_trick():
 
     session.modified = True
     return jsonify({'success': True})
+
+
+@app.route('/lay_down', methods=['POST'])
+def lay_down_choice():
+    """Otto Matic called a lay down: the player lays them down or plays it out."""
+    from utilities.hand_flow import lay_them_down, play_it_out
+    if 'game' not in session:
+        return jsonify({'error': 'No game in session'}), 400
+    game = session['game']
+    if not game.get('lay_down_offer'):
+        return jsonify({'error': 'No lay down on the table'}), 400
+    choice = (request.get_json(silent=True) or {}).get('choice')
+    if choice == 'lay':
+        lay_them_down(game, session)
+    elif choice == 'play':
+        play_it_out(game, session)
+    else:
+        return jsonify({'error': 'choice must be lay or play'}), 400
+    if game.get('game_over') and not game.get('ratchet'):
+        _ratchet_after_game(game)
+    session.modified = True
+    return jsonify({'success': True, 'choice': choice})
 
 
 @app.route('/next_hand', methods=['POST'])

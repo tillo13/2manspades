@@ -46,6 +46,7 @@ function updateUI() {
     updateBidButtons();
     updateComputerHandToggle();
     updateHandOver();
+    updateReferee();
     handleTrickCompletion();
 
     // Track hand changes but don't auto-call Claude
@@ -306,7 +307,7 @@ function updatePhaseVisibility() {
 
 function updateMessages() {
     // At game over and hand over a card carries everything; the status line would only repeat it
-    const carded = gameState.game_over || (gameState.hand_over && gameState.hand_results);
+    const carded = gameState.game_over || (gameState.hand_over && gameState.hand_results) || gameState.lay_down_offer;
     document.getElementById('message').hidden = !!carded;
     if (carded) return;
 
@@ -519,6 +520,21 @@ function updateComputerHandToggle() {
     }
 }
 
+// Otto Matic's call: the rest of the hand is settled. The player lays them down or plays it out.
+function updateReferee() {
+    const box = document.getElementById('referee'), o = gameState.lay_down_offer;
+    box.hidden = !o;
+    if (!o) return;
+    document.getElementById('playArea').classList.add('hidden-for-phase');   // nothing on the table while the call stands
+    document.getElementById('refereeCall').textContent =
+        `This hand has a guaranteed outcome: ${o.winner === 'player' ? 'you take' : 'Marta takes'} the last ${o.tricks} trick${o.tricks === 1 ? '' : 's'}.`;
+    document.getElementById('refereeWhy').textContent = o.why;
+}
+async function layDownChoice(choice) {
+    await fetch('/lay_down', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ choice }) });
+    await loadGameState();
+}
+
 // Hand over: the summary sits where the board was, built from the per-hand log (bids,
 // tricks, scores, bags) with the scoring record's notable lines (nil, blind, bag penalty or
 // bonus, special cards) underneath. Next Hand is the card's primary action.
@@ -565,7 +581,6 @@ function updateHandOver() {
 
     // every line of the scoring record, as written
     const lines = (r.scoring || '').split(' | ').map(x => x.trim()).filter(Boolean);
-    if (r.auto_resolution) lines.unshift(r.auto_resolution);
     document.getElementById('hoNotes').innerHTML = lines.map(n =>
         `<div class="ho-note ${/PENALTY|FAILED/.test(n) ? 'bad' : /BONUS|SUCCESS|special/.test(n) ? 'good' : ''}">${n.replace(/!+/g, '')}</div>`).join('');
 
@@ -573,6 +588,12 @@ function updateHandOver() {
     const tricks = r.trick_history || [];
     const suit = c => `<span class="${/[♥♦]/.test(c) ? 'heart' : ''}">${c}</span>`;
     document.getElementById('hoTricksLabel').textContent = `Tricks · you ${h.player_tricks ?? gameState.player_tricks}, Marta ${h.computer_tricks ?? gameState.computer_tricks}`;
+    // a lay down: the hand ended early because one side could never take another trick
+    // Otto Matic's line: a lay down taken, or a lay down played out and checked
+    const ldEl = document.getElementById('hoLayDown'), ld = r.lay_down, chk = r.lay_down_check;
+    ldEl.hidden = !(ld || chk);
+    if (ld) ldEl.innerHTML = `<b>Otto Matic called a lay down after trick ${ld.after_trick}</b> · the last ${ld.tricks} to ${ld.winner === 'player' ? 'you' : 'Marta'}, laid down. ${ld.why}`;
+    else if (chk) ldEl.innerHTML = `<b>Otto Matic called a lay down after trick ${chk.after_trick}</b> · the last ${chk.tricks} to ${chk.winner === 'player' ? 'you' : 'Marta'}, played out: <b class="${chk.held ? 'held' : 'missed'}">${chk.held ? 'it held' : 'IT DID NOT HOLD'}</b>. ${chk.why}`;
     document.getElementById('hoTricks').innerHTML = tricks.map(t => {
         const youLed = t.leader === 'You';
         const led = youLed ? t.player_card : t.computer_card, ans = youLed ? t.computer_card : t.player_card;
@@ -580,7 +601,7 @@ function updateHandOver() {
         const cards = t.leader
             ? `<b>${t.leader}</b> led ${suit(led)} · ${youLed ? 'Marta' : 'You'} ${suit(ans)}`
             : `You ${suit(t.player_card)} · Marta ${suit(t.computer_card)}`;
-        return `<div class="trick-line">
+        return `<div class="trick-line${t.laid_down ? ' laid' : ''}" ${t.laid_down ? 'title="Laid down"' : ''}>
             <span class="trick-number">${t.number}</span>
             <span class="trick-cards">${cards}</span>
             <span class="trick-winner ${t.winner === 'You' ? 'you' : 'marta'}">${t.winner}</span>

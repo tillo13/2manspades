@@ -121,8 +121,24 @@
                 <div id="trickDisplay"></div>
             </div>
 
-            <!-- Message area -->
-            <div class="message" id="message">Loading game...</div>
+            <!-- Game Over section (first; the last hand and the history scroll below it) -->
+            <div class="game-over" id="gameOver" hidden>
+                <div class="go-result" id="goResult"></div>
+                <div class="go-score" id="goScore"></div>
+                <div class="go-ratchet" id="goRatchet" hidden>
+                    <div class="go-ratchet-text" id="goRatchetText"></div>
+                    <div class="go-bar"><div class="go-bar-fill" id="goBarFill"></div><div class="go-bar-mark" id="goBarBefore"></div><div class="go-bar-mark after" id="goBarAfter"></div></div>
+                    <div class="go-bar-rungs"><span>Easy</span><span>Medium</span><span>Hard</span><span>Ruthless</span></div>
+                    <div class="go-ratchet-why" id="goRatchetWhy"></div>
+                </div>
+                <div class="go-tally" id="goTally"></div>
+                <div class="go-hands" id="goHands"></div>
+                <div class="go-actions">
+                    <button data-action="startNewGame">Play Again</button>
+                    <a class="go-link" id="goDetail" href="/stats" hidden>Full breakdown</a>
+                </div>
+                <div class="go-history" id="goHistory" hidden></div>
+            </div>
 
             <!-- Hand over: the summary takes the board's place; Next Hand is its primary action -->
             <div class="hand-over" id="handOver" hidden>
@@ -147,28 +163,24 @@
                 </div>
                 <div class="ho-section">
                     <div class="ho-h" id="hoTricksLabel">Tricks</div>
+                    <div class="ho-laydown" id="hoLayDown" hidden></div>
                     <div class="trick-history" id="hoTricks"></div>
                 </div>
             </div>
 
-            <!-- Game Over section (after the last hand; the culmination scrolls: hand, game, history) -->
-            <div class="game-over" id="gameOver" hidden>
-                <div class="go-result" id="goResult"></div>
-                <div class="go-score" id="goScore"></div>
-                <div class="go-ratchet" id="goRatchet" hidden>
-                    <div class="go-ratchet-text" id="goRatchetText"></div>
-                    <div class="go-bar"><div class="go-bar-fill" id="goBarFill"></div><div class="go-bar-mark" id="goBarBefore"></div><div class="go-bar-mark after" id="goBarAfter"></div></div>
-                    <div class="go-bar-rungs"><span>Easy</span><span>Medium</span><span>Hard</span><span>Ruthless</span></div>
-                    <div class="go-ratchet-why" id="goRatchetWhy"></div>
+            <!-- Otto Matic, the referee: a lay down is on the table -->
+            <div class="referee" id="referee" hidden>
+                <div class="referee-who">Otto Matic · referee</div>
+                <div class="referee-call" id="refereeCall"></div>
+                <div class="referee-why" id="refereeWhy"></div>
+                <div class="referee-actions">
+                    <button data-action="layThemDown" class="referee-lay">Lay them down</button>
+                    <button data-action="playItOut" class="referee-play">Play it out</button>
                 </div>
-                <div class="go-tally" id="goTally"></div>
-                <div class="go-hands" id="goHands"></div>
-                <div class="go-actions">
-                    <button data-action="startNewGame">Play Again</button>
-                    <a class="go-link" id="goDetail" href="/stats" hidden>Full breakdown</a>
-                </div>
-                <div class="go-history" id="goHistory" hidden></div>
             </div>
+
+            <!-- Message area -->
+            <div class="message" id="message">Loading game...</div>
 
             <!-- Blind Decision Section -->
             <div class="blind-decision-section" id="blindDecisionSection" style="display: none;">

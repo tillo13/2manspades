@@ -362,6 +362,8 @@ def build_safe_game_state(game, debug_mode=False):
         'hand_results': game.get('hand_results'),
         # the final screen: the ratchet as data, one row per hand, and the finished game's page
         'ratchet': game.get('ratchet'),
+        'lay_down_offer': game.get('lay_down_offer'),
+        'lay_down_predicted': game.get('lay_down_predicted'),
         'hand_log': game.get('hand_log', []),
         'game_id': game.get('current_hand_id') if game.get('game_over') else None,
     }

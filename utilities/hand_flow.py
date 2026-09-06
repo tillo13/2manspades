@@ -251,6 +251,8 @@ def transition_to_playing_phase(game, session):
     player_blind_text = " (BLIND)" if game.get('blind_bid') else ""
     computer_blind_text = " (BLIND)" if game.get('computer_blind_bid') else ""
     
+    if process_auto_resolution(game, session, first_leader, offer=not game.get('_no_log')):
+        return   # a lay down from the first card (offered to a person; dealt out for Otto)
     if first_leader == 'player':
         game['message'] = f'Cards discarded. You bid {game["player_bid"]}{player_blind_text}, Marta bid {game["computer_bid"]}{computer_blind_text}. Your turn to lead the first trick.'
     else:
@@ -578,12 +580,56 @@ def process_hand_completion(game, session):
     _complete_hand(game, session)
 
 
-def process_auto_resolution(game, session):
-    """Remaining tricks are mathematically settled: play them out and score the hand."""
+def process_auto_resolution(game, session, leader=None, offer=True):
+    """Otto Matic's call. `leader` is who leads next (callers clear trick_winner first). With
+    offer=True (a person at the table) a settled hand becomes game['lay_down_offer'] and the
+    turn waits for their choice: 'lay' deals it out, 'play' plays on with the prediction kept
+    and checked at the end. With offer=False (Otto's own games) it's dealt out at once.
+    Returns 'offered', True (dealt out) or False (live hand)."""
+    from .computer_logic import lay_down
+    if game.get('lay_down_offer') or game.get('lay_down_predicted'):
+        return False
+    n = len(game['player_hand'])
+    if n < 2 or len(game['computer_hand']) != n:
+        return False
+    ld = lay_down(game, leader or game.get('trick_winner'))
+    if not ld:
+        return False
+    ld['after_trick'] = len(game.get('trick_history', []))
+    if offer:
+        game['lay_down_offer'] = ld
+        game['turn'] = 'player'
+        who = 'you take' if ld['winner'] == 'player' else 'Marta takes'
+        game['message'] = f"Otto Matic has called a lay down: {who} the last {ld['tricks']}. Lay them down, or play it out."
+        log_game_event('lay_down_called', dict(ld, after_trick=ld['after_trick']), session)
+        return 'offered'
+    game['lay_down_offer'] = ld
+    return lay_them_down(game, session)
+
+
+def lay_them_down(game, session):
+    """The player (or Otto) took the lay down: deal the rest out and score the hand."""
     auto_resolved, explanation = autoplay_remaining_cards(game, session)
     if auto_resolved:
         _complete_hand(game, session, explanation)
     return auto_resolved
+
+
+def play_it_out(game, session):
+    """The player wants to see it: keep the referee's prediction, play on. If Marta is on lead
+    she leads now."""
+    ld = game.pop('lay_down_offer', None)
+    if not ld:
+        return False
+    game['lay_down_predicted'] = ld
+    log_game_event('lay_down_played_out', ld, session)
+    if ld['leader'] == 'computer':
+        computer_lead_with_logging(game, session)
+        game['message'] = 'Playing it out. Marta led. Your turn to follow.'
+    else:
+        game['message'] = 'Playing it out. Your turn to lead.'
+    game['turn'] = 'player'
+    return True
 
 
 def _card(c):
@@ -597,7 +643,8 @@ def _tricks_with_leaders(game):
         out.append({'number': t['number'], 'player_card': _card(t['player_card']) or '?',
                     'computer_card': _card(t['computer_card']) or '?',
                     'leader': 'You' if leader == 'player' else 'Marta',
-                    'winner': 'You' if t['winner'] == 'player' else 'Marta'})
+                    'winner': 'You' if t['winner'] == 'player' else 'Marta',
+                    'laid_down': bool(t.get('laid_down'))})
         leader = t['winner']
     return out
 
@@ -607,7 +654,7 @@ def _complete_hand(game, session, auto_explanation=None):
     apply the middle, score with bags, keep-alive, build hand_results, log, and settle
     whether the game is over. Also appends the hand to game['hand_log'] for the final screen."""
     hand_discard = None
-    if 'pending_discard_result' in game:
+    if game.get('pending_discard_result'):
         discard_result = game['pending_discard_result']
         hand_discard = discard_result
         game['player_score'] += discard_result['player_bonus']
@@ -620,7 +667,7 @@ def _complete_hand(game, session, auto_explanation=None):
                     game[f'{seat}_bags'] = reduce_bags_safely(game.get(f'{seat}_bags', 0), special[f'{seat}_bag_reduction'])
             if special['explanation']:
                 game['discard_bonus_explanation'] += " | " + special['explanation']
-        del game['pending_discard_result']
+    game.pop('pending_discard_result', None)
 
     scoring_result = calculate_hand_scores_with_bags(game)
 
@@ -650,6 +697,16 @@ def _complete_hand(game, session, auto_explanation=None):
     }
     if auto_explanation:
         hand_results['auto_resolution'] = auto_explanation
+        hand_results['lay_down'] = game.pop('lay_down', None)
+    predicted = game.pop('lay_down_predicted', None)
+    if predicted:
+        # the referee said the rest was settled and the player played it out: was it?
+        tricks_after = [t for t in game.get('trick_history', []) if t['number'] > predicted['after_trick']]
+        held = bool(tricks_after) and all(t['winner'] == predicted['winner'] for t in tricks_after)
+        hand_results['lay_down_check'] = dict(predicted, held=held, played=len(tricks_after))
+        log_game_event('lay_down_verified', hand_results['lay_down_check'], session)
+        if not held:
+            print(f"[REFEREE] LAY DOWN DID NOT HOLD: {predicted} tricks={tricks_after}")
     game['hand_results'] = hand_results
 
     # One line per hand for the game-over tally

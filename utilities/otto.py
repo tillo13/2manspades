@@ -223,7 +223,7 @@ def _clear_trick(game, sess):
     if not game['player_hand']:
         game['hand_over'] = True
         process_hand_completion(game, sess)
-    elif game['computer_hand'] and not process_auto_resolution(game, sess):
+    elif game['computer_hand'] and not process_auto_resolution(game, sess, winner, offer=False):
         if winner == 'computer':
             computer_lead_with_logging(game, sess)
         game['turn'] = 'player'
