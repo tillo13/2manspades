@@ -69,7 +69,7 @@
                 <div class="achievement-row">
                     <span class="achievement-player">{{ g.who }}</span>
                     <span class="achievement-value {{ 'streak-value' if g.status == 'playing' else ('' if g.status == 'won' else 'loss-value') }}">{{ 'playing' if g.status == 'playing' else g.status }} · hand {{ g.hand_number or 1 }}</span>
-                    <span class="achievement-detail">{{ g.ago }}{% if g.tables > 1 %} · {{ g.tables }} tables this hour{% endif %} · <a href="/game/{{ g.hand_id }}" class="game-link">open game</a></span>
+                    <span class="achievement-detail">{{ g.ago }}{% if g.tables > 1 %} · {{ g.tables }} tables this hour{% endif %}{% if g.finished %} · <a href="/game/{{ g.hand_id }}" class="game-link">open game</a>{% else %} · <a href="/player/{{ g.who }}" class="game-link">their games</a>{% endif %}</span>
                 </div>
                 {% endfor %}
             </div>
@@ -88,6 +88,8 @@
                 <div class="read-card">
                     <div class="read-name"><a href="/player/{{ r.player }}" class="player-link">{{ r.player }}</a></div>
                     <div class="read-title">{{ r.title }}</div>
+                    {% if r.why %}<p class="read-why">{{ r.why }}</p>{% endif %}
+                    {% if r.counter %}<p class="read-counter"><strong>How to beat {{ r.player }}:</strong> {{ r.counter }}</p>{% endif %}
                     <div class="read-evidence">{{ r.evidence }}</div>
                     <div class="read-hands">{{ "{:,}".format(r.hands) }} hands</div>
                 </div>

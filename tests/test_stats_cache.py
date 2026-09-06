@@ -23,6 +23,7 @@ class StatsCacheTests(unittest.TestCase):
             self.calls[name] = self.stack.enter_context(patch.object(S, name, return_value={} if 'leaderboard' not in name else []))
         self.calls['jukebox_stats'] = self.stack.enter_context(patch('utilities.jukebox.jukebox_stats', return_value={}))
         S._PAYLOAD.update(data=None, ts=0.0)
+        S._REFRESHING['on'] = False
         self.client = A.app.test_client()
 
     def total_calls(self):
@@ -35,11 +36,16 @@ class StatsCacheTests(unittest.TestCase):
         self.client.get('/stats')
         self.assertEqual(self.total_calls(), len(self.calls), 'warm views must not touch the DB')
 
-    def test_expired_cache_recomputes(self):
+    def test_expired_cache_serves_stale_and_rebuilds_in_background(self):
+        import threading
         self.client.get('/stats')
         S._PAYLOAD['ts'] -= S._PAYLOAD_TTL + 1
-        self.client.get('/stats')
-        self.assertEqual(self.total_calls(), 2 * len(self.calls))
+        self.assertEqual(self.client.get('/stats').status_code, 200)   # instant: the stale payload
+        for t in threading.enumerate():
+            if t.name == 'stats-refresh':
+                t.join(timeout=5)
+        self.assertEqual(self.total_calls(), 2 * len(self.calls), 'rebuilt once, off the request thread')
+        self.assertFalse(S._REFRESHING['on'])
 
 
 if __name__ == '__main__':

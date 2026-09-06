@@ -46,8 +46,13 @@ def _build_payload():
     return data
 
 
-def _refresh_payload():
+def _refresh_payload(force=False):
     with _PAYLOAD_LOCK:
+        # A visitor who queued behind the boot warm-up finds the payload built by the time
+        # the lock frees: don't build it a second time (that doubled a cold load to 15 s).
+        if not force and _PAYLOAD['data'] is not None and time.time() - _PAYLOAD['ts'] < _PAYLOAD_TTL:
+            _REFRESHING['on'] = False
+            return
         try:
             _PAYLOAD.update(data=_build_payload(), ts=time.time())
         except Exception as e:
@@ -64,7 +69,7 @@ def stats_payload():
         return _PAYLOAD['data']
     if time.time() - _PAYLOAD['ts'] >= _PAYLOAD_TTL and not _REFRESHING['on']:
         _REFRESHING['on'] = True
-        threading.Thread(target=_refresh_payload, name='stats-refresh', daemon=True).start()
+        threading.Thread(target=_refresh_payload, kwargs={'force': True}, name='stats-refresh', daemon=True).start()
     return _PAYLOAD['data']
 
 
@@ -216,12 +221,62 @@ def player_profiles():
             return_db_connection(conn)
 
 
+def style_review(p, title):
+    """Two short paragraphs in Marta's voice: why the title fits, and how to play against
+    them. Built from the numbers so it stays true as they change (Andy, 2026-09-06: "put the
+    verbiage as to why, and how to play against each one")."""
+    name = p['player']
+    hands = p['hands'] or 1
+    nil_rate = 100.0 * p['nil_tried'] / hands
+    blind_rate = 100.0 * p['blind_tried'] / hands
+    nil_made = round(100.0 * p['nil_made'] / p['nil_tried']) if p['nil_tried'] else 0
+    blind_made = round(100.0 * p['blind_made'] / p['blind_tried']) if p['blind_tried'] else 0
+    why = {
+        'The Accountant': (f"{name} bids what the hand will take: exact on {p['exact_pct']}% of hands, twice my "
+                           f"own rate, and only {p['bags_per_hand']} bags a hand. Nothing is wasted. The price is "
+                           f"getting set {p['set_pct']}% of the time, because there is no cushion under a bid like that."),
+        'The Nil Specialist': (f"{name} has bid nil {p['nil_tried']} times and made it {nil_made}% of the time, and "
+                               f"goes blind on {blind_rate:.0f}% of hands with a {blind_made}% strike rate. A third of "
+                               f"the edge comes from the two big swings; the ordinary hands are bid a shade under."),
+        'The Overbidder': (f"{name} bids a trick more than the hand holds: average bid {p['avg_bid']}, set "
+                           f"{p['set_pct']}% of the time, and the two bids add past 10 on {p['overbook_pct']}% of "
+                           f"hands. The hand reads fine; the rounding is up, every time. Blind bids are the equalizer: "
+                           f"{p['blind_made']} of {p['blind_tried']} made."),
+        'The Gambler': (f"{name} goes blind on {blind_rate:.0f}% of hands and bids nil on {nil_rate:.0f}%, and lives "
+                        f"on the swings: blind {p['blind_made']} of {p['blind_tried']}, nil {p['nil_made']} of {p['nil_tried']}."),
+        'The Bag Collector': (f"{name} takes tricks that weren't bid: {p['bags_per_hand']} bags a hand. The bids are "
+                              f"safe ({p['set_pct']}% set) and the penalty arrives every few hands anyway."),
+        'The Conservative': (f"{name} has never bid nil or gone blind in {p['hands']} hands, and is set only "
+                             f"{p['set_pct']}% of the time. Safe bids, no swings, no surprises."),
+    }.get(title, f"{name} bids {p['avg_bid']} on average, exact {p['exact_pct']}% of the time, {p['bags_per_hand']} bags a hand.")
+    counter = {
+        'The Accountant': ("You won't out-bid them, so make the bid cost something: once they've bid, hand them "
+                           "tricks they don't want. Lead high when they're made and let the bags pile up. Their nil "
+                           "is real, so break it early with a low lead in their long suit."),
+        'The Nil Specialist': ("Assume the nil is coming whenever they're behind, and duck under everything: lead "
+                               "your lowest cards, follow under theirs, force them to win one. When they go blind, "
+                               "bid normally and set them; a failed blind is a hundred points the other way."),
+        'The Overbidder': ("Let the bid do the work. Bid your hand honestly, then play to set them: hold the high "
+                           "cards in their long suits, trump their winners, and don't chase tricks you don't need. "
+                           "When they go blind, that's the hand to be careful in; it's the one they win."),
+        'The Gambler': ("Play the percentages against the swings. Duck to break the nil, bid straight and set the "
+                        "blind. Most of their losses come from the gambles that don't land."),
+        'The Bag Collector': ("Feed them. Once they've made their bid, lead cards they have to win; the penalty "
+                              "does the rest. Never take a trick you don't need against this player."),
+        'The Conservative': ("Bid to your hand and take the tricks they leave behind. They won't punish an "
+                             "aggressive bid, and they won't gamble their way back when behind."),
+    }.get(title, "Bid your hand and take what they leave behind.")
+    return why, counter
+
+
 def marta_reads():
-    """[{player, title, evidence, hands}] for the top-of-page section."""
+    """[{player, title, evidence, why, counter, hands}] for the top-of-page section."""
     out = []
     for p in player_profiles():
         title, evidence = style_title(p)
-        out.append({'player': p['player'], 'title': title, 'evidence': evidence, 'hands': p['hands']})
+        why, counter = style_review(p, title)
+        out.append({'player': p['player'], 'title': title, 'evidence': evidence, 'why': why,
+                    'counter': counter, 'hands': p['hands']})
     return out
 
 

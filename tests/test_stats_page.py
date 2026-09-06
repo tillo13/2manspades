@@ -140,3 +140,17 @@ class MartaReadTests(unittest.TestCase):
         self.assertIn('The Accountant', html)
         self.assertIn('At the Table Right Now', html)
         self.assertIn('playing · hand 3', html)
+
+
+class MartaReviewTests(unittest.TestCase):
+    def test_review_text_uses_the_numbers(self):
+        from utilities.postgres_utils.stats import style_review
+        andy = {'player': 'Andy', 'hands': 266, 'avg_bid': 4.56, 'exact_pct': 30.8, 'set_pct': 27.4, 'bags_per_hand': 1.24,
+                'nil_tried': 15, 'nil_made': 4, 'blind_tried': 33, 'blind_made': 18, 'overbook_pct': 11.3}
+        why, counter = style_review(andy, 'The Overbidder')
+        self.assertIn('average bid 4.56', why)
+        self.assertIn('11.3%', why)
+        self.assertIn('set them', counter)
+        for t in ('The Accountant', 'The Nil Specialist', 'The Gambler', 'The Bag Collector', 'The Conservative', 'The Steady Hand'):
+            w, c = style_review(andy, t)
+            self.assertTrue(w and c, t)
