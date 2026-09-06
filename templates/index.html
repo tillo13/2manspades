@@ -142,30 +142,18 @@
             <!-- Message area -->
             <div class="message" id="message">Loading game...</div>
 
-            <!-- Next Hand Button -->
-            <div class="next-hand-section" id="nextHandSection" style="display: none;">
-                <button id="nextHandButton" data-action="nextHand" class="next-hand-btn">Next Hand</button>
-            </div>
-
-            <!-- Discarded cards section -->
-            <div class="discards-section" id="discardsSection" style="display: none;">
-                <div class="hand-title">Discarded Cards</div>
-                <div class="discards-content">
-                    <div class="discard-item">
-                        <div class="discard-label">You</div>
-                        <div id="playerDiscard"></div>
-                    </div>
-                    <div class="discard-item">
-                        <div class="discard-label">Marta</div>
-                        <div id="computerDiscard"></div>
-                    </div>
+            <!-- Hand over: the summary takes the board's place; Next Hand is its primary action -->
+            <div class="hand-over" id="handOver" hidden>
+                <div class="ho-title" id="hoTitle"></div>
+                <div class="ho-line" id="hoLine"></div>
+                <div class="ho-scores">
+                    <div class="ho-score"><div class="ho-score-v" id="hoYou"></div><div class="ho-score-k">You</div></div>
+                    <div class="ho-score"><div class="ho-score-v" id="hoMarta"></div><div class="ho-score-k">Marta</div></div>
                 </div>
-            </div>
-
-            <!-- Results Section -->
-            <div class="results-section" id="resultsSection">
-                <div class="results-header">Hand Summary</div>
-                <div class="results-content" id="resultsContent"></div>
+                <button id="nextHandButton" data-action="nextHand" class="next-hand-btn">Next Hand</button>
+                <div class="ho-notes" id="hoNotes"></div>
+                <div class="ho-middle" id="hoMiddle"></div>
+                <details class="ho-tricks"><summary id="hoTricksLabel"></summary><div class="trick-history" id="hoTricks"></div></details>
             </div>
 
             <!-- Blind Decision Section -->

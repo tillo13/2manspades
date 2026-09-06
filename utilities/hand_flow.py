@@ -653,6 +653,7 @@ def _complete_hand(game, session, auto_explanation=None):
         'player_specials': game.get('player_trick_special_cards', 0),
         'computer_specials': game.get('computer_trick_special_cards', 0),
         'player_score': player_display_score, 'computer_score': computer_display_score,
+        'player_bags': game.get('player_bags', 0), 'computer_bags': game.get('computer_bags', 0),
     })
 
     flush_hand_events(session)

@@ -45,8 +45,7 @@ function updateUI() {
     updateActionButtons();
     updateBidButtons();
     updateComputerHandToggle();
-    updateDiscards();
-    handleResultsDisplay();
+    updateHandOver();
     handleTrickCompletion();
 
     // Track hand changes but don't auto-call Claude
@@ -217,7 +216,7 @@ function hideInteractiveSections() {
     const blindDecisionSection = document.getElementById('blindDecisionSection');
     if (blindDecisionSection) blindDecisionSection.style.display = 'none';
     document.getElementById('discardBlindBiddingSection').style.display = 'none';
-    document.getElementById('nextHandSection').style.display = 'none';
+    document.getElementById('handOver').hidden = true;
     document.getElementById('playerHandSection').style.display = 'none';
     document.getElementById('computerHandSection').style.display = 'none';
 }
@@ -250,16 +249,12 @@ function updatePhaseVisibility() {
 }
 
 function updateMessages() {
-    // At game over the result card carries everything; the status line would only repeat it
-    document.getElementById('message').hidden = !!gameState.game_over;
-    if (gameState.game_over) return;
+    // At game over and hand over a card carries everything; the status line would only repeat it
+    const carded = gameState.game_over || (gameState.hand_over && gameState.hand_results);
+    document.getElementById('message').hidden = !!carded;
+    if (carded) return;
 
     let messageToShow = gameState.message;
-
-    // Avoid showing detailed results if structured results are shown
-    if (gameState.hand_over && gameState.hand_results) {
-        messageToShow = `Hand #${gameState.hand_number} complete! Click 'Next Hand' to continue, or scroll for hand stats!`;
-    }
 
     showMessage(messageToShow, messageToShow.includes('WIN') || messageToShow.includes('BLIND NIL SUCCESS') ? 'success' : '');
 }
@@ -388,14 +383,10 @@ function updateComputerHand() {
 
 function updateActionButtons() {
     const actionButton = document.getElementById('actionButton');
-    const nextHandSection = document.getElementById('nextHandSection');
 
     if (gameState.hand_over && !gameState.game_over) {
         actionButton.style.display = 'none';
-        nextHandSection.style.display = 'block';
     } else {
-        nextHandSection.style.display = 'none';
-
         if (gameState.phase === 'discard') {
             actionButton.textContent = 'Discard Selected';
             actionButton.onclick = discardCard;
@@ -471,45 +462,65 @@ function updateComputerHandToggle() {
     }
 }
 
-function updateDiscards() {
-    const discardsSection = document.getElementById('discardsSection');
+// Hand over: the summary sits where the board was, built from the per-hand log (bids,
+// tricks, scores, bags) with the scoring record's notable lines (nil, blind, bag penalty or
+// bonus, special cards) underneath. Next Hand is the card's primary action.
+function updateHandOver() {
+    const card = document.getElementById('handOver');
+    const show = gameState.hand_over && !gameState.game_over && gameState.hand_results;
+    card.hidden = !show;
+    if (!show) return;
+    document.getElementById('playArea').classList.add('hidden-for-phase');   // no trick to show
 
-    if (gameState.hand_over && !gameState.game_over && (gameState.player_discarded || gameState.computer_discarded)) {
-        discardsSection.style.display = 'block';
+    const r = gameState.hand_results;
+    const log = gameState.hand_log || [];
+    const h = log[log.length - 1] || {};
+    const prev = log[log.length - 2] || { player_score: 0, computer_score: 0, player_bags: 0, computer_bags: 0 };
 
-        const playerDiscardEl = document.getElementById('playerDiscard');
-        if (gameState.player_discarded) {
-            const card = gameState.player_discarded;
-            playerDiscardEl.innerHTML = `<div class="card ${getSuitClass(card.suit)}">${card.rank}${card.suit}</div>`;
-        } else {
-            playerDiscardEl.innerHTML = '<div class="card" style="opacity: 0.5;">None</div>';
-        }
+    document.getElementById('hoTitle').textContent = `Hand ${r.hand_number}`;
+    const took = (bid, tricks, blind) => {
+        const b = blind ? `blind ${bid}` : bid === 0 ? 'nil' : bid;
+        const over = tricks - bid;
+        if (bid === 0) return tricks === 0 ? 'made nil' : `took ${tricks} on nil`;
+        if (over < 0) return `took ${tricks} on ${b}, set`;
+        return `made ${b}${over > 0 ? ` +${over} bag${over === 1 ? '' : 's'}` : ''}`;
+    };
+    document.getElementById('hoLine').textContent =
+        `You ${took(h.player_bid, h.player_tricks, h.player_blind)} · Marta ${took(h.computer_bid, h.computer_tricks, h.computer_blind)}`;
 
-        const computerDiscardEl = document.getElementById('computerDiscard');
-        if (gameState.computer_discarded) {
-            const card = gameState.computer_discarded;
-            computerDiscardEl.innerHTML = `<div class="card ${getSuitClass(card.suit)}">${card.rank}${card.suit}</div>`;
-        } else {
-            computerDiscardEl.innerHTML = '<div class="card" style="opacity: 0.5;">None</div>';
-        }
-    } else {
-        discardsSection.style.display = 'none';
-    }
-}
+    const delta = n => (n >= 0 ? '+' : '') + n;
+    const scoreCell = (id, score, was, bags, hadBags) => {
+        const el = document.getElementById(id);
+        const d = score - was, db = bags - hadBags;
+        el.innerHTML = `${score} <small class="${d >= 0 ? 'up' : 'down'}">${delta(d)}</small>` +
+            (db ? ` <small class="bags">${delta(db)} bag${Math.abs(db) === 1 ? '' : 's'}</small>` : '');
+    };
+    scoreCell('hoYou', h.player_score ?? gameState.player_score, prev.player_score, h.player_bags ?? 0, prev.player_bags ?? 0);
+    scoreCell('hoMarta', h.computer_score ?? gameState.computer_score, prev.computer_score, h.computer_bags ?? 0, prev.computer_bags ?? 0);
 
-function handleResultsDisplay() {
-    const resultsSection = document.getElementById('resultsSection');
-    const resultsContent = document.getElementById('resultsContent');
+    // the scoring record's lines worth a note: anything shouted (NIL, BLIND, PENALTY, BONUS)
+    // plus special cards; the plain bid/trick lines are already the headline
+    const notes = (r.scoring || '').split(' | ').map(x => x.trim())
+        .filter(x => /!|special cards/.test(x) && !/^Bags:/.test(x))
+        .map(x => x.replace(/!+/g, ''));
+    if (r.auto_resolution) notes.unshift(r.auto_resolution);
+    document.getElementById('hoNotes').innerHTML = notes.map(n =>
+        `<div class="ho-note ${/PENALTY|FAILED/.test(n) ? 'bad' : /BONUS|SUCCESS|special/.test(n) ? 'good' : ''}">${n}</div>`).join('');
 
-    if (gameState.hand_over && !gameState.game_over && gameState.hand_results) {
-        resultsSection.classList.add('show');
-        resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
+    // the record's own line ("8♦ (8) + 2♣ (2) = 10 (even) → Marta gets 10 pts!"), red suits coloured
+    const info = (r.discard_info || '').replace(/^Discards:\s*/, '').replace(/(\S+[♥♦])/g, '<span class="heart">$1</span>');
+    document.getElementById('hoMiddle').innerHTML = `<b>Middle</b> ${info}`;
 
-        // Pulse the login button if user is not logged in
-        pulseLoginIfNotLoggedIn();
-    } else {
-        resultsSection.classList.remove('show');
-    }
+    const tricks = r.trick_history || [];
+    document.getElementById('hoTricksLabel').textContent = `${tricks.length} tricks`;
+    document.getElementById('hoTricks').innerHTML = tricks.map(t => `
+        <div class="trick-line">
+            <span class="trick-number">${t.number}</span>
+            <span class="trick-cards">${t.player_card} · ${t.computer_card}</span>
+            <span class="trick-winner">${t.winner}</span>
+        </div>`).join('');
+
+    pulseLoginIfNotLoggedIn();
 }
 
 function pulseLoginIfNotLoggedIn() {
@@ -648,96 +659,6 @@ function resetBiddingState() {
     selectedBid = null;
     confirmingBid = false;
     updateBidButtons();
-}
-
-// =============================================================================
-// RESULTS FORMATTING
-// =============================================================================
-
-function formatCleanResults(results) {
-    let html = '';
-
-    // Parity Assignment
-    html += `
-        <div class="result-section">
-            <div class="result-header">Players</div>
-            <div class="result-content">You (${results.parity.player}) vs Marta (${results.parity.computer})</div>
-        </div>
-    `;
-
-    // Discard Information
-    if (results.discard_info && results.discard_info !== 'No discards to score') {
-        html += `
-            <div class="result-section">
-                <div class="result-header">Discard Pile</div>
-                <div class="result-content highlight">${results.discard_info}</div>
-            </div>
-        `;
-    }
-
-    // Scoring Breakdown
-    html += `
-        <div class="result-section">
-            <div class="result-header">Scoring</div>
-            <div class="result-content">${formatScoring(results.scoring)}</div>
-        </div>
-    `;
-
-    // Trick History
-    if (results.trick_history && results.trick_history.length > 0) {
-        html += `
-            <div class="result-section">
-                <div class="result-header">Trick History</div>
-                <div class="trick-history">
-        `;
-
-        results.trick_history.forEach(trick => {
-            html += `
-                <div class="trick-line">
-                    <span class="trick-number">T${trick.number}:</span>
-                    <span class="trick-cards">${trick.player_card} vs ${trick.computer_card}</span>
-                    <span class="trick-winner">→ ${trick.winner}</span>
-                </div>
-            `;
-        });
-
-        html += `
-                </div>
-            </div>
-        `;
-    }
-
-    // Game Totals
-    html += `
-        <div class="result-section">
-            <div class="result-header">Game Totals</div>
-            <div class="result-content totals">
-                <span>You: ${results.totals.player_score}</span>
-                <span>Marta: ${results.totals.computer_score}</span>
-            </div>
-        </div>
-    `;
-
-    return html;
-}
-
-function formatScoring(scoringText) {
-    const parts = scoringText.split(' | ');
-    return parts.map(part => {
-        part = part.trim();
-
-        if (part.includes('BAG PENALTY')) {
-            return `<div class="penalty-line">${part.replace('BAG PENALTY!', 'Bag Penalty')}</div>`;
-        } else if (part.includes('NEGATIVE BAG BONUS')) {
-            return `<div class="bonus-line">${part.replace('NEGATIVE BAG BONUS!', 'Bag Bonus')}</div>`;
-        } else if (part.includes('special cards')) {
-            return `<div class="special-line">${part}</div>`;
-        } else if (part.includes('Bags:')) {
-            return `<div class="bags-line">${part}</div>`;
-        } else {
-            return `<div class="score-line">${part}</div>`;
-        }
-    }).join('');
 }
 
 // =============================================================================

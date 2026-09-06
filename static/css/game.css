@@ -148,6 +148,30 @@
 .go-link { color: #667eea; font-size: 14px; text-decoration: none; }
 .go-link:hover { text-decoration: underline; }
 
+/* HAND OVER (2026-09-06): the summary takes the board's place. Same shell as .game-over. */
+.hand-over { text-align: center; padding: 20px 18px 16px; background: #fff; border: 1px solid #e9ecef;
+    border-radius: 12px; margin-bottom: 15px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); }
+.ho-title { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.06em; }
+.ho-line { font-size: 17px; font-weight: 600; color: #333; margin-top: 4px; line-height: 1.3; }
+.ho-scores { display: flex; justify-content: center; gap: 28px; margin: 14px 0 16px; }
+.ho-score-v { font-size: 26px; font-weight: 700; color: #333; }
+.ho-score-v small { font-size: 13px; font-weight: 600; color: #888; }
+.ho-score-v small.up { color: #28a745; }
+.ho-score-v small.down { color: #dc3545; }
+.ho-score-v small.bags { color: #e67e22; }
+.ho-score-k { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
+.ho-notes { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+.ho-note { font-size: 13px; color: #555; }
+.ho-note.bad { color: #dc3545; }
+.ho-note.good { color: #28a745; }
+.ho-middle { margin-top: 14px; font-size: 13px; color: #555; }
+.ho-middle .heart { color: #dc3545; }
+.ho-middle-info { color: #888; }
+.ho-tricks { margin-top: 12px; text-align: left; }
+.ho-tricks summary { cursor: pointer; font-size: 13px; color: #667eea; text-align: center; list-style: none; }
+.ho-tricks summary::-webkit-details-marker { display: none; }
+.ho-tricks[open] summary { margin-bottom: 8px; }
+
 /* BUTTONS */
 button {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -173,10 +197,6 @@ button:disabled {
 }
 
 /* NEXT HAND BUTTON */
-.next-hand-section {
-    margin-bottom: 20px;
-    text-align: center;
-}
 
 .next-hand-btn {
     background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
@@ -567,146 +587,20 @@ button:disabled {
     }
 }
 
-/* RESULTS AND DISCARDS */
-.results-section {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    display: none;
-    font-size: 13px;
-    color: #495057;
-    border: 1px solid #e9ecef;
-}
-
-.results-section.show {
-    display: block;
-}
-
-.results-header {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 10px;
-    font-size: 16px;
-    text-align: center;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.result-section {
-    margin-bottom: 10px;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 6px;
-}
-
-.result-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.result-header {
-    font-size: 12px;
-    font-weight: 600;
-    color: #6c757d;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-}
-
-.result-content {
-    font-size: 13px;
-    color: #495057;
-    line-height: 1.3;
-}
-
-.result-content.highlight {
-    background: #e8f5e9;
-    padding: 6px 8px;
-    border-radius: 4px;
-    color: #2e7d32;
-}
-
-.result-content.totals {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
-    background: #f8f9fa;
-    padding: 6px 8px;
-    border-radius: 4px;
-}
-
 .trick-history {
-    font-family: monospace;
-    font-size: 11px;
-    max-height: 150px;
-    overflow-y: auto;
-    background: #f8f9fa;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-}
-
-.trick-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 2px 0;
-    border-bottom: 1px solid #e9ecef;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.trick-line:last-child {
-    border-bottom: none;
-}
-
-.trick-number {
-    color: #6c757d;
-    font-weight: 600;
-    width: 100%;
-}
-
-.trick-cards {
-    width: 100%;
-    color: #495057;
-    margin: 2px 0;
-}
-
-.trick-winner {
-    color: #28a745;
-    font-weight: 600;
-    width: 100%;
-    font-size: 10px;
-}
-
-.discards-section {
-    background: #e8f5e9;
-    border: 2px solid #4caf50;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 20px;
-}
-
-.discards-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 6px;
-}
-
-.discard-item {
-    text-align: center;
-    background: white;
-    padding: 10px;
+    gap: 2px 14px;
+    font-size: 13px;
+    background: #f8f9fa;
+    padding: 8px 10px;
     border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
 }
-
-.discard-label {
-    font-size: 12px;
-    font-weight: bold;
-    color: #666;
-    margin-bottom: 6px;
-}
+.trick-line { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; white-space: nowrap; }
+.trick-number { color: #999; font-size: 11px; width: 26px; }
+.trick-cards { color: #333; }
+.trick-winner { color: #28a745; font-size: 11px; margin-left: auto; }
 
 /* BOTTOM NAVIGATION */
 .bottom-section {
