@@ -144,10 +144,14 @@ def get_user_difficulty(google_email: str) -> Optional[str]:
             return_db_connection(conn)
 
 
-def get_user_level_record(google_email: str) -> Dict[str, Dict[str, int]]:
+def get_user_level_record(google_email: str = None, player_name: str = None) -> Dict[str, Dict[str, int]]:
     """{level: {wins, losses}} of completed games for one player, keyed by the difficulty
-    the deciding hand was played at. Empty for anonymous players or on any failure."""
-    if not google_email:
+    the deciding hand was played at. Counts the person's whole history through the identity
+    view (the same one the stats page uses), not just games played while logged in: the
+    family's records predate Google login, and an email-only count called Andy a newcomer
+    at 8 games when he had 34 (2026-09-06). Pass player_name for someone known only by IP.
+    Empty for unknown players or on any failure."""
+    if not google_email and not player_name:
         return {}
     conn = None
     try:
@@ -155,13 +159,14 @@ def get_user_level_record(google_email: str) -> Dict[str, Dict[str, int]]:
         cur = conn.cursor()
         cur.execute("""
             SELECT h.difficulty,
-                   COUNT(*) FILTER (WHERE ge.event_data->>'winner' = 'player')   AS wins,
-                   COUNT(*) FILTER (WHERE ge.event_data->>'winner' = 'computer') AS losses
-              FROM twomanspades.game_events ge
-              JOIN twomanspades.hands h ON h.hand_id = ge.hand_id
-             WHERE ge.event_type = 'game_completed' AND h.google_email = %s
+                   COUNT(*) FILTER (WHERE v.won)     AS wins,
+                   COUNT(*) FILTER (WHERE NOT v.won) AS losses
+              FROM twomanspades.vw_player_game_details v
+              JOIN twomanspades.hands h ON h.hand_id = v.hand_id
+             WHERE v.player_name = COALESCE(%s, (SELECT split_part(google_name, ' ', 1) FROM twomanspades.players
+                                                 WHERE google_email = %s AND google_name IS NOT NULL LIMIT 1))
              GROUP BY h.difficulty
-        """, (google_email,))
+        """, (player_name, google_email))
         out = {row[0]: {'wins': row[1], 'losses': row[2]} for row in cur.fetchall()}
         cur.close()
         return out
@@ -187,9 +192,20 @@ def _ensure_strength_column(cur):
     _STRENGTH_COL_OK = True
 
 
-def get_user_strength(google_email: str) -> Optional[int]:
+def _player_key(google_email, ip_address):
+    """Which players row(s) carry a person's ratchet: their Google email when logged in, else
+    the row for the IP the family member is known by (Jon has never logged in, 2026-09-06)."""
+    if google_email:
+        return 'google_email', google_email
+    if ip_address:
+        return 'ip_address', ip_address
+    return None, None
+
+
+def get_user_strength(google_email: str = None, ip_address: str = None) -> Optional[int]:
     """The player's ratcheted Marta strength, or None if never set."""
-    if not google_email:
+    col, key = _player_key(google_email, ip_address)
+    if not col:
         return None
     conn = None
     try:
@@ -197,7 +213,8 @@ def get_user_strength(google_email: str) -> Optional[int]:
         cur = conn.cursor()
         _ensure_strength_column(cur)
         conn.commit()
-        cur.execute("SELECT marta_strength FROM twomanspades.players WHERE google_email = %s", (google_email,))
+        cur.execute(f"SELECT marta_strength FROM twomanspades.players WHERE {col} = %s "
+                    "AND marta_strength IS NOT NULL LIMIT 1", (key,))
         row = cur.fetchone()
         cur.close()
         return row[0] if row and row[0] is not None else None
@@ -209,20 +226,19 @@ def get_user_strength(google_email: str) -> Optional[int]:
             return_db_connection(conn)
 
 
-def save_user_strength(google_email: str, strength: int) -> bool:
+def save_user_strength(google_email: str, strength: int, ip_address: str = None) -> bool:
     """Persist the ratchet and keep players.difficulty in step (as the rung name)."""
     from utilities.computer_logic import level_name
-    if not google_email:
+    col, key = _player_key(google_email, ip_address)
+    if not col:
         return False
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         _ensure_strength_column(cur)
-        cur.execute("""
-            UPDATE twomanspades.players SET marta_strength = %s, difficulty = %s
-            WHERE google_email = %s
-        """, (int(strength), level_name(strength), google_email))
+        cur.execute(f"UPDATE twomanspades.players SET marta_strength = %s, difficulty = %s WHERE {col} = %s",
+                    (int(strength), level_name(strength), key))
         conn.commit()
         cur.close()
         return True

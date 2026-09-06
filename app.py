@@ -276,7 +276,12 @@ def index():
     if force_new or 'game' not in session:
         # CRITICAL: Preserve user login and difficulty when clearing game session
         user = session.get('user')
-        difficulty = session.get('difficulty', 'easy')
+        difficulty = session.get('difficulty')
+        if difficulty is None and not user and IS_PRODUCTION:
+            from utilities.postgres_utils import get_user_strength
+            who = _ratchet_identity()
+            difficulty = get_user_strength(ip_address=who['ip']) if who else None
+        difficulty = 'easy' if difficulty is None else difficulty
         session.clear()
         if user:
             session['user'] = user
@@ -444,11 +449,10 @@ def set_difficulty():
     if 'game' in session:
         session['game']['difficulty'] = strength
         session.modified = True
-    user_email = session.get('user', {}).get('email')
-    if user_email:
+    who = _ratchet_identity()
+    if who:
         from utilities.postgres_utils import save_user_strength
-        save_user_difficulty(user_email, difficulty)
-        save_user_strength(user_email, strength)
+        save_user_strength(who['email'], strength, who['ip'])
     return jsonify({'success': True, 'difficulty': difficulty, 'strength': strength})
 
 @app.route('/get_difficulty')
@@ -456,9 +460,9 @@ def get_difficulty():
     """Marta's current strength + rung, the ladder with the player's record on each rung,
     and whether the ratchet applies to them yet."""
     from utilities.computer_logic import DIFFICULTY_LEVELS, LEVEL_BLURBS, level_name, strength_of, RATCHET_MIN_GAMES
-    from utilities.postgres_utils import get_user_level_record
     email = session.get('user', {}).get('email')
-    record = get_user_level_record(email) if (IS_PRODUCTION and email) else {}
+    who = _ratchet_identity() if IS_PRODUCTION else None
+    record = _level_record(who)
     games = sum(r['wins'] + r['losses'] for r in record.values())
     levels = [{'level': lvl, 'blurb': LEVEL_BLURBS[lvl], **record.get(lvl, {'wins': 0, 'losses': 0})}
               for lvl in DIFFICULTY_LEVELS]
@@ -467,21 +471,36 @@ def get_difficulty():
     first = (user.get('name') or '').split(' ')[0] or (email or '').split('@')[0]
     return jsonify({'difficulty': level_name(setting), 'strength': strength_of(setting), 'levels': levels,
                     'player': {'name': first, 'page': first} if email else None,
-                    'ratchet': {'eligible': bool(email) and games >= RATCHET_MIN_GAMES,
+                    'ratchet': {'eligible': bool(who) and games >= RATCHET_MIN_GAMES,
                                 'logged_in': bool(email), 'games': games, 'needed': RATCHET_MIN_GAMES}})
+
+
+def _ratchet_identity():
+    """Who the ratchet belongs to: the Google email when logged in, else the family member the
+    IP is known by (with the IP the strength is stored against). None for strangers."""
+    email = session.get('user', {}).get('email')
+    if email:
+        return {'email': email, 'name': None, 'ip': None}
+    ip = get_client_ip(request) if IS_PRODUCTION else None
+    name = get_suspected_player_from_ip(ip) if ip else None
+    return {'email': None, 'name': name, 'ip': ip} if name else None
+
+
+def _level_record(who):
+    from utilities.postgres_utils import get_user_level_record
+    return get_user_level_record(who['email'], who['name']) if who else {}
 
 
 def _ratchet_after_game(game):
     """Game over: move Marta's strength for players with a track record and say so in the
-    end-of-game message. Anonymous players and newcomers (< RATCHET_MIN_GAMES) are exempt."""
+    end-of-game message. Strangers and newcomers (< RATCHET_MIN_GAMES) are exempt."""
     from utilities.computer_logic import ratchet, level_name, strength_of, RATCHET_MIN_GAMES
-    from utilities.postgres_utils import get_user_level_record, save_user_strength
+    from utilities.postgres_utils import save_user_strength
     from utilities.custom_rules import get_display_score
-    email = session.get('user', {}).get('email')
-    if not email or game.get('winner') not in ('player', 'computer'):
+    who = _ratchet_identity()
+    if not who or game.get('winner') not in ('player', 'computer'):
         return
-    record = get_user_level_record(email)
-    games = sum(r['wins'] + r['losses'] for r in record.values())
+    games = sum(r['wins'] + r['losses'] for r in _level_record(who).values())
     if games < RATCHET_MIN_GAMES:
         return
     won = game['winner'] == 'player'
@@ -490,7 +509,7 @@ def _ratchet_after_game(game):
     before = strength_of(session.get('difficulty', 'easy'))
     after = ratchet(before, won, margin)
     session['difficulty'] = after
-    save_user_strength(email, after)
+    save_user_strength(who['email'], after, who['ip'])
     if after == before:
         note = f" Marta stays at {after}/100 ({level_name(after).title()})."
     else:

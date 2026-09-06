@@ -98,6 +98,54 @@ class LadderTests(unittest.TestCase):
         self.assertEqual(get_difficulty_params({'bid_offset': 0.5})['bid_offset'], 0.5)
         self.assertEqual(list(STRENGTH_PRESETS), list(DIFFICULTY_LEVELS))
 
+    def test_short_specials_go_to_the_middle_as_she_climbs(self):
+        from utilities.computer_logic import computer_discard_strategy, get_difficulty_params
+        card = lambda r, su: {'rank': r, 'suit': su, 'value': {'J': 11, 'Q': 12, 'K': 13, 'A': 14}.get(r, int(r) if r.isdigit() else 0)}
+        # 7♦ with one companion, 10♣ with two, a singleton 4♥ to tempt the void score
+        hand = [card('7', '♦'), card('K', '♦'), card('10', '♣'), card('J', '♣'), card('Q', '♣'), card('4', '♥'),
+                card('2', '♠'), card('5', '♠'), card('9', '♠'), card('J', '♠'), card('A', '♠')]
+        pick = lambda d: hand[computer_discard_strategy(list(hand), {'difficulty': d})]
+        self.assertEqual(get_difficulty_params('easy')['special_hold'], 1)
+        self.assertEqual(pick('easy'), card('4', '♥'))            # pre-dial: any companion protects
+        self.assertEqual(pick('medium'), card('7', '♦'))          # doubleton special is tossed
+        self.assertEqual(pick(100), card('7', '♦'))               # first toss candidate wins the tie
+        self.assertEqual(pick({'special_hold': 3}), card('7', '♦'))
+        hand.remove(card('7', '♦')); hand.append(card('8', '♦'))
+        self.assertEqual(pick('hard'), card('10', '♣'))           # hard (2.2) still calls two companions short
+        self.assertEqual(pick('medium'), card('4', '♥'))          # medium (1.6) keeps it
+        # Canary: a singleton special is tossed on every rung, as before
+        lone = [card('7', '♦'), card('K', '♣'), card('Q', '♣'), card('J', '♣'), card('9', '♥'), card('8', '♥'),
+                card('2', '♠'), card('5', '♠'), card('9', '♠'), card('J', '♠'), card('A', '♠')]
+        for d in ('easy', 'ruthless'):
+            self.assertEqual(lone[computer_discard_strategy(list(lone), {'difficulty': d})], card('7', '♦'), d)
+
+    def test_table_memory_scales_with_the_dial(self):
+        from utilities.computer_logic import table_memory
+        from utilities.otto import _mirror
+        c = lambda r, su: {'rank': r, 'suit': su, 'value': 0}
+        hand = [c('A', '♥'), c('3', '♠')]
+        game = {'first_leader': 'computer', 'player_discarded': c('7', '♦'), 'computer_discarded': c('2', '♣'),
+                'trick_history': [
+                    {'number': 1, 'player_card': c('4', '♠'), 'computer_card': c('6', '♣'), 'winner': 'player'},
+                    {'number': 2, 'player_card': c('10', '♣'), 'computer_card': c('9', '♣'), 'winner': 'player'},
+                    {'number': 3, 'player_card': c('5', '♦'), 'computer_card': c('K', '♦'), 'winner': 'computer'}],
+                'current_trick': [{'player': 'player', 'card': c('Q', '♠')}]}
+        full = table_memory(hand, dict(game, difficulty='ruthless'))
+        self.assertEqual(full['specials_out'], [])
+        self.assertEqual(full['opp_void'], {'♣'})        # trick 1: she led a club, he spaded it
+        self.assertEqual(full['opp_spades'], 2)          # the 4♠ then, the Q♠ on the table now
+        self.assertIn('K♦', full['seen'])
+        none = table_memory(hand, dict(game, difficulty='easy'))
+        self.assertEqual(none['specials_out'], ['7♦', '10♣'])
+        self.assertEqual(none['opp_void'], set())
+        self.assertEqual(none['seen'], {'A♥', '3♠', 'Q♠'})  # her hand and the table, nothing spent
+        self.assertEqual(none['opp_spades'], 1)
+        # From Otto's seat the same table reads the other way round
+        otto = table_memory([c('2', '♦')], _mirror(dict(game, current_trick=[]), 'ruthless'))
+        self.assertEqual(otto['opp_void'], set())         # Marta followed every lead Otto made
+        self.assertEqual(otto['opp_spades'], 0)
+        self.assertEqual(otto['specials_out'], [])
+
     def test_levels_round_trip_through_routes(self):
         self.assertEqual(self.client.get('/').status_code, 200)
         for level in ('medium', 'hard', 'ruthless', 'easy'):
@@ -162,6 +210,29 @@ class RatchetTests(unittest.TestCase):
         self.assertNotIn('climbs', msg)
         msg, setting = self._finish_game('tom@example.com', 40, winner='computer')
         self.assertIn('Marta drops to 51/100 (Hard)', msg)
+
+    def test_ip_known_family_member_ratchets_without_login(self):
+        # Jon has never logged in; his IP is known to the family map, so he rides the ratchet too
+        with patch.object(A, 'IS_PRODUCTION', True), \
+             patch.object(A, 'get_suspected_player_from_ip', return_value='Jon') as who, \
+             patch('utilities.postgres_utils.save_user_strength', return_value=True) as save, \
+             patch('utilities.postgres_utils.get_user_strength', return_value=35):
+            self.assertEqual(self.client.get('/?new=true').status_code, 200)
+            with self.client.session_transaction() as s:
+                self.assertEqual(s['difficulty'], 35)         # picked up from his IP row
+            msg, setting = self._finish_game(None, 45)
+            self.assertIn('Marta climbs to 69/100 (Hard)', msg)
+            self.assertEqual(setting, 69)
+            save.assert_called_with(None, 69, '127.0.0.1')
+            self.assertTrue(who.called)
+            with patch('utilities.postgres_utils.get_user_level_record', return_value={'easy': {'wins': 45, 'losses': 0}}) as rec:
+                d = self.client.get('/get_difficulty').get_json()
+                rec.assert_called_with(None, 'Jon')
+            self.assertEqual((d['ratchet']['eligible'], d['ratchet']['logged_in'], d['player']), (True, False, None))
+        # A stranger's IP still gets nothing
+        with patch.object(A, 'IS_PRODUCTION', True), patch.object(A, 'get_suspected_player_from_ip', return_value=None):
+            msg, _ = self._finish_game(None, 100)
+            self.assertNotIn('Marta', msg)
 
     def test_gear_reports_strength_and_ratchet(self):
         self.assertEqual(self.client.get('/').status_code, 200)

@@ -55,8 +55,16 @@ def _c(card):
 # ceiling of this brain, so four rungs, not five — a fifth needs a smarter follow strategy.
 #   nil_hunt     probability of playing to SET an opponent's nil (duck under their card so they
 #                are forced to win a trick) instead of playing her own hand
+#   memory       share of the table she recalls (table_memory): 0 is a child who forgets every
+#                card once it's spent, 1 remembers all of them
+#   special_hold companions a 7♦/10♣ needs before she keeps it out of the middle (1 = the
+#                pre-dial rule: any companion protects it). Measured on 3,937 logged tricks
+#                (2026-09-06): a special she holds is cashed 30% (7♦) / 42% (10♣) of the time,
+#                one she throws in the middle 50%. So short specials go to the middle as she
+#                climbs, until the play that cashes them (trump drawing) exists.
 _EASY = {'bid_boost': 0.3, 'bag_avoid': 0.92, 'max_bid': 6, 'mistake_chance': 0,
-         'bid_offset': 0.0, 'nil_deficit': 80, 'nil_loose': False, 'lead_high': 0.0, 'nil_hunt': 0.0}
+         'bid_offset': 0.0, 'nil_deficit': 80, 'nil_loose': False, 'lead_high': 0.0, 'nil_hunt': 0.0,
+         'memory': 0.0, 'special_hold': 1}
 
 DIFFICULTY_LEVELS = ('easy', 'medium', 'hard', 'ruthless')
 # Measured vs easy (2,000 games): medium 58%, hard 62%, ruthless 64%. The top step is small
@@ -109,7 +117,8 @@ def strength_params(strength):
     s = max(0, min(100, float(strength)))
     def lerp(a, b):
         return round(a + (b - a) * s / 100.0, 3)
-    return dict(_EASY, bid_offset=lerp(0.0, 1.0), lead_high=lerp(0.0, 1.0), nil_hunt=lerp(0.0, 1.0))
+    return dict(_EASY, bid_offset=lerp(0.0, 1.0), lead_high=lerp(0.0, 1.0), nil_hunt=lerp(0.0, 1.0),
+                memory=lerp(0.0, 1.0), special_hold=lerp(1, 3))
 
 
 def get_difficulty_params(difficulty='easy'):
@@ -126,8 +135,7 @@ def get_difficulty_params(difficulty='easy'):
 # GLOBAL AI DIFFICULTY SETTINGS
 
 # Discard Strategy Settings
-SINGLETON_SPECIAL_PRIORITY = 1000    # How much to prioritize discarding singleton 7♦/10♣
-VOID_CREATION_PRIORITY = 500         # How much to value creating voids
+SPECIAL_TOSS_PRIORITY = 1000         # A 7♦/10♣ too short to keep (see special_hold) goes to the middle
 SPECIAL_CARD_PROTECTION = -100       # Penalty for discarding protected special cards
 SPADE_DISCARD_PENALTY = 3           # Multiplier for avoiding spade discards
 PARITY_CONSIDERATION = 1            # Small bonus for parity-favorable discards
@@ -277,6 +285,41 @@ def analyze_suit_distribution(hand):
     
     return distribution
 
+
+SPECIALS = ('7♦', '10♣')
+
+def table_memory(hand, game_state):
+    """What Marta recalls of this hand, from the computer seat. Tricks, both discards and her own
+    hand are all public, so nothing here is a guess; the level's `memory` knob is the share of
+    it she actually retains (a trick or discard she forgets is gone entirely). Returns
+      seen         set of 'rank+suit' out of play (incl. her hand)
+      specials_out specials still unaccounted for: not hers, not seen played or in the middle
+      opp_void     suits the opponent has been seen failing to follow
+      opp_spades   spades the opponent has been seen playing"""
+    recall = get_difficulty_params(game_state.get('difficulty', 'easy'))['memory']
+    remembers = lambda: recall >= 1 or (recall > 0 and random.random() < recall)
+    seen = {_c(c) for c in hand}
+    for key in ('player_discarded', 'computer_discarded'):
+        if game_state.get(key) and remembers():
+            seen.add(_c(game_state[key]))
+    opp_void, opp_spades = set(), 0
+    leader = game_state.get('first_leader', 'player')
+    for t in game_state.get('trick_history', []):
+        pc, cc = t.get('player_card'), t.get('computer_card')
+        if remembers():
+            seen.update(_c(c) for c in (pc, cc) if c)
+            if pc and cc:
+                led = cc if leader == 'computer' else pc
+                if pc['suit'] != led['suit']:
+                    opp_void.add(led['suit'])
+            opp_spades += bool(pc and pc['suit'] == '♠')
+        leader = t.get('winner', leader)
+    for play in game_state.get('current_trick', []):   # on the table now: nobody forgets that
+        seen.add(_c(play['card']))
+        opp_spades += play.get('player') == 'player' and play['card']['suit'] == '♠'
+    return {'seen': seen, 'specials_out': [x for x in SPECIALS if x not in seen],
+            'opp_void': opp_void, 'opp_spades': opp_spades}
+
 # DISCARD STRATEGY
 
 def computer_discard_strategy(computer_hand, game_state):
@@ -290,44 +333,34 @@ def computer_discard_strategy(computer_hand, game_state):
     # Analyze suit distribution
     suit_distribution = analyze_suit_distribution(computer_hand)
     
+    hold = get_difficulty_params(game_state.get('difficulty', 'easy'))['special_hold']
     discard_candidates = []
     
     for i, card in enumerate(computer_hand):
         score = 0
         suit_info = suit_distribution[card['suit']]
+        is_special, _ = is_special_card(card)
         
-        # PRIORITY 1: Singleton special cards - MUST discard these
-        if suit_info['is_singleton'] and card['suit'] != '♠':
-            is_special, _ = is_special_card(card)
-            if is_special:
-                score += SINGLETON_SPECIAL_PRIORITY
-                discard_candidates.append((i, score))
-                continue  # Don't apply other penalties to singleton specials
+        # PRIORITY 1: A special too short to keep goes to the middle (a coin flip beats
+        # holding a card that only pays if it wins its own trick)
+        if is_special and suit_info['count'] - 1 < hold:
+            discard_candidates.append((i, SPECIAL_TOSS_PRIORITY))
+            continue
         
-        # PRIORITY 2: Void creation (singleton non-specials in non-spade suits)
-        elif suit_info['is_singleton'] and card['suit'] != '♠':
-            spade_count = suit_distribution['♠']['count']
-            # More spades = void is more valuable
-            void_value = (spade_count * VOID_CREATION_PRIORITY) // 10
-            if spade_count >= 4:  # Strong spade holding
-                void_value += (VOID_CREATION_PRIORITY // 4)
-            void_value -= card['value']  # Prefer discarding low cards
-            score += void_value
+        # PRIORITY 2: Special card protection (a special she's keeping). (A void-creation
+        # bonus for singletons used to sit here, dead since its elif chained to the branch
+        # above; removed 2026-09-06 so easy stays exactly the Marta the record was earned on.)
+        if is_special:
+            score += SPECIAL_CARD_PROTECTION  # Negative score
         
-        # PRIORITY 3: Normal special card protection (protected specials)
-        else:
-            is_special, _ = is_special_card(card)
-            if is_special:
-                score += SPECIAL_CARD_PROTECTION  # Negative score
-        
-        # PRIORITY 4: Avoid discarding spades
+        # PRIORITY 3: Avoid discarding spades
         if card['suit'] == '♠':
             score -= card['value'] * SPADE_DISCARD_PENALTY
         else:
             # Prefer discarding low cards from other suits
             score += (15 - card['value'])
         
-        # PRIORITY 5: Light parity consideration
+        # PRIORITY 4: Light parity consideration
         discard_value = get_discard_value(card)
         if computer_parity == 'even' and discard_value % 2 == 1:
             score += PARITY_CONSIDERATION
@@ -338,7 +371,7 @@ def computer_discard_strategy(computer_hand, game_state):
     
     # Return index of card with highest discard score
     best = max(discard_candidates, key=lambda x: x[1])
-    _note('discard', {'card': _c(computer_hand[best[0]]), 'score': best[1],
+    _note('discard', {'card': _c(computer_hand[best[0]]), 'score': best[1], 'hold': hold,
                       'spades': suit_distribution['♠']['count'],
                       'singleton': suit_distribution[computer_hand[best[0]]['suit']]['is_singleton']})
     return best[0]

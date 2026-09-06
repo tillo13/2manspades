@@ -30,7 +30,8 @@ import uuid
 from .gameplay_logic import init_game, init_new_hand, is_valid_play
 from .custom_rules import assign_even_odd_at_game_start, get_display_score
 from .computer_logic import (computer_bidding_brain, computer_discard_strategy, computer_lead_strategy,
-                             computer_follow_strategy, should_bid_blind, set_decision_sink, set_decision_seat)
+                             computer_follow_strategy, should_bid_blind, set_decision_sink, set_decision_seat,
+                             DIFFICULTY_LEVELS, get_difficulty_params)
 from .hand_flow import (process_discard_phase, process_bidding_phase, process_blind_bid_phase,
                         computer_follow_with_logging, computer_lead_with_logging, resolve_trick_with_delay,
                         process_hand_completion, process_auto_resolution)
@@ -48,10 +49,20 @@ _SWAP = [('player_hand', 'computer_hand'), ('player_bid', 'computer_bid'),
          ('player_trick_special_cards', 'computer_trick_special_cards')]
 
 
+_SEAT_FLIP = {'player': 'computer', 'computer': 'player'}
+
+
 def _mirror(game, difficulty):
     m = dict(game)
     for a, b in _SWAP:
         m[a], m[b] = game.get(b), game.get(a)
+    # The table memory (trick history, leader, current trick) names seats too.
+    m['first_leader'] = _SEAT_FLIP.get(game.get('first_leader'), game.get('first_leader'))
+    m['trick_history'] = [dict(t, player_card=t.get('computer_card'), computer_card=t.get('player_card'),
+                               winner=_SEAT_FLIP.get(t.get('winner'), t.get('winner')))
+                          for t in game.get('trick_history', [])]
+    m['current_trick'] = [dict(p, player=_SEAT_FLIP.get(p.get('player'), p.get('player')))
+                          for p in game.get('current_trick', [])]
     m['difficulty'] = difficulty
     return m
 
@@ -506,6 +517,7 @@ def summarize(results):
                 x['bid_sum'] += bid
     out = {'games': games, **wins,
            'first_leader_win_pct': round(100 * first_leader_wins / games, 1) if games else 0,
+           'avg_margin': round(sum(r['marta_score'] - r['otto_score'] for r in results) / games, 1) if games else 0,
            'avg_hands': round(sum(r['hands'] for r in results) / games, 1) if games else 0,
            'seats': []}
     for s, x in seats.items():
@@ -522,17 +534,27 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description='Otto vs Marta, headless.')
     ap.add_argument('--games', type=int, default=200)
     ap.add_argument('--seed', type=int, default=1, help='first seed; game i uses seed+i (replayable)')
-    ap.add_argument('--otto', default='easy', choices=('easy', 'medium', 'ruthless'))
-    ap.add_argument('--marta', default='easy', choices=('easy', 'medium', 'ruthless'))
+    ap.add_argument('--otto', default='easy', choices=DIFFICULTY_LEVELS)
+    ap.add_argument('--marta', default='easy', choices=DIFFICULTY_LEVELS)
+    ap.add_argument('--knob', action='append', default=[], metavar='NAME=VALUE',
+                    help='override one of Marta\'s knobs on top of --marta (repeatable), e.g. special_hold=3')
     ap.add_argument('--persist', action='store_true', help='ALSO file every game in the prod ledger')
     a = ap.parse_args(argv)
+    marta = a.marta
+    if a.knob:
+        marta = dict(get_difficulty_params(a.marta))
+        for k in a.knob:
+            name, _, val = k.partition('=')
+            if name not in marta:
+                ap.error(f'unknown knob {name!r}; knobs: {", ".join(marta)}')
+            marta[name] = float(val)
     t0 = time.monotonic()
-    results = [play_game(seed=a.seed + i, otto_difficulty=a.otto, marta_difficulty=a.marta,
+    results = [play_game(seed=a.seed + i, otto_difficulty=a.otto, marta_difficulty=marta,
                          persist=a.persist, source='batch') for i in range(a.games)]
     s = summarize(results)
-    print(f"{s['games']} games in {time.monotonic() - t0:.1f}s  otto {a.otto} vs marta {a.marta}")
+    print(f"{s['games']} games in {time.monotonic() - t0:.1f}s  otto {a.otto} vs marta {a.marta} {' '.join(a.knob)}")
     print(f"otto {s['otto']}  marta {s['marta']}  tie {s['tie']}   first leader won {s['first_leader_win_pct']}%"
-          f"   avg {s['avg_hands']} hands")
+          f"   avg {s['avg_hands']} hands   marta margin {s['avg_margin']:+}")
     for x in s['seats']:
         print(f"{x['seat']:6} exact {x['exact_pct']}% ({x['exact']}/{x['hands']})  nil {x['nil_made']}/{x['nil_tried']}"
               f"  blind {x['blind_made']}/{x['blind_tried']}  bags/hand {x['avg_bags']}  avg bid {x['avg_bid']}")
