@@ -70,6 +70,7 @@ DIFFICULTY_LEVELS = ('easy', 'medium', 'hard', 'ruthless')
 # Measured vs easy (2,000 games): medium 58%, hard 62%, ruthless 64%. The top step is small
 # because this brain saturates at ~65%; it widens when the follow strategy improves.
 STRENGTH_PRESETS = {'easy': 0, 'medium': 30, 'hard': 60, 'ruthless': 100}
+RUNG_FLOORS = {'easy': 0, 'medium': 15, 'hard': 45, 'ruthless': 80}   # a strength's rung name
 LEVEL_BLURBS = {
     'easy': 'The Marta the family grew up on. Bids a trick under her hand and leads low.',
     'medium': 'Bids a little closer to her hand; sometimes leads high when she still owes tricks.',
@@ -93,7 +94,7 @@ def level_name(strength):
         s = float(strength)
     except (TypeError, ValueError):
         return 'easy'
-    return 'easy' if s < 15 else ('medium' if s < 45 else ('hard' if s < 80 else 'ruthless'))
+    return next(lvl for lvl in reversed(DIFFICULTY_LEVELS) if s >= RUNG_FLOORS[lvl])
 
 
 def strength_of(setting):

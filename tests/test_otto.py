@@ -153,8 +153,16 @@ class LadderTests(unittest.TestCase):
             self.assertEqual(r.status_code, 200, level)
             self.assertEqual(self.client.get('/get_difficulty').get_json()['difficulty'], level)
         self.assertEqual(self.client.post('/set_difficulty', json={'difficulty': 'legend'}).status_code, 400)
+        # the slider posts a number; the rung name follows from it
+        for strength, rung in ((0, 'easy'), (14, 'easy'), (15, 'medium'), (55, 'hard'), (100, 'ruthless')):
+            r = self.client.post('/set_difficulty', json={'strength': strength})
+            self.assertEqual((r.status_code, r.get_json()['difficulty'], r.get_json()['strength']), (200, rung, strength))
+            self.assertEqual(self.client.get('/get_difficulty').get_json()['strength'], strength)
+        for bad in (-1, 101, 'lots', None):
+            self.assertEqual(self.client.post('/set_difficulty', json={'strength': bad}).status_code, 400, bad)
         levels = self.client.get('/get_difficulty').get_json()['levels']
         self.assertEqual([l['level'] for l in levels], ['easy', 'medium', 'hard', 'ruthless'])
+        self.assertEqual([(l['floor'], l['preset']) for l in levels], [(0, 0), (15, 30), (45, 60), (80, 100)])
         self.assertTrue(all(l['blurb'] for l in levels))
 
 
@@ -197,19 +205,23 @@ class RatchetTests(unittest.TestCase):
         with patch('utilities.postgres_utils.get_user_level_record', return_value=record):
             self.assertEqual(self.client.post('/clear_trick').status_code, 200)
         with self.client.session_transaction() as s:
-            return s['game'].get('message', ''), s.get('difficulty')
+            return s['game'].get('ratchet'), s.get('difficulty')
 
     def test_ratchet_moves_for_veterans_only(self):
-        msg, setting = self._finish_game('tom@example.com', 40)
-        self.assertIn('Marta climbs to 69/100 (Hard)', msg)
+        r, setting = self._finish_game('tom@example.com', 40)
+        self.assertEqual(r, {'before': 60, 'after': 69, 'from_level': 'hard', 'level': 'hard'})
         self.assertEqual(setting, 69)
-        msg, setting = self._finish_game('new@example.com', 3)
-        self.assertNotIn('Marta', msg)
+        r, setting = self._finish_game('new@example.com', 3)
+        self.assertIsNone(r)
         self.assertEqual(setting, 60)
-        msg, setting = self._finish_game(None, 100)
-        self.assertNotIn('climbs', msg)
-        msg, setting = self._finish_game('tom@example.com', 40, winner='computer')
-        self.assertIn('Marta drops to 51/100 (Hard)', msg)
+        r, setting = self._finish_game(None, 100)
+        self.assertIsNone(r)
+        r, setting = self._finish_game('tom@example.com', 40, winner='computer')
+        self.assertEqual((r['after'], r['level']), (51, 'hard'))
+        # the state payload carries it as data; the message stays the plain result sentence
+        state = self.client.get('/state').get_json()
+        self.assertEqual(state['ratchet']['after'], 51)
+        self.assertNotIn('Marta drops', state['message'])
 
     def test_ip_known_family_member_ratchets_without_login(self):
         # Jon has never logged in; his IP is known to the family map, so he rides the ratchet too
@@ -220,8 +232,8 @@ class RatchetTests(unittest.TestCase):
             self.assertEqual(self.client.get('/?new=true').status_code, 200)
             with self.client.session_transaction() as s:
                 self.assertEqual(s['difficulty'], 35)         # picked up from his IP row
-            msg, setting = self._finish_game(None, 45)
-            self.assertIn('Marta climbs to 69/100 (Hard)', msg)
+            r, setting = self._finish_game(None, 45)
+            self.assertEqual((r['before'], r['after']), (60, 69))
             self.assertEqual(setting, 69)
             save.assert_called_with(None, 69, '127.0.0.1')
             self.assertTrue(who.called)
@@ -231,8 +243,7 @@ class RatchetTests(unittest.TestCase):
             self.assertEqual((d['ratchet']['eligible'], d['ratchet']['logged_in'], d['player']), (True, False, None))
         # A stranger's IP still gets nothing
         with patch.object(A, 'IS_PRODUCTION', True), patch.object(A, 'get_suspected_player_from_ip', return_value=None):
-            msg, _ = self._finish_game(None, 100)
-            self.assertNotIn('Marta', msg)
+            self.assertIsNone(self._finish_game(None, 100)[0])
 
     def test_gear_reports_strength_and_ratchet(self):
         self.assertEqual(self.client.get('/').status_code, 200)

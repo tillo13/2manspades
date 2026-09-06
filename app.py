@@ -437,14 +437,23 @@ def get_state():
 
 @app.route('/set_difficulty', methods=['POST'])
 def set_difficulty():
-    """Set Marta's difficulty level"""
-    from utilities.computer_logic import DIFFICULTY_LEVELS, STRENGTH_PRESETS
+    """Set Marta's strength: a number 0-100 from the slider, or a rung name (its preset)."""
+    from utilities.computer_logic import DIFFICULTY_LEVELS, STRENGTH_PRESETS, level_name
     data = request.get_json() or {}
-    difficulty = data.get('difficulty', 'easy')
-    if difficulty not in DIFFICULTY_LEVELS:
-        return jsonify({'error': 'Invalid difficulty'}), 400
-    # A manual pick resets the ratchet to that rung's strength; it climbs/drops from there.
-    strength = STRENGTH_PRESETS[difficulty]
+    if 'strength' in data:
+        try:
+            strength = int(data['strength'])
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid strength'}), 400
+        if not 0 <= strength <= 100:
+            return jsonify({'error': 'Invalid strength'}), 400
+        difficulty = level_name(strength)
+    else:
+        difficulty = data.get('difficulty', 'easy')
+        if difficulty not in DIFFICULTY_LEVELS:
+            return jsonify({'error': 'Invalid difficulty'}), 400
+        strength = STRENGTH_PRESETS[difficulty]
+    # A manual setting resets the ratchet to that number; it climbs/drops from there.
     session['difficulty'] = strength
     if 'game' in session:
         session['game']['difficulty'] = strength
@@ -459,13 +468,14 @@ def set_difficulty():
 def get_difficulty():
     """Marta's current strength + rung, the ladder with the player's record on each rung,
     and whether the ratchet applies to them yet."""
-    from utilities.computer_logic import DIFFICULTY_LEVELS, LEVEL_BLURBS, level_name, strength_of, RATCHET_MIN_GAMES
+    from utilities.computer_logic import (DIFFICULTY_LEVELS, LEVEL_BLURBS, STRENGTH_PRESETS, RUNG_FLOORS,
+                                          level_name, strength_of, RATCHET_MIN_GAMES)
     email = session.get('user', {}).get('email')
     who = _ratchet_identity() if IS_PRODUCTION else None
     record = _level_record(who)
     games = sum(r['wins'] + r['losses'] for r in record.values())
-    levels = [{'level': lvl, 'blurb': LEVEL_BLURBS[lvl], **record.get(lvl, {'wins': 0, 'losses': 0})}
-              for lvl in DIFFICULTY_LEVELS]
+    levels = [{'level': lvl, 'blurb': LEVEL_BLURBS[lvl], 'preset': STRENGTH_PRESETS[lvl], 'floor': RUNG_FLOORS[lvl],
+               **record.get(lvl, {'wins': 0, 'losses': 0})} for lvl in DIFFICULTY_LEVELS]
     setting = session.get('difficulty', 'easy')
     user = session.get('user') or {}
     first = (user.get('name') or '').split(' ')[0] or (email or '').split('@')[0]
@@ -510,13 +520,10 @@ def _ratchet_after_game(game):
     after = ratchet(before, won, margin)
     session['difficulty'] = after
     save_user_strength(who['email'], after, who['ip'])
-    if after == before:
-        note = f" Marta stays at {after}/100 ({level_name(after).title()})."
-    else:
-        note = (f" Marta {'climbs' if after > before else 'drops'} to {after}/100 "
-                f"({level_name(after).title()}) for your next game.")
-    game['message'] = (game.get('message') or '') + note
-    game['ratchet'] = {'before': before, 'after': after, 'level': level_name(after)}
+    # Data only: the final screen draws it. (It used to be appended to the message as a
+    # sentence, which put the same fact in two shapes and got the string rendered twice.)
+    game['ratchet'] = {'before': before, 'after': after,
+                       'from_level': level_name(before), 'level': level_name(after)}
 
 @app.route('/toggle_computer_hand', methods=['POST'])
 def toggle_computer_hand():

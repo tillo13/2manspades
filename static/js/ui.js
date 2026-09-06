@@ -55,9 +55,11 @@ function openDifficultyModal() {
         .then(r => r.json())
         .then(data => {
             const current = data.difficulty || 'easy';
-            document.querySelector(`input[name="difficulty"][value="${current}"]`).checked = true;
-            // your completed-game record on each rung (logged-in players only)
-            (data.levels || []).forEach(l => {
+            RUNGS = data.levels || [];
+            document.getElementById('difficultyRange').value = data.strength || 0;
+            previewDifficulty(data.strength || 0);
+            // your completed-game record on each rung (known players only)
+            RUNGS.forEach(l => {
                 const el = document.querySelector(`.difficulty-record[data-level="${l.level}"]`);
                 if (el) el.textContent = (l.wins || l.losses) ? `You: ${l.wins}-${l.losses}` : '';
             });
@@ -76,7 +78,7 @@ function openDifficultyModal() {
             if (note && data.strength !== undefined) {
                 const where = `Marta is at ${data.strength}/100 (${current.charAt(0).toUpperCase() + current.slice(1)}).`;
                 note.textContent = r.eligible
-                    ? `${where} She climbs when you win and drops when you lose. Picking a level resets her there.`
+                    ? `${where} She climbs when you win and drops when you lose. Slide or tap a level to set her yourself; she moves on from there.`
                     : r.logged_in
                         ? `${where} After ${r.needed} games she'll climb when you win and drop when you lose (you're at ${r.games}).`
                         : `${where} Log in and she'll start climbing with your wins after ${r.needed} games.`;
@@ -91,11 +93,32 @@ function closeDifficultyModal(event) {
     }
 }
 
-function setDifficulty(level) {
+// The slider is the truth (0-100); the four rungs are presets on it, and the rung whose
+// floor the number has crossed is highlighted. RUNGS arrives with the gear payload.
+let RUNGS = [];
+function rungOf(strength) {
+    return [...RUNGS].reverse().find(l => strength >= l.floor) || RUNGS[0];
+}
+function previewDifficulty(strength) {
+    strength = parseInt(strength, 10) || 0;
+    const rung = rungOf(strength);
+    document.getElementById('difficultyStrength').textContent = strength;
+    document.getElementById('difficultyRung').textContent = rung ? rung.level.charAt(0).toUpperCase() + rung.level.slice(1) : '';
+    document.querySelectorAll('.difficulty-option').forEach(el =>
+        el.classList.toggle('active', !!rung && el.dataset.arg === rung.level));
+}
+function pickRung(el) {
+    const rung = RUNGS.find(l => l.level === el.dataset.arg);
+    if (!rung) return;
+    document.getElementById('difficultyRange').value = rung.preset;
+    previewDifficulty(rung.preset);
+    setDifficulty(rung.preset);
+}
+function setDifficulty(strength) {
     fetch('/set_difficulty', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty: level })
+        body: JSON.stringify({ strength: parseInt(strength, 10) })
     }).then(() => {
         setTimeout(() => closeDifficultyModal(), 300);
     });
@@ -112,6 +135,7 @@ const ACTIONS = {
     makeBlindBid: (el) => makeBlindBid(parseInt(el.dataset.arg, 10)),
     open: (el) => window.open(el.dataset.arg, '_blank'),
     closeDifficultyModal: (el, e) => closeDifficultyModal(e),
+    pickRung,
     stop: () => {},   // clicks inside the difficulty card must not reach the overlay's close
 };
 document.addEventListener('click', (e) => {
@@ -123,6 +147,10 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => {
     const el = e.target.closest('[data-change="setDifficulty"]');
     if (el) setDifficulty(el.value);
+});
+document.addEventListener('input', (e) => {
+    const el = e.target.closest('[data-input="previewDifficulty"]');
+    if (el) previewDifficulty(el.value);
 });
 
 // Prevent zoom on double-tap for mobile

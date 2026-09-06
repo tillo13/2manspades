@@ -563,7 +563,7 @@ def computer_lead_with_logging(game, session_obj=None):
 
 
 def process_hand_completion(game, session):
-    """Process hand completion with all scoring logic"""
+    """All ten tricks played: score the hand."""
     log_game_event(
         event_type='hand_completed',
         event_data={
@@ -575,44 +575,37 @@ def process_hand_completion(game, session):
         },
         session=session
     )
-    
-    # Apply stored discard results at the end of the hand
+    _complete_hand(game, session)
+
+
+def process_auto_resolution(game, session):
+    """Remaining tricks are mathematically settled: play them out and score the hand."""
+    auto_resolved, explanation = autoplay_remaining_cards(game, session)
+    if auto_resolved:
+        _complete_hand(game, session, explanation)
+    return auto_resolved
+
+
+def _complete_hand(game, session, auto_explanation=None):
+    """Shared tail of both completion paths (they were two 80-line copies until 2026-09-06):
+    apply the middle, score with bags, keep-alive, build hand_results, log, and settle
+    whether the game is over. Also appends the hand to game['hand_log'] for the final screen."""
     hand_discard = None
     if 'pending_discard_result' in game:
         discard_result = game['pending_discard_result']
         hand_discard = discard_result
         game['player_score'] += discard_result['player_bonus']
         game['computer_score'] += discard_result['computer_bonus']
-        
-        # Apply special card effects from discards
-        if 'pending_special_discard_result' in game:
-            special_discard_result = game['pending_special_discard_result']
-            
-            if special_discard_result['player_bag_reduction'] > 0:
-                game['player_bags'] = reduce_bags_safely(
-                    game.get('player_bags', 0), 
-                    special_discard_result['player_bag_reduction']
-                )
-            
-            if special_discard_result['computer_bag_reduction'] > 0:
-                game['computer_bags'] = reduce_bags_safely(
-                    game.get('computer_bags', 0), 
-                    special_discard_result['computer_bag_reduction']
-                )
-            
-            # Store explanation for the final message
-            game['discard_bonus_explanation'] = discard_result['explanation']
-            if special_discard_result['explanation']:
-                game['discard_bonus_explanation'] += " | " + special_discard_result['explanation']
-        else:
-            game['discard_bonus_explanation'] = discard_result['explanation']
-        
-        # Clean up pending results
+        game['discard_bonus_explanation'] = discard_result['explanation']
+        special = game.pop('pending_special_discard_result', None)
+        if special:
+            for seat in ('player', 'computer'):
+                if special[f'{seat}_bag_reduction'] > 0:
+                    game[f'{seat}_bags'] = reduce_bags_safely(game.get(f'{seat}_bags', 0), special[f'{seat}_bag_reduction'])
+            if special['explanation']:
+                game['discard_bonus_explanation'] += " | " + special['explanation']
         del game['pending_discard_result']
-        if 'pending_special_discard_result' in game:
-            del game['pending_special_discard_result']
-    
-    # Calculate scoring with bags system
+
     scoring_result = calculate_hand_scores_with_bags(game)
 
     # The middle can be thrown back on a game-deciding hand (family rule, 2026-09-06)
@@ -620,16 +613,11 @@ def process_hand_completion(game, session):
     if kept_alive:
         game['discard_bonus_explanation'] = (game.get('discard_bonus_explanation') or '') + ' → ' + kept_alive
 
-    # Check if blind nil ended the game (but don't return early - show full results)
+    # A blind nil ends the game inside scoring; the full results still show alongside it
     blind_nil_ending = game.get('game_over', False)
-    
-    # Create structured hand results for cleaner display
-    trick_history = game.get('trick_history', [])
-    
-    # Calculate display scores for hand results
+
     player_display_score = get_display_score(game['player_score'], game.get('player_bags', 0))
     computer_display_score = get_display_score(game['computer_score'], game.get('computer_bags', 0))
-    
     hand_results = {
         'hand_number': game['hand_number'],
         'parity': {
@@ -645,22 +633,29 @@ def process_hand_completion(game, session):
                 'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?",
                 'winner': "You" if trick['winner'] == 'player' else "Marta"
             }
-            for trick in trick_history
+            for trick in game.get('trick_history', [])
         ],
         'totals': {
             'player_score': player_display_score,
             'computer_score': computer_display_score
         }
     }
-    
-    # Store structured results for frontend
+    if auto_explanation:
+        hand_results['auto_resolution'] = auto_explanation
     game['hand_results'] = hand_results
-    
-    # Flush batched events to database
-    from .logging_utils import flush_hand_events
+
+    # One line per hand for the game-over tally
+    pb, cb = game.get('player_bid') or 0, game.get('computer_bid') or 0
+    game.setdefault('hand_log', []).append({
+        'hand': game['hand_number'],
+        'player_bid': pb, 'player_tricks': game['player_tricks'], 'player_blind': game.get('blind_bid') is not None,
+        'computer_bid': cb, 'computer_tricks': game['computer_tricks'], 'computer_blind': game.get('computer_blind_bid') is not None,
+        'player_specials': game.get('player_trick_special_cards', 0),
+        'computer_specials': game.get('computer_trick_special_cards', 0),
+        'player_score': player_display_score, 'computer_score': computer_display_score,
+    })
+
     flush_hand_events(session)
-    
-    # Log final scoring
     log_game_event(
         event_type='hand_scoring',
         event_data={
@@ -673,157 +668,35 @@ def process_hand_completion(game, session):
         },
         session=session
     )
-    
-    # CRITICAL FIX: Actually finalize the hand in the database
-    from .logging_utils import finalize_game_logging
     finalize_game_logging(game)
-    
-    # Set appropriate message based on game state
+
     if blind_nil_ending:
-        # Keep the blind nil message - it's already set in calculate_hand_scores_with_bags
-        # Results will still be shown alongside the game over screen
+        # The blind nil sentence set in scoring is the record; keep it
         log_game_event(
             event_type='game_completed',
             event_data={
                 'winner': game['winner'],
                 'final_message': game['message'],
                 'hands_played': game['hand_number'],
-                'game_end_reason': 'blind_nil'
+                'game_end_reason': 'blind_nil_auto_resolve' if auto_explanation else 'blind_nil'
             },
             session=session
         )
-    else:
-        # Normal hand completion message
-        game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
-        
-        # Check if game is over using base scores for comparison
-        game_over = check_game_over(game)
-        if game_over:
-            log_game_event(
-                event_type='game_completed',
-                event_data={
-                    'winner': game['winner'],
-                    'final_message': game['message'],
-                    'hands_played': game['hand_number']
-                },
-                session=session
-            )
+        return
 
-
-def process_auto_resolution(game, session):
-    """Process auto-resolution of remaining cards"""
-    auto_resolved, explanation = autoplay_remaining_cards(game, session)
-    
-    if auto_resolved:
-        # Continue with normal hand completion logic
-        hand_discard = None
-        if 'pending_discard_result' in game:
-            discard_result = game['pending_discard_result']
-            hand_discard = discard_result
-            game['player_score'] += discard_result['player_bonus']
-            game['computer_score'] += discard_result['computer_bonus']
-            
-            if 'pending_special_discard_result' in game:
-                special_discard_result = game['pending_special_discard_result']
-                
-                if special_discard_result['player_bag_reduction'] > 0:
-                    game['player_bags'] = reduce_bags_safely(
-                        game.get('player_bags', 0), 
-                        special_discard_result['player_bag_reduction']
-                    )
-                
-                if special_discard_result['computer_bag_reduction'] > 0:
-                    game['computer_bags'] = reduce_bags_safely(
-                        game.get('computer_bags', 0), 
-                        special_discard_result['computer_bag_reduction']
-                    )
-                
-                game['discard_bonus_explanation'] = discard_result['explanation']
-                if special_discard_result['explanation']:
-                    game['discard_bonus_explanation'] += " | " + special_discard_result['explanation']
-            else:
-                game['discard_bonus_explanation'] = discard_result['explanation']
-            
-            del game['pending_discard_result']
-            if 'pending_special_discard_result' in game:
-                del game['pending_special_discard_result']
-        
-        # Calculate scoring
-        scoring_result = calculate_hand_scores_with_bags(game)
-
-        kept_alive = apply_keep_alive(game, hand_discard)
-        if kept_alive:
-            game['discard_bonus_explanation'] = (game.get('discard_bonus_explanation') or '') + ' → ' + kept_alive
-
-        # Check if blind nil ended the game (auto-resolve case)
-        blind_nil_ending = game.get('game_over', False)
-        
-        # Create hand results
-        trick_history = game.get('trick_history', [])
-        player_display_score = get_display_score(game['player_score'], game.get('player_bags', 0))
-        computer_display_score = get_display_score(game['computer_score'], game.get('computer_bags', 0))
-        
-        hand_results = {
-            'hand_number': game['hand_number'],
-            'parity': {
-                'player': game.get('player_parity', 'even').title(),
-                'computer': game.get('computer_parity', 'odd').title()
+    game['message'] = f"Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
+    if auto_explanation:
+        game['message'] = f"{auto_explanation}. " + game['message']
+    if check_game_over(game):
+        log_game_event(
+            event_type='game_completed',
+            event_data={
+                'winner': game['winner'],
+                'final_message': game['message'],
+                'hands_played': game['hand_number']
             },
-            'discard_info': game.get('discard_bonus_explanation', ''),
-            'scoring': scoring_result['explanation'],
-            'auto_resolution': explanation,
-            'trick_history': [
-                {
-                    'number': trick['number'],
-                    'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?",
-                    'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?",
-                    'winner': "You" if trick['winner'] == 'player' else "Marta"
-                }
-                for trick in trick_history
-            ],
-            'totals': {
-                'player_score': player_display_score,
-                'computer_score': computer_display_score
-            }
-        }
-        
-        game['hand_results'] = hand_results
-        
-        # Flush batched events to database
-        from .logging_utils import flush_hand_events
-        flush_hand_events(session)
-        
-        if blind_nil_ending:
-            # Keep blind nil message and log completion
-            log_game_event(
-                event_type='game_completed',
-                event_data={
-                    'winner': game['winner'],
-                    'final_message': game['message'],
-                    'hands_played': game['hand_number'],
-                    'game_end_reason': 'blind_nil_auto_resolve'
-                },
-                session=session
-            )
-        else:
-            game['message'] = f"{explanation}. Hand #{game['hand_number']} complete! Click 'Next Hand' to continue"
-            
-            # Check if game is over
-            game_over = check_game_over(game)
-            if game_over:
-                log_game_event(
-                    event_type='game_completed',
-                    event_data={
-                        'winner': game['winner'],
-                        'final_message': game['message'],
-                        'hands_played': game['hand_number']
-                    },
-                    session=session
-                )
-        
-        return True
-    
-    return False
+            session=session
+        )
 
 
 def _finalize_game_async(hand_id, game):

@@ -36,7 +36,8 @@
       "Bash(grep -E \"FAIL|❌|Deployed|Segmentation\" _oneoff/deploy_hoyt_login.log)",
       "Bash(sed -n 27p utilities/marta_chat.py)",
       "Bash(python3 -)",
-      "Bash(KUMORI_API_KEY=x venv_2man/bin/python -m unittest discover -s tests -q)"
+      "Bash(KUMORI_API_KEY=x venv_2man/bin/python -m unittest discover -s tests -q)",
+      "Bash(venv_2man/bin/python -m unittest discover -s tests -q)"
     ]
   }
 }

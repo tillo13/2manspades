@@ -152,25 +152,67 @@ function updateHandCount() {
 
 function updateGameOverState() {
     const gameOverEl = document.getElementById('gameOver');
-    const winnerTextEl = document.getElementById('winnerText');
+    gameOverEl.hidden = !gameState.game_over;
+    if (!gameState.game_over) return;
+    hideInteractiveSections();
+    renderGameOver();
+}
 
-    if (gameState.game_over) {
-        gameOverEl.style.display = 'block';
-        winnerTextEl.textContent = gameState.message;
-        hideInteractiveSections();
+// The final screen, drawn from data: who won and the score, the ratchet as a bar (before
+// and after marks on the 0-100 dial), a four-number tally from the per-hand log, and the
+// finished game's page for the full breakdown. The message sentence is the record the
+// stats parse; it isn't shown here a second time.
+function renderGameOver() {
+    const won = gameState.winner === 'player';
+    const result = document.getElementById('goResult');
+    result.textContent = won ? 'You win' : 'Marta wins';
+    result.className = 'go-result ' + (won ? 'won' : 'lost');
+    const hands = gameState.hand_number;
+    const reason = /mercy/i.test(gameState.message) ? ' · mercy rule'
+        : /blind nil/i.test(gameState.message) ? ' · blind nil' : '';
+    document.getElementById('goScore').textContent =
+        `${gameState.player_score} to ${gameState.computer_score} · ${hands} hand${hands === 1 ? '' : 's'}${reason}`;
 
-        // Show results for blind nil games
-        if (gameState.hand_results && (gameState.message.includes('BLIND NIL') || gameState.message.includes('Blind Nil'))) {
-            handleResultsDisplay();
-        } else {
-            document.getElementById('resultsSection').classList.remove('show');
-        }
-    } else {
-        gameOverEl.style.display = 'none';
+    const r = gameState.ratchet;
+    const rBox = document.getElementById('goRatchet');
+    rBox.hidden = !r;
+    if (r) {
+        const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
+        document.getElementById('goRatchetText').textContent = r.after === r.before
+            ? `Marta stays at ${r.after} (${cap(r.level)})`
+            : `Marta ${r.after > r.before ? 'climbs' : 'drops'}: ${cap(r.from_level)} ${r.before} → ${cap(r.level)} ${r.after}`;
+        const lo = Math.min(r.before, r.after), hi = Math.max(r.before, r.after);
+        const fill = document.getElementById('goBarFill');
+        fill.style.left = lo + '%';
+        fill.style.width = (hi - lo) + '%';
+        fill.className = 'go-bar-fill ' + (r.after >= r.before ? 'up' : 'down');
+        document.getElementById('goBarBefore').style.left = r.before + '%';
+        document.getElementById('goBarAfter').style.left = r.after + '%';
     }
+
+    const log = gameState.hand_log || [];
+    const bid = log.filter(h => h.player_bid > 0);
+    const made = bid.filter(h => h.player_tricks >= h.player_bid).length;
+    const bags = bid.reduce((n, h) => n + Math.max(0, h.player_tricks - h.player_bid), 0);
+    const blinds = log.filter(h => h.player_blind);
+    const blindsMade = blinds.filter(h => h.player_tricks >= h.player_bid).length;
+    const specials = log.length ? log[log.length - 1].player_specials : 0;
+    const tiles = [
+        ['Bids made', `${made}/${bid.length}`],
+        ['Bags taken', bags],
+        ['Blinds', blinds.length ? `${blindsMade}/${blinds.length}` : '–'],
+        ['Bags cut', specials],   // total the 7♦ / 10♣ took off, this game
+    ];
+    document.getElementById('goTally').innerHTML = tiles.map(([k, v]) =>
+        `<div class="go-tile"><div class="go-tile-v">${v}</div><div class="go-tile-k">${k}</div></div>`).join('');
+
+    const link = document.getElementById('goDetail');
+    link.hidden = !gameState.game_id;
+    if (gameState.game_id) link.href = '/game/' + gameState.game_id;
 }
 
 function hideInteractiveSections() {
+    document.getElementById('playArea').classList.add('hidden-for-phase');   // no trick to show
     document.getElementById('biddingSection').style.display = 'none';
     const blindDecisionSection = document.getElementById('blindDecisionSection');
     if (blindDecisionSection) blindDecisionSection.style.display = 'none';
@@ -208,10 +250,9 @@ function updatePhaseVisibility() {
 }
 
 function updateMessages() {
-    if (gameState.game_over) {
-        showMessage(gameState.message, gameState.winner === 'player' ? 'success' : '');
-        return;
-    }
+    // At game over the result card carries everything; the status line would only repeat it
+    document.getElementById('message').hidden = !!gameState.game_over;
+    if (gameState.game_over) return;
 
     let messageToShow = gameState.message;
 
@@ -433,7 +474,7 @@ function updateComputerHandToggle() {
 function updateDiscards() {
     const discardsSection = document.getElementById('discardsSection');
 
-    if (gameState.hand_over && (gameState.player_discarded || gameState.computer_discarded)) {
+    if (gameState.hand_over && !gameState.game_over && (gameState.player_discarded || gameState.computer_discarded)) {
         discardsSection.style.display = 'block';
 
         const playerDiscardEl = document.getElementById('playerDiscard');
@@ -460,7 +501,7 @@ function handleResultsDisplay() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContent = document.getElementById('resultsContent');
 
-    if (gameState.hand_over && gameState.hand_results) {
+    if (gameState.hand_over && !gameState.game_over && gameState.hand_results) {
         resultsSection.classList.add('show');
         resultsContent.innerHTML = formatCleanResults(gameState.hand_results);
 

@@ -124,9 +124,19 @@
             </div>
 
             <!-- Game Over section -->
-            <div class="game-over" id="gameOver" style="display: none;">
-                <div class="winner-text" id="winnerText"></div>
-                <button data-action="startNewGame">Play Again</button>
+            <div class="game-over" id="gameOver" hidden>
+                <div class="go-result" id="goResult"></div>
+                <div class="go-score" id="goScore"></div>
+                <div class="go-ratchet" id="goRatchet" hidden>
+                    <div class="go-ratchet-text" id="goRatchetText"></div>
+                    <div class="go-bar"><div class="go-bar-fill" id="goBarFill"></div><div class="go-bar-mark" id="goBarBefore"></div><div class="go-bar-mark after" id="goBarAfter"></div></div>
+                    <div class="go-bar-rungs"><span>Easy</span><span>Medium</span><span>Hard</span><span>Ruthless</span></div>
+                </div>
+                <div class="go-tally" id="goTally"></div>
+                <div class="go-actions">
+                    <button data-action="startNewGame">Play Again</button>
+                    <a class="go-link" id="goDetail" href="/stats" hidden>Full breakdown</a>
+                </div>
             </div>
 
             <!-- Message area -->
@@ -349,14 +359,18 @@
                 <a class="you-logout" href="/logout">Log out</a>
             </div>
             <div class="difficulty-title">Marta's Difficulty</div>
+            <div class="difficulty-slider">
+                <input type="range" id="difficultyRange" min="0" max="100" step="1" value="0"
+                       aria-label="Marta's strength" data-input="previewDifficulty" data-change="setDifficulty">
+                <div class="difficulty-readout"><b id="difficultyStrength">0</b>/100 &middot; <span id="difficultyRung">Easy</span></div>
+            </div>
             <div class="difficulty-options" id="difficultyOptions">
                 {% for lvl in difficulty_levels %}
-                <label class="difficulty-option">
-                    <input type="radio" name="difficulty" value="{{ lvl }}" data-change="setDifficulty">
+                <div class="difficulty-option" data-action="pickRung" data-arg="{{ lvl }}">
                     <span class="difficulty-label">{{ lvl|title }}</span>
                     <span class="difficulty-desc">{{ difficulty_blurbs[lvl] }}</span>
                     <span class="difficulty-record" data-level="{{ lvl }}"></span>
-                </label>
+                </div>
                 {% endfor %}
             </div>
             <div class="difficulty-note" id="difficultyNote">Takes effect next game. Each step up is a Marta that beat

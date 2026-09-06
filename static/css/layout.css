@@ -60,20 +60,10 @@
         height: 160px;
     }
 
-    .game-over {
-        padding: 25px 20px;
-        margin-bottom: 20px;
-    }
-
-    .winner-text {
-        font-size: 26px;
-        margin-bottom: 18px;
-    }
-
-    .game-over button {
-        padding: 18px 30px;
-        font-size: 20px;
-    }
+    .game-over { padding: 28px 24px 22px; margin-bottom: 20px; }
+    .go-result { font-size: 32px; }
+    .go-tile-v { font-size: 22px; }
+    .game-over button { padding: 16px 30px; font-size: 18px; }
 
     .cards {
         grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
@@ -179,6 +169,8 @@
     padding: 1.5rem;
     max-width: 280px;
     width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
@@ -210,13 +202,9 @@
     border-color: #667eea;
     background: #f8f9ff;
 }
-.difficulty-option:has(input:checked) {
+.difficulty-option.active {
     border-color: #667eea;
     background: #f0f4ff;
-}
-
-.difficulty-option input {
-    margin: 0;
 }
 
 .difficulty-label {
@@ -312,7 +300,13 @@
 .difficulty-option { flex-wrap: wrap; }
 .difficulty-desc { flex-basis: 100%; margin-left: 1.6rem; }
 .difficulty-record { margin-left: auto; font-size: 0.8rem; font-weight: 600; color: #667eea; }
+.difficulty-you[hidden] { display: none; }
 .difficulty-you { display: flex; align-items: center; gap: 12px; margin: -4px 0 12px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; }
 .difficulty-you .you-name { font-weight: 700; color: #333; margin-right: auto; }
 .difficulty-you a { color: #667eea; text-decoration: none; font-size: 0.85rem; }
 .difficulty-you a:hover { text-decoration: underline; }
+/* The slider (2026-09-06): strength is one number 0-100; the rungs below are presets on it */
+.difficulty-slider { margin: 0 0 0.9rem; }
+.difficulty-slider input[type=range] { width: 100%; accent-color: #667eea; margin: 0; }
+.difficulty-readout { text-align: center; font-size: 0.85rem; color: #666; margin-top: 4px; }
+.difficulty-readout b { color: #333; font-size: 1rem; }
