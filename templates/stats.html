@@ -60,6 +60,42 @@
         </div>
         {% endif %}
 
+        <!-- Who's at the table: any activity in the last hour -->
+        {% if live %}
+        <div class="stats-section" id="live">
+            <div class="section-title">At the Table Right Now</div>
+            <div class="achievement-card">
+                {% for g in live %}
+                <div class="achievement-row">
+                    <span class="achievement-player">{{ g.who }}</span>
+                    <span class="achievement-value {{ 'streak-value' if g.status == 'playing' else ('' if g.status == 'won' else 'loss-value') }}">{{ 'playing' if g.status == 'playing' else g.status }} · hand {{ g.hand_number or 1 }}</span>
+                    <span class="achievement-detail">{{ g.ago }}{% if g.tables > 1 %} · {{ g.tables }} tables this hour{% endif %} · <a href="/game/{{ g.hand_id }}" class="game-link">open game</a></span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Marta's read on the table: computed titles from each regular's own numbers -->
+        {% if reads %}
+        <div class="stats-section" id="reads">
+            <div class="section-title">Marta's Read on the Table</div>
+            <p class="section-blurb">How each regular actually plays, worked out from their own bids, bags and
+                gambles. Titles are earned from the numbers, not assigned. Otto's mirror match is the yardstick:
+                19% exact bids, 1.5 bags a hand.</p>
+            <div class="reads-grid">
+                {% for r in reads %}
+                <div class="read-card">
+                    <div class="read-name"><a href="/player/{{ r.player }}" class="player-link">{{ r.player }}</a></div>
+                    <div class="read-title">{{ r.title }}</div>
+                    <div class="read-evidence">{{ r.evidence }}</div>
+                    <div class="read-hands">{{ "{:,}".format(r.hands) }} hands</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="collapsible-section collapsed" id="winlossSection">
             <div class="collapsible-toggle" data-action="toggleSection" data-arg="winlossSection">
                 <span class="collapsible-toggle-text">How Wins and Losses Work</span>

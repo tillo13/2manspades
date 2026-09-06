@@ -9,3 +9,9 @@ cron:
     url: /cron/otto
     schedule: every 15 minutes
     timezone: America/Los_Angeles
+  # Andy's stand-in (Andy, 2026-09-06): about three days a week, 1-3 games at random daytime
+  # hours, logged as Andy through the human path; hands.played_by = 'andybot' is the only mark.
+  - description: Andy's stand-in plays Marta on planned hours
+    url: /cron/andybot
+    schedule: every 1 hours from 09:00 to 21:00
+    timezone: America/Los_Angeles

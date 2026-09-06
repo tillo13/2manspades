@@ -312,6 +312,15 @@ def cron_otto():
     from utilities.otto import play_cron_tick
     return jsonify({'ok': True, **play_cron_tick()})
 
+@app.route('/cron/andybot')
+def cron_andybot():
+    """Hourly: Andy's stand-in plays Marta on the days and hours its date-seeded plan says
+    (about three days a week, 1-3 games), logged as Andy; hands.played_by marks it."""
+    if request.headers.get('X-Appengine-Cron') != 'true':
+        abort(403)
+    from utilities.otto import play_persona_tick
+    return jsonify({'ok': True, **play_persona_tick()})
+
 @app.route('/chat_response', methods=['POST'])
 def chat_response():
     print("[CHAT] Received chat request")

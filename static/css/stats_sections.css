@@ -552,3 +552,11 @@
 .level-bar .bar { height: 10px; background: var(--line-soft); border-radius: 5px; overflow: hidden; }
 .level-bar .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
 .level-bar .pct { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Marta's read on the table (2026-09-06): one card per regular, title earned from the numbers */
+.reads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.read-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; border-top: 4px solid var(--accent); }
+.read-name { font-weight: 700; font-size: 15px; color: var(--ink); }
+.read-title { font-size: 18px; font-weight: 800; color: var(--accent-2); margin: 2px 0 6px; }
+.read-evidence { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.read-hands { font-size: 11px; color: var(--muted); margin-top: 8px; font-variant-numeric: tabular-nums; }

@@ -169,5 +169,53 @@ class RatchetTests(unittest.TestCase):
         d = self.client.get('/get_difficulty').get_json()
         self.assertEqual((d['difficulty'], d['strength'], d['ratchet']['needed']), ('hard', 60, 25))
 
+
+
+class PersonaTests(unittest.TestCase):
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(redirect_stdout(StringIO()))
+        isolate_services(self.stack)
+
+    def test_persona_game_rides_the_human_logging_path(self):
+        from utilities import logging_utils, otto
+        from utilities.otto import play_game, ANDY
+        flagged = []
+        with patch('utilities.postgres_utils.create_hand_with_player', return_value=True) as create, \
+             patch.object(otto, '_open_persona_hand', side_effect=lambda g, p: (create(g, g['client_info']), flagged.append(g['current_hand_id']))), \
+             patch.object(logging_utils, 'IS_PRODUCTION', True), \
+             patch.object(logging_utils, 'LOGGING_ENABLED', True), \
+             patch.object(logging_utils, 'queue_db_operation') as q:
+            r = play_game(seed=11, otto_difficulty=ANDY['params'], marta_difficulty=30, persona=ANDY)
+        self.assertEqual(len(flagged), r['hands'])            # one hands row per hand, each flagged
+        self.assertEqual(create.call_args[0][1]['google_auth']['email'], 'andy.tillo@gmail.com')
+        joined = ' '.join(str(c.args[2]) for c in q.call_args_list if len(c.args) > 2 and isinstance(c.args[2], str))
+        for needle in ('action_card_play', 'action_regular_bid', 'action_discard', 'trick_completed', 'game_completed'):
+            self.assertIn(needle, joined, needle)
+
+    def test_plain_bot_game_still_silent(self):
+        from utilities import logging_utils
+        from utilities.otto import play_game
+        with patch.object(logging_utils, 'IS_PRODUCTION', True), patch.object(logging_utils, 'queue_db_operation') as q:
+            play_game(seed=12)
+        q.assert_not_called()
+
+    def test_persona_plan_is_fixed_per_day_and_sparse(self):
+        import datetime
+        from utilities.otto import persona_plan
+        days = [datetime.date(2026, 9, d) for d in range(1, 29)]
+        plans = [persona_plan('andybot', d) for d in days]
+        self.assertEqual(plans, [persona_plan('andybot', d) for d in days])
+        playing = [p for p in plans if p]
+        self.assertTrue(6 <= len(playing) <= 18)                 # ~3 days a week over 4 weeks
+        self.assertTrue(all(1 <= len(p) <= 3 and all(9 <= h <= 21 for h in p) for p in playing))
+
+    def test_cron_route_requires_header(self):
+        client = A.app.test_client()
+        self.assertEqual(client.get('/cron/andybot').status_code, 403)
+        with patch('utilities.otto.play_persona_tick', return_value={'plan': [], 'played': False, 'reason': 'x'}):
+            self.assertEqual(client.get('/cron/andybot', headers={'X-Appengine-Cron': 'true'}).status_code, 200)
+
 if __name__ == '__main__':
     unittest.main()

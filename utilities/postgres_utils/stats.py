@@ -44,8 +44,160 @@ def stats_payload():
         }
         data['styles'] = player_styles(data['google_leaders'], data['achievements'],
                                        data['per_hand_stats'], data['robots'])
+        data['reads'] = marta_reads()
+        data['live'] = live_tables()
         _PAYLOAD.update(data=data, ts=time.time())
         return data
+
+
+def live_tables():
+    """Tables with activity in the last hour: who, which hand, the score so far, whether the
+    game is still going, and a link into it. Anonymous tables show as their city or 'Someone'."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            WITH recent AS (
+                SELECT hand_id, MAX(timestamp) AS last_seen, MIN(timestamp) AS first_seen,
+                       MAX(hand_number) AS hand_number,
+                       BOOL_OR(event_type = 'game_completed') AS finished,
+                       MAX(CASE WHEN event_type = 'game_completed' THEN event_data->>'winner' END) AS winner
+                  FROM twomanspades.game_events
+                 WHERE timestamp > NOW() - INTERVAL '60 minutes'
+                 GROUP BY hand_id)
+            SELECT r.hand_id, r.last_seen, r.hand_number, r.finished, r.winner,
+                   COALESCE(v.player_name, NULLIF(v.city, ''), 'Someone') AS who,
+                   h.hand_player_score, h.hand_computer_score
+              FROM recent r
+              JOIN twomanspades.hands h ON h.hand_id = r.hand_id
+              LEFT JOIN twomanspades.vw_player_identity v ON v.hand_id = r.hand_id
+             ORDER BY r.last_seen DESC
+             LIMIT 60
+        """)
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        now = datetime.now(rows[0]['last_seen'].tzinfo) if rows and rows[0]['last_seen'] else datetime.now()
+        # one line per person: their latest table, plus how many they opened this hour
+        # (a "New Game" click a minute is one player, not twelve)
+        seen, out = {}, []
+        for r in rows:
+            mins = int((now - r['last_seen']).total_seconds() // 60) if r['last_seen'] else None
+            r['ago'] = 'just now' if mins is not None and mins < 1 else (f"{mins} min ago" if mins is not None else '')
+            r['status'] = ('won' if r['winner'] == 'player' else 'lost') if r['finished'] else 'playing'
+            if r['who'] in seen:
+                seen[r['who']]['tables'] += 1
+                continue
+            r['tables'] = 1
+            seen[r['who']] = r
+            out.append(r)
+        return out
+    except Exception as e:
+        print(f"Live tables failed: {e}")
+        return []
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+# ─── Marta's read on the table ─────────────────────────────────────────────────
+# One computed title per regular, from thresholds over their own bids/discards/gambles
+# (2026-09-06, Andy: "publish those titles at the top"). Rules are ordered; the first that
+# fits is the title, the rest become the evidence line. Minimum 50 hands so a newcomer
+# isn't branded off a weekend. Otto's mirror match is the yardstick: 19% exact, 1.49 bags.
+READ_MIN_HANDS = 50
+
+
+def style_title(p):
+    """(title, evidence) for a profile row from player_profiles(). Pure; tested."""
+    hands = p['hands'] or 1
+    nil_rate = 100.0 * p['nil_tried'] / hands
+    blind_rate = 100.0 * p['blind_tried'] / hands
+    nil_made = 100.0 * p['nil_made'] / p['nil_tried'] if p['nil_tried'] else 0
+    blind_made = 100.0 * p['blind_made'] / p['blind_tried'] if p['blind_tried'] else 0
+    # the distinctive facts first (gambles, overbooking), the generic ones after
+    facts = [f"{p['exact_pct']}% exact bids", f"{p['bags_per_hand']} bags a hand"]
+    if p['nil_tried']:
+        facts.append(f"nil {p['nil_made']} of {p['nil_tried']}")
+    if p['blind_tried']:
+        facts.append(f"blind {p['blind_made']} of {p['blind_tried']}")
+    if p['overbook_pct'] >= 5:
+        facts.append(f"bids the table past 10 on {p['overbook_pct']}% of hands")
+    facts += [f"set {p['set_pct']}% of hands", f"avg bid {p['avg_bid']}"]
+    rules = [
+        ('The Accountant', p['exact_pct'] >= 38 and p['bags_per_hand'] <= 0.85),
+        ('The Nil Specialist', nil_rate >= 4 and nil_made >= 50),
+        ('The Overbidder', p['set_pct'] >= 22 or p['overbook_pct'] >= 8),
+        ('The Gambler', blind_rate >= 8 or nil_rate >= 4),
+        ('The Bag Collector', p['bags_per_hand'] >= 1.3),
+        ('The Conservative', p['nil_tried'] == 0 and p['blind_tried'] == 0 and p['set_pct'] <= 14),
+    ]
+    title = next((t for t, ok in rules if ok), 'The Steady Hand')
+    return title, ', '.join(facts[:5])
+
+
+def player_profiles():
+    """Per regular: the bidding/discard/gamble numbers the titles are computed from."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            WITH hands AS (
+                SELECT h.hand_id, v.player_name
+                  FROM twomanspades.hands h
+                  JOIN twomanspades.vw_player_identity v ON v.hand_id = h.hand_id
+                 WHERE v.player_name IS NOT NULL AND v.player_name <> 'Other'),
+            bids AS (
+                SELECT hand_id, hand_number, (event_data->'action_data'->>'bid_amount')::int AS bid,
+                       event_type = 'action_blind_bid' AS blind
+                  FROM twomanspades.game_events
+                 WHERE player = 'player' AND event_type IN ('action_regular_bid', 'action_blind_bid')),
+            mbids AS (
+                SELECT hand_id, hand_number, (event_data->'action_data'->>'bid_amount')::int AS mbid
+                  FROM twomanspades.game_events
+                 WHERE player = 'computer' AND event_type IN ('action_regular_bid', 'action_blind_bid')),
+            tricks AS (
+                SELECT hand_id, hand_number, COUNT(*) FILTER (WHERE event_data->>'winner' = 'player') AS taken
+                  FROM twomanspades.game_events WHERE event_type = 'trick_completed' GROUP BY 1, 2)
+            SELECT h.player_name AS player, COUNT(*) AS hands,
+                   ROUND(AVG(b.bid), 2) AS avg_bid,
+                   ROUND(100.0 * AVG((b.bid = t.taken)::int), 1) AS exact_pct,
+                   ROUND(100.0 * AVG((t.taken < b.bid)::int), 1) AS set_pct,
+                   ROUND(AVG(GREATEST(t.taken - b.bid, 0)), 2) AS bags_per_hand,
+                   COUNT(*) FILTER (WHERE b.bid = 0) AS nil_tried,
+                   COUNT(*) FILTER (WHERE b.bid = 0 AND t.taken = 0) AS nil_made,
+                   COUNT(*) FILTER (WHERE b.blind) AS blind_tried,
+                   COUNT(*) FILTER (WHERE b.blind AND t.taken >= b.bid) AS blind_made,
+                   ROUND(100.0 * AVG((b.bid + m.mbid > 10)::int), 1) AS overbook_pct
+              FROM hands h
+              JOIN bids b ON b.hand_id = h.hand_id
+              JOIN tricks t ON t.hand_id = b.hand_id AND t.hand_number = b.hand_number
+              LEFT JOIN mbids m ON m.hand_id = b.hand_id AND m.hand_number = b.hand_number
+             GROUP BY 1 HAVING COUNT(*) >= %s
+             ORDER BY 2 DESC
+        """, (READ_MIN_HANDS,))
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        for r in rows:
+            for k in ('avg_bid', 'exact_pct', 'set_pct', 'bags_per_hand', 'overbook_pct'):
+                r[k] = float(r[k] or 0)
+        return rows
+    except Exception as e:
+        print(f"Player profiles failed: {e}")
+        return []
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+def marta_reads():
+    """[{player, title, evidence, hands}] for the top-of-page section."""
+    out = []
+    for p in player_profiles():
+        title, evidence = style_title(p)
+        out.append({'player': p['player'], 'title': title, 'evidence': evidence, 'hands': p['hands']})
+    return out
 
 
 def get_marta_levels():

@@ -64,9 +64,15 @@ def _app_version():
         return None
 
 
-def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persist=False, source='batch'):
+def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persist=False, source='batch',
+              persona=None):
     """Play one full game, Otto (player seat) vs Marta (computer seat). Returns a result dict
-    with the decision ledger; persist=True also files it in the Robot League tables."""
+    with the decision ledger; persist=True also files it in the Robot League tables.
+
+    persona: {'email', 'name', 'google_id', 'tag'} — play AS a logged-in person. The game is
+    then logged through the SAME path a human game takes (hands + game_events under their
+    Google identity), so every stat counts it as theirs; the only trace is hands.played_by.
+    """
     seed = random.randrange(1 << 31) if seed is None else int(seed)
     random.seed(seed)
     t0 = time.monotonic()
@@ -74,9 +80,20 @@ def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persis
     with contextlib.redirect_stdout(io.StringIO()):     # hand_flow prints every trick; not for bots
         player_parity, computer_parity, first_leader = assign_even_odd_at_game_start()
         game = init_game(player_parity, computer_parity, first_leader)
-        game.update(_no_log=True, difficulty=marta_difficulty, current_hand_id=str(uuid.uuid4()),
+        game.update(difficulty=marta_difficulty, current_hand_id=str(uuid.uuid4()),
                     game_id=str(uuid.uuid4()), game_started_at=time.time(), action_sequence=0)
-        sess = {}   # no 'game' key: hand_flow's logging paths see nothing to log
+        if persona:
+            # a human-shaped game: started a while ago, logged under the person's identity
+            game['game_started_at'] = time.time() - 60 * random.uniform(8, 20)
+            game['client_info'] = {'ip_address': None, 'user_agent': persona.get('tag', 'bot'),
+                                   'google_auth': {'email': persona['email'], 'name': persona['name'],
+                                                   'google_id': persona.get('google_id'),
+                                                   'picture': None}}
+            sess = {'game': game}
+            _open_persona_hand(game, persona)
+        else:
+            game['_no_log'] = True
+            sess = {}   # no 'game' key: hand_flow's logging paths see nothing to log
 
         def sink(kind, seat, data):
             decisions.append(dict(data, hand=game['hand_number'], seat=seat, kind=kind))
@@ -90,6 +107,8 @@ def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persis
                     break
                 game['hand_number'] += 1
                 init_new_hand(game)
+                if persona:
+                    _open_persona_hand(game, persona)
         finally:
             set_decision_sink(None)
 
@@ -109,6 +128,15 @@ def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persis
     return result
 
 
+def _log(sess, action_type, data, **ctx):
+    """Player-seat actions the web routes log themselves (card plays, the blind choice);
+    only fires for persona games — a plain bot game has no 'game' in sess."""
+    if sess.get('game'):
+        from .logging_utils import log_action
+        log_action(action_type=action_type, player='player', action_data=data, session=sess,
+                   additional_context=ctx or None)
+
+
 def _play_hand(game, sess, otto_difficulty, decisions):
     hand = game['player_hand']
     # 1. Blind decision (only offered when Otto is 100+ behind) — Marta's own rule decides.
@@ -116,6 +144,7 @@ def _play_hand(game, sess, otto_difficulty, decisions):
         set_decision_seat('otto')
         blind, amount = should_bid_blind(hand, _mirror(game, otto_difficulty))
         game['blind_decision_made'] = True
+        _log(sess, 'blind_decision', {'chose_blind': bool(blind), 'chose_normal': not blind})
         if blind:
             decisions.append({'kind': 'bid', 'seat': 'otto', 'hand': game['hand_number'],
                               'branch': 'blind', 'bid': amount, 'opp_bid': None})
@@ -151,10 +180,17 @@ def _play_hand(game, sess, otto_difficulty, decisions):
         if idx is None or not is_valid_play(hand[idx], hand, game['current_trick'], game['spades_broken']):
             idx = next(i for i, c in enumerate(hand)
                        if is_valid_play(c, hand, game['current_trick'], game['spades_broken']))
+        _log(sess, 'card_play', {'card_played': f"{hand[idx]['rank']}{hand[idx]['suit']}", 'card_index': idx,
+                                 'trick_position': len(game['current_trick']) + 1,
+                                 'leading': len(game['current_trick']) == 0},
+             hand_size_before=len(hand), spades_broken_before=game['spades_broken'])
         card = hand.pop(idx)
         game['current_trick'].append({'player': 'player', 'card': card})
         if card['suit'] == '♠':
             game['spades_broken'] = True
+            if sess.get('game'):
+                from .logging_utils import log_game_event
+                log_game_event('spades_broken', {'broken_by': 'player', 'card': f"{card['rank']}{card['suit']}"}, sess)
         set_decision_seat('marta')
         if len(game['current_trick']) == 1:
             game['trick_leader'] = 'player'
@@ -207,6 +243,83 @@ def _record_hand(game, decisions):
     })
 
 
+# ─── Persona games: a bot that plays AS a person ───────────────────────────────
+# Andy, 2026-09-06: "I want andybot deployed in a cron... it looks like I'm playing and
+# continuing my rabid style, undetected on the stats page, but a column shows it's a bot."
+# The game rides the human logging path under his Google identity; hands.played_by is the
+# only marker. Profile from his measured line (266 hands): bids a trick high, leads high,
+# goes blind whenever offered, ignores Marta's bid for the total.
+ANDY = {'email': 'andy.tillo@gmail.com', 'name': 'Andy Tillo', 'google_id': '103015520286665847399',
+        'tag': 'andybot', 'params': {'bid_offset': 1.2, 'max_bid': 8, 'lead_high': 1.0}}
+_PLAYED_BY_OK = False
+
+
+def _open_persona_hand(game, persona):
+    """Create the hands row the way a live game does, then mark it as the bot's."""
+    global _PLAYED_BY_OK
+    from utilities.postgres_utils import create_hand_with_player, get_db_connection, return_db_connection
+    create_hand_with_player(game, game['client_info'])
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        if not _PLAYED_BY_OK:
+            from utilities.schema_guard import add_column_if_missing
+            add_column_if_missing(cur, 'twomanspades', 'hands', 'played_by', 'TEXT')
+            _PLAYED_BY_OK = True
+        cur.execute("UPDATE twomanspades.hands SET played_by = %s WHERE hand_id = %s",
+                    (persona.get('tag', 'bot'), game['current_hand_id']))
+        conn.commit()
+        cur.close()
+    finally:
+        return_db_connection(conn)
+
+
+def persona_plan(persona_tag, day=None):
+    """Which hours (Pacific) the persona plays today, or [] on a day off. About three days a
+    week, 1-3 games on a playing day, fixed per date so every instance agrees."""
+    day = day or _dt.date.today()
+    rng = random.Random(f"{persona_tag}-{day.isoformat()}")
+    if rng.random() > 3 / 7:
+        return []
+    return sorted(rng.sample(range(9, 22), rng.randint(1, 3)))
+
+
+def play_persona_tick(persona=ANDY):
+    """Hourly cron: if this hour is on today's plan and not yet played, play one game as the
+    persona at their current ratcheted Marta and move the ratchet like a real result would."""
+    from utilities.computer_logic import ratchet, level_name
+    from utilities.postgres_utils import get_user_strength, save_user_strength
+    now = _dt.datetime.now()
+    plan = persona_plan(persona['tag'], now.date())
+    if now.hour not in plan:
+        return {'plan': plan, 'played': False, 'reason': 'not this hour'}
+    stamp = int(now.strftime('%Y%m%d%H'))
+    if _read_state(f"{persona['tag']}_last_hour") == stamp:
+        return {'plan': plan, 'played': False, 'reason': 'already played this hour'}
+    _save_state(f"{persona['tag']}_last_hour", stamp)
+    strength = get_user_strength(persona['email']) or 0
+    r = play_game(otto_difficulty=persona['params'], marta_difficulty=strength, persona=persona, source='persona')
+    after = ratchet(strength, r['winner'] == 'otto', r['otto_score'] - r['marta_score'])
+    save_user_strength(persona['email'], after)
+    return {'plan': plan, 'played': True, 'winner': persona['name'].split()[0] if r['winner'] == 'otto' else r['winner'],
+            'score': f"{r['otto_score']}-{r['marta_score']}", 'hands': r['hands'],
+            'marta_strength': f"{strength} -> {after} ({level_name(after)})"}
+
+
+def _read_state(key):
+    from utilities.postgres_utils import get_db_connection, return_db_connection
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        _ensure_schema(cur)
+        cur.execute("SELECT value FROM twomanspades.bot_state WHERE key = %s", (key,))
+        row = cur.fetchone()
+        cur.close()
+        return row[0] if row else None
+    finally:
+        return_db_connection(conn)
+
+
 # ─── The daily drip (cron) ─────────────────────────────────────────────────────
 # Andy, 2026-09-06: "let it pick between 1-100 games a day at random to mix it up", and
 # "Otto should get ratcheted the same way when playing Marta". So: one quota per calendar
@@ -240,6 +353,7 @@ def play_cron_tick():
     try:
         cur = conn.cursor()
         _ensure_schema(cur)
+        conn.commit()   # return_db_connection rolls back: without this the CREATEs vanished (1st tick, 2026-09-06)
         cur.execute("SELECT COUNT(*) FROM twomanspades.bot_games WHERE played_at::date = CURRENT_DATE")
         played = cur.fetchone()[0]
         cur.execute("SELECT value FROM twomanspades.bot_state WHERE key = 'marta_strength_vs_otto'")
@@ -333,6 +447,7 @@ def _ensure_schema(cur):
     create_index_if_missing(cur, 'twomanspades', 'idx_bot_games_played', 'bot_games', '(played_at DESC)')
     create_index_if_missing(cur, 'twomanspades', 'idx_bot_decisions_game', 'bot_decisions', '(game_id)')
     create_index_if_missing(cur, 'twomanspades', 'idx_bot_decisions_kind', 'bot_decisions', '(kind, seat)')
+    cur.connection.commit()   # DDL must land before any caller trusts _SCHEMA_OK
     _SCHEMA_OK = True
 
 

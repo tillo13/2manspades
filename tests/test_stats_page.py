@@ -105,3 +105,38 @@ class StatsPageTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MartaReadTests(unittest.TestCase):
+    def test_titles_from_the_measured_profiles(self):
+        from utilities.postgres_utils.stats import style_title
+        base = {'hands': 300, 'nil_tried': 0, 'nil_made': 0, 'blind_tried': 0, 'blind_made': 0, 'overbook_pct': 2.0}
+        tom = dict(base, hands=3190, avg_bid=3.96, exact_pct=40.2, set_pct=16.7, bags_per_hand=0.72,
+                   nil_tried=32, nil_made=22, blind_tried=72, blind_made=51)
+        luke = dict(base, hands=1768, avg_bid=3.82, exact_pct=29.9, set_pct=14.9, bags_per_hand=1.03,
+                    nil_tried=110, nil_made=63, blind_tried=114, blind_made=85, overbook_pct=2.4)
+        jon = dict(base, hands=347, avg_bid=3.68, exact_pct=34.9, set_pct=12.1, bags_per_hand=0.89)
+        andy = dict(base, hands=266, avg_bid=4.56, exact_pct=30.8, set_pct=27.4, bags_per_hand=1.24,
+                    nil_tried=15, nil_made=4, blind_tried=33, blind_made=18, overbook_pct=11.3)
+        otto = dict(base, hands=87000, avg_bid=3.66, exact_pct=19.0, set_pct=10.0, bags_per_hand=1.49)
+        self.assertEqual(style_title(tom)[0], 'The Accountant')
+        self.assertEqual(style_title(luke)[0], 'The Nil Specialist')
+        self.assertEqual(style_title(jon)[0], 'The Conservative')
+        self.assertEqual(style_title(andy)[0], 'The Overbidder')
+        self.assertEqual(style_title(otto)[0], 'The Bag Collector')
+        self.assertIn('bids the table past 10 on 11.3% of hands', style_title(andy)[1])
+
+    def test_reads_section_renders(self):
+        payload = dict(PAYLOAD)
+        payload['styles'] = []
+        payload['reads'] = [{'player': 'Tom', 'title': 'The Accountant', 'evidence': '40.2% exact bids', 'hands': 3190}]
+        payload['live'] = [{'hand_id': 'abc', 'who': 'Luke', 'hand_number': 3, 'status': 'playing', 'ago': '4 min ago', 'winner': None, 'finished': False, 'last_seen': D, 'tables': 3}]
+        with ExitStack() as stack:
+            stack.enter_context(redirect_stdout(StringIO()))
+            isolate_services(stack)
+            stack.enter_context(patch('utilities.postgres_utils.stats.stats_payload', return_value=payload))
+            html = A.app.test_client().get('/stats').get_data(as_text=True)
+        self.assertIn("Marta's Read on the Table", html.replace('&#39;', "'"))
+        self.assertIn('The Accountant', html)
+        self.assertIn('At the Table Right Now', html)
+        self.assertIn('playing · hand 3', html)
