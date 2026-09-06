@@ -302,6 +302,8 @@
 .difficulty-you .you-name { font-weight: 700; color: #333; margin-right: auto; }
 .difficulty-you a { color: #667eea; text-decoration: none; font-size: 0.85rem; }
 .difficulty-you a:hover { text-decoration: underline; }
+.difficulty-pref { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #555; margin: -4px 0 12px; }
+.difficulty-pref[hidden] { display: none; }
 /* The slider (2026-09-06): strength is one number 0-100; the rungs below are presets on it */
 .difficulty-slider { margin: 0 0 0.9rem; }
 .difficulty-slider input[type=range] { width: 100%; accent-color: #667eea; margin: 0; }

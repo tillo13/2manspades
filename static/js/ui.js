@@ -72,6 +72,8 @@ function openDifficultyModal() {
                     you.querySelector('.you-page').href = '/player/' + encodeURIComponent(data.player.page);
                 }
             }
+            const pref = document.getElementById('difficultyPref');
+            if (pref) { pref.hidden = !data.player; document.getElementById('jukeboxPop').checked = data.jukebox_pop !== false; }
             // the ratchet line: where she is on the 0-100 dial and whether it moves for you yet
             const note = document.getElementById('difficultyNote');
             const r = data.ratchet || {};
@@ -147,6 +149,11 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => {
     const el = e.target.closest('[data-change="setDifficulty"]');
     if (el) setDifficulty(el.value);
+    const pop = e.target.closest('[data-change="setJukeboxPop"]');
+    if (pop) {
+        document.body.dataset.jukeboxPop = pop.checked ? 'true' : 'false';
+        fetch('/set_jukebox_pop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: pop.checked }) });
+    }
 });
 document.addEventListener('input', (e) => {
     const el = e.target.closest('[data-input="previewDifficulty"]');

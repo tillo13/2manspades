@@ -307,13 +307,13 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
     }
 
 def apply_keep_alive(game, discard_result):
-    """The middle always pays its winner, EXCEPT on the hand that would end the game: if the
-    middle's winner is behind and the opponent is going out, and throwing the middle back
-    pulls the opponent under 300, the winner forgoes the points and the opponent loses them
-    instead. Either/or, same for Marta and for a person, no choice needed (a player who is
-    behind never wants the game to end). Family rule from the sheet ("middle points can go up
-    or down"); on the site from 2026-09-06 forward only — Andy: 122 of 727 past games would
-    have gone another hand, not restated. Returns the explanation or None."""
+    """The middle is math: its winner either ADDS it to their own score or SUBTRACTS it from
+    the opponent's. It adds, except on the hand that would end the game: if the middle's winner
+    is behind and the opponent is going out, and subtracting pulls the opponent under 300, the
+    winner subtracts instead. Either/or, same for Marta and for a person, no choice needed (a
+    player who is behind never wants the game to end). Family rule from the sheet ("middle
+    points can go up or down"); on the site from 2026-09-06 forward only — Andy: 122 of 727
+    past games would have gone another hand, not restated. Returns the explanation or None."""
     if not discard_result or discard_result.get('denial_option_used') or game.get('game_over'):
         return None
     winner = discard_result.get('winner')
@@ -327,12 +327,12 @@ def apply_keep_alive(game, discard_result):
             get_display_score(game['player_score'] - pts, game.get('player_bags', 0)) < target:
         game['player_score'] -= pts
         game['computer_score'] -= pts
-        return f"KEEP ALIVE: Marta throws the middle back instead of taking it: {pts} off you, game on"
+        return f"KEEP ALIVE: Marta subtracts the middle instead of adding it: {pts} off you, game on"
     if winner == 'player' and p_disp < c_disp and c_disp >= target and \
             get_display_score(game['computer_score'] - pts, game.get('computer_bags', 0)) < target:
         game['computer_score'] -= pts
         game['player_score'] -= pts
-        return f"KEEP ALIVE: you throw the middle back instead of taking it: {pts} off Marta, game on"
+        return f"KEEP ALIVE: you subtract the middle instead of adding it: {pts} off Marta, game on"
     return None
 
 

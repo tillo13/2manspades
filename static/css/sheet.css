@@ -276,6 +276,9 @@ body.sheet-open .chat-bubble-icon, body.sheet-open .jb-toast { display: none; }
 .jb-mini-btn { flex: none; width: 40px; height: 40px; min-width: 0; max-width: 40px; padding: 0; margin: 0; border: none; border-radius: 50%; background: #f6c453; color: #222; font-size: 18px; line-height: 1; cursor: pointer; }
 #jbMiniNext { background: #444; color: #fff; }
 .jb-mini[hidden] { display: none; }
+/* first auto-start on a device: the pause button pulses for a few seconds so it's obvious how to stop it */
+.jb-mini.intro .jb-mini-btn:first-of-type { animation: jbIntroPulse 1s ease-in-out 6; }
+@keyframes jbIntroPulse { 50% { transform: scale(1.18); box-shadow: 0 0 0 6px rgba(246, 196, 83, 0.35); } }
 @media (min-width: 1150px) { .jb-mini { display: none; } }
 
 /* ---- Hoyt pane ---- */

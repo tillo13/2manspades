@@ -125,6 +125,8 @@ def auth_callback():
                 if 'game' in session:
                     session['game']['difficulty'] = saved_difficulty
                 print(f"[AUTH] Loaded Marta setting: {saved_difficulty}")
+            from utilities.postgres_utils import get_jukebox_pop
+            session['jukebox_pop'] = get_jukebox_pop(user_email)
 
         # CRITICAL: Update game client_info with Google auth
         if 'game' in session:
@@ -482,7 +484,31 @@ def get_difficulty():
     return jsonify({'difficulty': level_name(setting), 'strength': strength_of(setting), 'levels': levels,
                     'player': {'name': first, 'page': first} if email else None,
                     'ratchet': {'eligible': bool(who) and games >= RATCHET_MIN_GAMES,
-                                'logged_in': bool(email), 'games': games, 'needed': RATCHET_MIN_GAMES}})
+                                'logged_in': bool(email), 'games': games, 'needed': RATCHET_MIN_GAMES},
+                    'jukebox_pop': session.get('jukebox_pop', True)})
+
+
+@app.route('/my_record')
+def my_record():
+    """The player's whole history, for the end-of-game screen. Null for strangers."""
+    from utilities.postgres_utils import get_player_record
+    who = _ratchet_identity() if IS_PRODUCTION else None
+    rec = get_player_record(who['email'], who['name']) if who else None
+    resp = jsonify(rec)
+    resp.headers['Cache-Control'] = 'private, max-age=30'
+    return resp
+
+
+@app.route('/set_jukebox_pop', methods=['POST'])
+def set_jukebox_pop():
+    """Profile flag: open the Hoyt jukebox on arrival (default on)."""
+    on = bool((request.get_json() or {}).get('on', True))
+    session['jukebox_pop'] = on
+    email = session.get('user', {}).get('email')
+    if email:
+        from utilities.postgres_utils import save_jukebox_pop
+        save_jukebox_pop(email, on)
+    return jsonify({'success': True, 'on': on})
 
 
 def _ratchet_identity():
@@ -522,8 +548,8 @@ def _ratchet_after_game(game):
     save_user_strength(who['email'], after, who['ip'])
     # Data only: the final screen draws it. (It used to be appended to the message as a
     # sentence, which put the same fact in two shapes and got the string rendered twice.)
-    game['ratchet'] = {'before': before, 'after': after,
-                       'from_level': level_name(before), 'level': level_name(after)}
+    game['ratchet'] = {'before': before, 'after': after, 'from_level': level_name(before), 'level': level_name(after),
+                       'won': won, 'margin': margin, 'games': games}
 
 @app.route('/toggle_computer_hand', methods=['POST'])
 def toggle_computer_hand():

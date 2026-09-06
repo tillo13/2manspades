@@ -50,35 +50,54 @@
     }
 
     function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })); }
-    function beat(completed, useBeacon) {
+    function beat(completed, useBeacon, stop) {
         if (!playId || !state.album) return;
         const a = albumById(state.album), t = trackOf(current()); if (!a || !t) return;
         const body = JSON.stringify({ play_id: playId, album_id: a.id, n: t.n, title: t.title, album_title: a.title, year: a.year,
-            source: lastSource, seconds: audio ? audio.currentTime : 0, duration: audio && audio.duration ? audio.duration : null, completed: !!completed });
+            source: lastSource, seconds: audio ? audio.currentTime : 0, duration: audio && audio.duration ? audio.duration : null, completed: !!completed,
+            stop: stop || null });
         if (useBeacon && navigator.sendBeacon) { navigator.sendBeacon('/jukebox/event', new Blob([body], { type: 'application/json' })); return; }
         fetch('/jukebox/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
     }
     function play(ref, pos, source) {
         const t = trackOf(ref); if (!t) return;
-        if (playId) beat(false);                       // close out the previous play
+        if (!playId && !pos) fadeIn(1);                // a cold start eases in
+        if (playId) beat(false, false, 'skipped');     // close out the previous play
         playId = uuid(); lastSource = source || (pos ? 'resume' : (state.mode === 'album' ? 'album' : 'shuffle')); lastBeat = 0;
         state.album = ref.album; state.n = ref.n; state.pos = pos || 0; state.playing = true; saveState();
         audio.src = `/jukebox/audio/${ref.album}/${ref.n}`;
         if (pos) audio.currentTime = pos;
-        audio.play().then(() => { setResumePrompt(false); beat(false); }).catch(() => setResumePrompt(true));
+        audio.play().then(() => { setResumePrompt(false); beat(false); }).catch(() => { setResumePrompt(true); beat(false, false, 'blocked'); });
         render(); renderPills();
     }
     function toggle() {
         if (!state.album) return play(neighbor(+1));
         if (!audio.src) return play(current(), state.pos, 'resume');   // saved-but-paused state: nothing loaded yet
-        if (audio.paused) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true)); }
-        else { state.playing = false; audio.pause(); }
+        if (audio.paused) { state.playing = true; fadeIn(1); audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true)); }
+        else { state.playing = false; audio.pause(); beat(false, false, 'paused'); }
         saveState(); render();
     }
-    function next(fromEnded) { if (fromEnded === true) beat(true); play(neighbor(+1)); }
+    function next(fromEnded) { if (fromEnded === true) beat(true, false, 'ended'); play(neighbor(+1)); }
+    // Fade in over ~3s so a start never blasts (iOS ignores volume; there the hardware buttons rule)
+    function fadeIn(to) {
+        try { audio.volume = 0; } catch (e) { return; }
+        const t0 = Date.now(); clearInterval(fadeIn._t);
+        fadeIn._t = setInterval(() => { const k = Math.min(1, (Date.now() - t0) / 3000); audio.volume = k * to; if (k >= 1) clearInterval(fadeIn._t); }, 100);
+    }
     function prev() { if (audio.currentTime > 4) { audio.currentTime = 0; return; } play(neighbor(-1)); }
     function playAlbum(id, n, source) { state.mode = 'album'; play({ album: id, n: n || 1 }, 0, source || 'album'); }
     function shuffleAll() { state.mode = 'shuffle'; state.seed = Date.now(); buildOrder(); play(order[0]); }
+
+    // On arrival (Andy, 2026-09-06): open the Hoyt panel with the play button up front, unless
+    // music is already going or the player has turned the pop off in their profile. The press
+    // fades in so nothing blasts (iOS ignores volume; there the hardware buttons rule).
+    function popOnArrival() {
+        if (document.body.dataset.jukeboxPop === 'false') return;
+        if (state.album && state.playing && !audio.paused) return;
+        openSheet('hoyt'); showPanel('now'); $('jbPlay').classList.add('needs-tap');
+        let intro = false; try { intro = !localStorage.getItem('hoyt_intro'); localStorage.setItem('hoyt_intro', '1'); } catch (e) {}
+        const mini = $('jbMini'); if (intro && mini) { mini.classList.add('intro'); setTimeout(() => mini.classList.remove('intro'), 7000); }
+    }
 
     // ---------- UI ----------
     function setResumePrompt(on) {
@@ -215,11 +234,18 @@
         $('jbTabBrowse').onclick = () => { $('jbSearch').value = ''; renderAlbums(''); showPanel('browse'); };
         $('jbSearch').oninput = (e) => { renderAlbums(e.target.value); showPanel('browse'); };   // typing IS the search
         $('jbBarWrap').onclick = (e) => { if (!audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration; };
-        window.addEventListener('pagehide', () => { saveState(); beat(false, true); });
+        window.addEventListener('pagehide', () => { saveState(); beat(false, true, audio.paused ? null : 'pagehide'); });
         renderAlbums(''); showPanel('now'); render(); renderPills(); loadStats(true);
+        // pages without the game's delegated click handler (stats, player, ...): wire the sheet's buttons directly
+        if (typeof ACTIONS === 'undefined') {
+            document.querySelectorAll('[data-action="sendMessage"]').forEach(b => b.onclick = () => { if (typeof sendMessage === 'function') sendMessage(); });
+            document.querySelectorAll('[data-action="handleLoginClick"]').forEach(b => b.onclick = () => { window.location.href = '/login'; });
+        }
 
-        // resume across the reload that every new hand causes
+        // resume across page loads (every page carries the player); if the browser refuses
+        // without a gesture, the first tap does it
         if (state.album && state.playing) play(current(), state.pos);
+        else popOnArrival();
 
         // back from a login started on the Hoyt tab: open it and start the music. If the
         // browser refuses autoplay on this navigation, the big play button pulses for one tap.

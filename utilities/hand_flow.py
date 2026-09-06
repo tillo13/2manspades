@@ -586,6 +586,22 @@ def process_auto_resolution(game, session):
     return auto_resolved
 
 
+def _card(c):
+    return f"{c['rank']}{c['suit']}" if c else None
+
+
+def _tricks_with_leaders(game):
+    """The hand's tricks with who led each (the first leader, then whoever took the last one)."""
+    out, leader = [], game.get('first_leader', 'player')
+    for t in game.get('trick_history', []):
+        out.append({'number': t['number'], 'player_card': _card(t['player_card']) or '?',
+                    'computer_card': _card(t['computer_card']) or '?',
+                    'leader': 'You' if leader == 'player' else 'Marta',
+                    'winner': 'You' if t['winner'] == 'player' else 'Marta'})
+        leader = t['winner']
+    return out
+
+
 def _complete_hand(game, session, auto_explanation=None):
     """Shared tail of both completion paths (they were two 80-line copies until 2026-09-06):
     apply the middle, score with bags, keep-alive, build hand_results, log, and settle
@@ -626,15 +642,7 @@ def _complete_hand(game, session, auto_explanation=None):
         },
         'discard_info': game.get('discard_bonus_explanation', ''),
         'scoring': scoring_result['explanation'],
-        'trick_history': [
-            {
-                'number': trick['number'],
-                'player_card': f"{trick['player_card']['rank']}{trick['player_card']['suit']}" if trick['player_card'] else "?",
-                'computer_card': f"{trick['computer_card']['rank']}{trick['computer_card']['suit']}" if trick['computer_card'] else "?",
-                'winner': "You" if trick['winner'] == 'player' else "Marta"
-            }
-            for trick in game.get('trick_history', [])
-        ],
+        'trick_history': _tricks_with_leaders(game),
         'totals': {
             'player_score': player_display_score,
             'computer_score': computer_display_score
@@ -654,6 +662,8 @@ def _complete_hand(game, session, auto_explanation=None):
         'computer_specials': game.get('computer_trick_special_cards', 0),
         'player_score': player_display_score, 'computer_score': computer_display_score,
         'player_bags': game.get('player_bags', 0), 'computer_bags': game.get('computer_bags', 0),
+        'middle': {'player': _card(game.get('player_discarded')), 'computer': _card(game.get('computer_discarded')),
+                   'winner': hand_discard.get('winner') if hand_discard else None},
     })
 
     flush_hand_events(session)

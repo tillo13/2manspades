@@ -140,10 +140,27 @@
 .go-bar-mark.after { border-color: #667eea; background: #667eea; }
 .go-bar-rungs { display: flex; justify-content: space-between; font-size: 10px; color: #999; margin-top: 6px;
     text-transform: uppercase; letter-spacing: 0.04em; }
+.go-ratchet-why { font-size: 12px; color: #777; margin-top: 8px; line-height: 1.4; }
 .go-tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0 0; }
 .go-tile { background: #f8f9fa; border-radius: 8px; padding: 10px 4px; }
 .go-tile-v { font-size: 18px; font-weight: 700; color: #333; }
 .go-tile-k { font-size: 10px; color: #888; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+.go-hands { margin-top: 16px; overflow-x: auto; }
+.go-hands-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.go-hands-table th { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; padding: 4px 6px; border-bottom: 1px solid #e9ecef; }
+.go-hands-table td { padding: 5px 6px; border-bottom: 1px solid #f1f3f5; color: #333; }
+.go-hands-table td:first-child { color: #999; }
+.go-hands-table td.set { color: #dc3545; }
+.go-slash { color: #aaa; padding: 0 1px; }
+.go-hands-table td.go-mid { white-space: nowrap; }
+.go-hands-table .heart { color: #dc3545; }
+.go-mid-w { color: #999; font-size: 11px; }
+.go-history { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e9ecef; }
+.go-history-title { font-size: 14px; font-weight: 600; color: #333; }
+.go-history-title small { color: #999; font-weight: 400; }
+.go-history .go-tally { margin-top: 10px; }
+.go-rungs { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: #666; }
+.go-rungs b { color: #333; }
 .go-actions { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 18px; }
 .go-link { color: #667eea; font-size: 14px; text-decoration: none; }
 .go-link:hover { text-decoration: underline; }
@@ -160,17 +177,27 @@
 .ho-score-v small.down { color: #dc3545; }
 .ho-score-v small.bags { color: #e67e22; }
 .ho-score-k { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
-.ho-notes { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+.ho-notes { display: flex; flex-direction: column; gap: 4px; text-align: center; }
 .ho-note { font-size: 13px; color: #555; }
 .ho-note.bad { color: #dc3545; }
 .ho-note.good { color: #28a745; }
 .ho-middle { margin-top: 14px; font-size: 13px; color: #555; }
 .ho-middle .heart { color: #dc3545; }
 .ho-middle-info { color: #888; }
-.ho-tricks { margin-top: 12px; text-align: left; }
-.ho-tricks summary { cursor: pointer; font-size: 13px; color: #667eea; text-align: center; list-style: none; }
-.ho-tricks summary::-webkit-details-marker { display: none; }
-.ho-tricks[open] summary { margin-bottom: 8px; }
+.ho-section { margin-top: 18px; text-align: left; }
+.ho-h { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; text-align: center; }
+.ho-mid-cards { display: flex; justify-content: center; gap: 28px; }
+.ho-mid { text-align: center; }
+.ho-mid .card { cursor: default; margin: 0 auto; }
+.ho-mid-k { font-size: 11px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.ho-middle { text-align: center; margin-top: 8px; }
+.ho-notes { margin-top: 0; }
+.trick-winner.you { color: #28a745; }
+.trick-winner.marta { color: #6c757d; }
+@media (min-width: 640px) { .trick-history { grid-template-columns: 1fr 1fr; } }
+
+/* The play / discard button stretches to the hand's width on every screen (Andy, 2026-09-06) */
+.controls #actionButton { display: block; width: 100%; padding: 16px 20px; font-size: 18px; border-radius: 10px; }
 
 /* BUTTONS */
 button {
@@ -589,7 +616,7 @@ button:disabled {
 
 .trick-history {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 2px 14px;
     font-size: 13px;
     background: #f8f9fa;
@@ -597,7 +624,7 @@ button:disabled {
     border-radius: 6px;
     border: 1px solid #e9ecef;
 }
-.trick-line { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; white-space: nowrap; }
+.trick-line { display: flex; gap: 6px; align-items: baseline; padding: 3px 0; }
 .trick-number { color: #999; font-size: 11px; width: 26px; }
 .trick-cards { color: #333; }
 .trick-winner { color: #28a745; font-size: 11px; margin-left: auto; }

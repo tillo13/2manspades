@@ -54,9 +54,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sheet.css') }}">
 {% endblock %}
-{% block body_attrs %} data-logged-in="{{ 'true' if session.get('user') else 'false' }}"{% endblock %}
 {% block content %}
     <h1 class="sr-only">Two-Man Spades - Free Online 2-Player Card Game</h1>
     {% if suspected_player %}
@@ -123,22 +121,6 @@
                 <div id="trickDisplay"></div>
             </div>
 
-            <!-- Game Over section -->
-            <div class="game-over" id="gameOver" hidden>
-                <div class="go-result" id="goResult"></div>
-                <div class="go-score" id="goScore"></div>
-                <div class="go-ratchet" id="goRatchet" hidden>
-                    <div class="go-ratchet-text" id="goRatchetText"></div>
-                    <div class="go-bar"><div class="go-bar-fill" id="goBarFill"></div><div class="go-bar-mark" id="goBarBefore"></div><div class="go-bar-mark after" id="goBarAfter"></div></div>
-                    <div class="go-bar-rungs"><span>Easy</span><span>Medium</span><span>Hard</span><span>Ruthless</span></div>
-                </div>
-                <div class="go-tally" id="goTally"></div>
-                <div class="go-actions">
-                    <button data-action="startNewGame">Play Again</button>
-                    <a class="go-link" id="goDetail" href="/stats" hidden>Full breakdown</a>
-                </div>
-            </div>
-
             <!-- Message area -->
             <div class="message" id="message">Loading game...</div>
 
@@ -151,9 +133,41 @@
                     <div class="ho-score"><div class="ho-score-v" id="hoMarta"></div><div class="ho-score-k">Marta</div></div>
                 </div>
                 <button id="nextHandButton" data-action="nextHand" class="next-hand-btn">Next Hand</button>
-                <div class="ho-notes" id="hoNotes"></div>
-                <div class="ho-middle" id="hoMiddle"></div>
-                <details class="ho-tricks"><summary id="hoTricksLabel"></summary><div class="trick-history" id="hoTricks"></div></details>
+                <div class="ho-section">
+                    <div class="ho-h">Middle</div>
+                    <div class="ho-mid-cards">
+                        <div class="ho-mid"><div id="hoMidYou"></div><div class="ho-mid-k">You</div></div>
+                        <div class="ho-mid"><div id="hoMidMarta"></div><div class="ho-mid-k">Marta</div></div>
+                    </div>
+                    <div class="ho-middle" id="hoMiddle"></div>
+                </div>
+                <div class="ho-section">
+                    <div class="ho-h">Scoring</div>
+                    <div class="ho-notes" id="hoNotes"></div>
+                </div>
+                <div class="ho-section">
+                    <div class="ho-h" id="hoTricksLabel">Tricks</div>
+                    <div class="trick-history" id="hoTricks"></div>
+                </div>
+            </div>
+
+            <!-- Game Over section (after the last hand; the culmination scrolls: hand, game, history) -->
+            <div class="game-over" id="gameOver" hidden>
+                <div class="go-result" id="goResult"></div>
+                <div class="go-score" id="goScore"></div>
+                <div class="go-ratchet" id="goRatchet" hidden>
+                    <div class="go-ratchet-text" id="goRatchetText"></div>
+                    <div class="go-bar"><div class="go-bar-fill" id="goBarFill"></div><div class="go-bar-mark" id="goBarBefore"></div><div class="go-bar-mark after" id="goBarAfter"></div></div>
+                    <div class="go-bar-rungs"><span>Easy</span><span>Medium</span><span>Hard</span><span>Ruthless</span></div>
+                    <div class="go-ratchet-why" id="goRatchetWhy"></div>
+                </div>
+                <div class="go-tally" id="goTally"></div>
+                <div class="go-hands" id="goHands"></div>
+                <div class="go-actions">
+                    <button data-action="startNewGame">Play Again</button>
+                    <a class="go-link" id="goDetail" href="/stats" hidden>Full breakdown</a>
+                </div>
+                <div class="go-history" id="goHistory" hidden></div>
             </div>
 
             <!-- Blind Decision Section -->
@@ -271,73 +285,6 @@
         </div>
     </div>
 
-    <!-- THE bubble: one button for Marta + Hoyt (cover spins while music plays, badge = unread Marta) -->
-    <div class="chat-bubble-icon" id="chatBubbleIcon" title="Marta and the Hoyt jukebox">
-        <img id="jbBubbleImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
-        <span class="jb-bubble-label" id="jbBubbleLabel"></span>
-        <div id="chatBadge" class="chat-badge" style="display: none;"></div>
-    </div>
-
-    <!-- The table sheet: one bottom sheet on phones (tabs), one docked card in the desktop rail (stacked) -->
-    <div class="ts-sheet" id="tableSheet" data-tab="marta">
-        <div class="ts-tabs">
-            <button class="ts-tab" id="tsTabMarta">Marta</button>
-            <button class="ts-tab" id="tsTabHoyt">Hoyt</button>
-            <button class="ts-close" id="tsClose" aria-label="Close">×</button>
-        </div>
-    <div class="chat-window" id="chatWindow">
-        <div class="jb-mini" id="jbMini" hidden>
-            <img id="jbMiniImg" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
-            <div class="jb-mini-text" id="jbMiniText"><div class="jb-mini-title" id="jbMiniTitle"></div><div class="jb-mini-album" id="jbMiniAlbum"></div></div>
-            <button class="jb-mini-btn" id="jbMiniPlay" aria-label="Play or pause">▶</button>
-            <button class="jb-mini-btn" id="jbMiniNext" aria-label="Next">⏭</button>
-        </div>
-        <div class="chat-messages" id="chatMessages"></div>
-        <div class="chat-pills" id="chatPills" hidden></div>
-        <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
-            <button data-action="sendMessage">Send</button>
-        </div>
-    </div>
-
-    <!-- Hoyt Axton jukebox pane (inside the table sheet) -->
-    <div class="jb-panel" id="jbPanel">
-        <div class="jb-locked" id="jbLocked" hidden>
-            <img src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
-            <div class="jb-title">Hoyt plays for players</div>
-            <div class="jb-album">Log in and the jukebox is yours: 43 records, 667 songs.</div>
-            <button class="jb-pill" data-action="handleLoginClick">Log in</button>
-        </div>
-        <div class="jb-now" id="jbNow">
-            <img id="jbCover" src="{{ url_for('static', filename='jukebox/hoyt.jpg') }}" alt="">
-            <div class="jb-title" id="jbTitle">Hoyt Axton</div>
-            <div class="jb-album" id="jbAlbum">Tap play for some Hoyt</div>
-            <div class="jb-barwrap" id="jbBarWrap"><div class="jb-bar" id="jbBar"></div></div>
-            <div class="jb-time" id="jbTime"></div>
-            <div class="jb-controls">
-                <button id="jbPrev" aria-label="Previous">⏮</button>
-                <button id="jbPlay" class="jb-big" aria-label="Play">▶</button>
-                <button id="jbNext" aria-label="Next">⏭</button>
-            </div>
-            <div class="jb-mode" id="jbMode"></div>
-            <div class="jb-stats" id="jbStats" hidden>
-                <div class="jb-stats-row"><span id="jbStatPlays"></span><span id="jbStatHours"></span><span id="jbStatSongs"></span></div>
-                <div class="jb-stats-top" id="jbStatTop"></div>
-                <a class="jb-stats-link" href="/stats#hoyt" target="_blank">All the listening stats</a>
-            </div>
-        </div>
-        <div class="jb-browse" id="jbBrowse" hidden>
-            <div class="jb-albums" id="jbAlbums"></div>
-        </div>
-        <div class="jb-footer">
-            <input class="jb-search" id="jbSearch" type="search" placeholder="Find a song or album…" autocomplete="off">
-            <button class="jb-pill jb-pill-dark" id="jbTabBrowse">Albums</button>
-            <button class="jb-pill" id="jbTabNow" hidden>Back</button>
-        </div>
-    </div>
-    </div><!-- /tableSheet -->
-    <div class="jb-toast" id="jbToast"></div>
-
     <!-- Difficulty Modal -->
     <div id="difficultyModal" class="difficulty-modal" data-action="closeDifficultyModal">
         <div class="difficulty-content" data-action="stop">
@@ -346,6 +293,9 @@
                 <a class="you-page" href="/stats">Your games</a>
                 <a class="you-logout" href="/logout">Log out</a>
             </div>
+            <label class="difficulty-pref" id="difficultyPref" hidden>
+                <input type="checkbox" id="jukeboxPop" data-change="setJukeboxPop"> Open the Hoyt jukebox when I arrive
+            </label>
             <div class="difficulty-title">Marta's Difficulty</div>
             <div class="difficulty-slider">
                 <input type="range" id="difficultyRange" min="0" max="100" step="1" value="0"
@@ -367,8 +317,6 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/game.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/jukebox.js') }}"></script>
 {% endblock %}

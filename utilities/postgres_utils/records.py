@@ -285,3 +285,57 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
     finally:
         if conn is not None:
             return_db_connection(conn)
+
+
+def get_player_record(google_email=None, player_name=None):
+    """A person's whole history for the end-of-game screen: totals, win rate, current and best
+    streaks, margins, per-rung record. Identity resolves the same way the ratchet does."""
+    if not google_email and not player_name:
+        return None
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT v.won, v.margin, v.hands_played, h.difficulty, v.completed_at
+              FROM twomanspades.vw_player_game_details v
+              JOIN twomanspades.hands h ON h.hand_id = v.hand_id
+             WHERE v.player_name = COALESCE(%s, (SELECT split_part(google_name, ' ', 1) FROM twomanspades.players
+                                                 WHERE google_email = %s AND google_name IS NOT NULL LIMIT 1))
+             ORDER BY v.completed_at
+        """, (player_name, google_email))
+        rows = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"[DB] Error getting player record: {e}")
+        return None
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+    if not rows:
+        return None
+    wins = sum(1 for r in rows if r[0])
+    margins = [r[1] or 0 for r in rows]
+    best_win, cur_streak, cur_type = 0, 0, None
+    for won, *_ in rows:
+        if cur_type is None or won == cur_type:
+            cur_streak += 1
+        else:
+            cur_streak = 1
+        cur_type = won
+        if won:
+            best_win = max(best_win, cur_streak)
+    rungs = {}
+    for won, _m, _h, level, _t in rows:
+        r = rungs.setdefault(level or 'easy', {'wins': 0, 'losses': 0})
+        r['wins' if won else 'losses'] += 1
+    return {
+        'games': len(rows), 'wins': wins, 'losses': len(rows) - wins,
+        'win_pct': round(100 * wins / len(rows)),
+        'streak': cur_streak, 'streak_type': 'win' if cur_type else 'loss', 'best_win_streak': best_win,
+        'avg_margin': round(sum(margins) / len(margins)),
+        'biggest_win': max(margins), 'worst_loss': min(margins),
+        'avg_hands': round(sum(r[2] or 0 for r in rows) / len(rows), 1),
+        'rungs': rungs,
+        'since': rows[0][4].strftime('%b %Y') if rows[0][4] else None,
+    }

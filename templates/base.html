@@ -14,9 +14,10 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
     <script src="{{ url_for('static', filename='js/ga.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sheet.css') }}">
     {% block styles %}{% endblock %}
 </head>
-<body{% block body_attrs %}{% endblock %}>
+<body data-logged-in="{{ 'true' if session.get('user') else 'false' }}" data-jukebox-pop="{{ 'true' if session.get('jukebox_pop', True) else 'false' }}">
 {% block content %}{% endblock %}
     <footer class="site-footer">
         <nav aria-label="Site navigation">
@@ -26,6 +27,9 @@
         </nav>
         <p>&copy; 2026 <a href="https://2manspades.com">2manspades.com</a></p>
     </footer>
+{% include '_table_sheet.html' %}
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 {% block scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/jukebox.js') }}"></script>
 </body>
 </html>

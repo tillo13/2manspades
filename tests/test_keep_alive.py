@@ -1,4 +1,4 @@
-"""The middle can be thrown back on a game-deciding hand (family rule, 2026-09-06).
+"""The middle can be subtracted instead of added on a game-deciding hand (family rule, 2026-09-06).
 Fixture: Andy's real hand 3 that night — 260 vs 143 going in, Andy 4 for 4, Marta blind 5
 taking 6, 9♥ + 5♥ in the middle for a doubled 20 to Marta. Site said 300-264, game over.
 House rule: 280-244, hand 4 dealt."""
@@ -70,7 +70,7 @@ class KeepAliveTests(unittest.TestCase):
                  computer_blind_bid=None, player_bags=3)
         self.assertEqual(self.finish(g), (244, 280))
         self.assertFalse(g['game_over'])
-        self.assertIn('you throw the middle back', g['discard_bonus_explanation'])
+        self.assertIn('you subtract the middle', g['discard_bonus_explanation'])
 
     def test_ordinary_hand_untouched(self):
         g = andy_hand(player_score=100, computer_score=100)

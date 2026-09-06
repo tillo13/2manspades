@@ -209,7 +209,7 @@ class RatchetTests(unittest.TestCase):
 
     def test_ratchet_moves_for_veterans_only(self):
         r, setting = self._finish_game('tom@example.com', 40)
-        self.assertEqual(r, {'before': 60, 'after': 69, 'from_level': 'hard', 'level': 'hard'})
+        self.assertEqual(r, {'before': 60, 'after': 69, 'from_level': 'hard', 'level': 'hard', 'won': True, 'margin': 110, 'games': 40})
         self.assertEqual(setting, 69)
         r, setting = self._finish_game('new@example.com', 3)
         self.assertIsNone(r)

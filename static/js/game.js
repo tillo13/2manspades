@@ -187,6 +187,14 @@ function renderGameOver() {
         fill.className = 'go-bar-fill ' + (r.after >= r.before ? 'up' : 'down');
         document.getElementById('goBarBefore').style.left = r.before + '%';
         document.getElementById('goBarAfter').style.left = r.after + '%';
+        // the math, so the move is never a mystery: 5 a game, +1 per 25 points of margin, capped at 15
+        const m = Math.abs(r.margin || 0), extra = Math.min(10, Math.floor(m / 25)), step = 5 + extra;
+        const clamped = Math.abs(r.after - r.before) < step;
+        document.getElementById('goRatchetWhy').textContent =
+            `${r.won ? 'Won' : 'Lost'} by ${m}: ${r.won ? '+' : '−'}${step} (5 for the game` +
+            (extra ? `, ${extra} more for the margin, 1 per 25 points` : ', under 25 points of margin so nothing extra') +
+            `)${clamped ? `, held at the ${r.after >= r.before ? 'top' : 'bottom'} of the dial` : ''}. ` +
+            `Applies because you have ${r.games} games on record (25 needed).`;
     }
 
     const log = gameState.hand_log || [];
@@ -208,6 +216,55 @@ function renderGameOver() {
     const link = document.getElementById('goDetail');
     link.hidden = !gameState.game_id;
     if (gameState.game_id) link.href = '/game/' + gameState.game_id;
+
+    // every hand of the game, one row each: bid/tricks per seat (B = blind, red = set), the
+    // middle with who took it, bags after the hand, running score
+    const bt = (b, t, blind) => `${blind ? 'B' : ''}${b}<span class="go-slash">/</span>${t}`;
+    const red = txt => (txt || '?').replace(/(\S+[♥♦])/g, '<span class="heart">$1</span>');
+    const mid = m => !m ? '' : `${red(m.player)} · ${red(m.computer)}` +
+        (m.winner ? ` <span class="go-mid-w">${m.winner === 'player' ? 'you' : 'Marta'}</span>` : '');
+    document.getElementById('goHands').innerHTML = `<table class="go-hands-table">
+        <thead><tr><th>Hand</th><th>You</th><th>Marta</th><th>Middle</th><th>Bags</th><th>Score</th></tr></thead><tbody>` +
+        log.map(h => `<tr>
+            <td>${h.hand}</td>
+            <td class="${h.player_bid > 0 && h.player_tricks < h.player_bid ? 'set' : ''}">${bt(h.player_bid, h.player_tricks, h.player_blind)}</td>
+            <td class="${h.computer_bid > 0 && h.computer_tricks < h.computer_bid ? 'set' : ''}">${bt(h.computer_bid, h.computer_tricks, h.computer_blind)}</td>
+            <td class="go-mid">${mid(h.middle)}</td>
+            <td>${h.player_bags ?? ''} · ${h.computer_bags ?? ''}</td>
+            <td>${h.player_score} · ${h.computer_score}</td>
+        </tr>`).join('') + `</tbody></table>`;
+
+    renderHistory();
+}
+
+// Full history for the person at the table: record, streaks, margins, per-rung. Fetched once
+// per game over (the server answers null for strangers, and the block stays hidden).
+let historyFor = null;
+function renderHistory() {
+    const box = document.getElementById('goHistory');
+    if (historyFor === gameState.game_id) return;
+    historyFor = gameState.game_id;
+    fetch('/my_record').then(r => r.json()).then(rec => {
+        box.hidden = !rec;
+        if (!rec) return;
+        const tile = (v, k) => `<div class="go-tile"><div class="go-tile-v">${v}</div><div class="go-tile-k">${k}</div></div>`;
+        const rungs = ['easy', 'medium', 'hard', 'ruthless'].filter(l => rec.rungs[l])
+            .map(l => `<span class="go-rung"><b>${l[0].toUpperCase() + l.slice(1)}</b> ${rec.rungs[l].wins}-${rec.rungs[l].losses}</span>`).join('');
+        box.innerHTML = `<div class="go-history-title">Your record${rec.since ? ` <small>since ${rec.since}</small>` : ''}</div>
+            <div class="go-tally">
+                ${tile(`${rec.wins}-${rec.losses}`, `${rec.win_pct}% of ${rec.games}`)}
+                ${tile(`${rec.streak}${rec.streak_type === 'win' ? 'W' : 'L'}`, 'Current streak')}
+                ${tile(rec.best_win_streak, 'Best win streak')}
+                ${tile((rec.avg_margin >= 0 ? '+' : '') + rec.avg_margin, 'Avg margin')}
+            </div>
+            <div class="go-tally">
+                ${tile('+' + rec.biggest_win, 'Biggest win')}
+                ${tile(rec.worst_loss, 'Worst loss')}
+                ${tile(rec.avg_hands, 'Hands per game')}
+                ${tile(rec.games, 'Games')}
+            </div>
+            <div class="go-rungs">${rungs}</div>`;
+    }).catch(() => { box.hidden = true; });
 }
 
 function hideInteractiveSections() {
@@ -216,7 +273,6 @@ function hideInteractiveSections() {
     const blindDecisionSection = document.getElementById('blindDecisionSection');
     if (blindDecisionSection) blindDecisionSection.style.display = 'none';
     document.getElementById('discardBlindBiddingSection').style.display = 'none';
-    document.getElementById('handOver').hidden = true;
     document.getElementById('playerHandSection').style.display = 'none';
     document.getElementById('computerHandSection').style.display = 'none';
 }
@@ -467,10 +523,11 @@ function updateComputerHandToggle() {
 // bonus, special cards) underneath. Next Hand is the card's primary action.
 function updateHandOver() {
     const card = document.getElementById('handOver');
-    const show = gameState.hand_over && !gameState.game_over && gameState.hand_results;
+    const show = gameState.hand_over && gameState.hand_results;
     card.hidden = !show;
     if (!show) return;
     document.getElementById('playArea').classList.add('hidden-for-phase');   // no trick to show
+    document.getElementById('nextHandButton').hidden = !!gameState.game_over;   // at game over the result card has the actions
 
     const r = gameState.hand_results;
     const log = gameState.hand_log || [];
@@ -498,27 +555,32 @@ function updateHandOver() {
     scoreCell('hoYou', h.player_score ?? gameState.player_score, prev.player_score, h.player_bags ?? 0, prev.player_bags ?? 0);
     scoreCell('hoMarta', h.computer_score ?? gameState.computer_score, prev.computer_score, h.computer_bags ?? 0, prev.computer_bags ?? 0);
 
-    // the scoring record's lines worth a note: anything shouted (NIL, BLIND, PENALTY, BONUS)
-    // plus special cards; the plain bid/trick lines are already the headline
-    const notes = (r.scoring || '').split(' | ').map(x => x.trim())
-        .filter(x => /!|special cards/.test(x) && !/^Bags:/.test(x))
-        .map(x => x.replace(/!+/g, ''));
-    if (r.auto_resolution) notes.unshift(r.auto_resolution);
-    document.getElementById('hoNotes').innerHTML = notes.map(n =>
-        `<div class="ho-note ${/PENALTY|FAILED/.test(n) ? 'bad' : /BONUS|SUCCESS|special/.test(n) ? 'good' : ''}">${n}</div>`).join('');
-
-    // the record's own line ("8♦ (8) + 2♣ (2) = 10 (even) → Marta gets 10 pts!"), red suits coloured
+    // the middle: both cards, then the record's own line about who took it
+    const cardEl = c => c ? `<div class="card ${getSuitClass(c.suit)}">${c.rank}${c.suit}</div>` : '<div class="card" style="opacity:.5">?</div>';
+    document.getElementById('hoMidYou').innerHTML = cardEl(gameState.player_discarded);
+    document.getElementById('hoMidMarta').innerHTML = cardEl(gameState.computer_discarded);
     const info = (r.discard_info || '').replace(/^Discards:\s*/, '').replace(/(\S+[♥♦])/g, '<span class="heart">$1</span>');
-    document.getElementById('hoMiddle').innerHTML = `<b>Middle</b> ${info}`;
+    document.getElementById('hoMiddle').innerHTML = info;
 
+    // every line of the scoring record, as written
+    const lines = (r.scoring || '').split(' | ').map(x => x.trim()).filter(Boolean);
+    if (r.auto_resolution) lines.unshift(r.auto_resolution);
+    document.getElementById('hoNotes').innerHTML = lines.map(n =>
+        `<div class="ho-note ${/PENALTY|FAILED/.test(n) ? 'bad' : /BONUS|SUCCESS|special/.test(n) ? 'good' : ''}">${n.replace(/!+/g, '')}</div>`).join('');
+
+    // the back and forth: who led what, what came back, who took it
     const tricks = r.trick_history || [];
-    document.getElementById('hoTricksLabel').textContent = `${tricks.length} tricks`;
-    document.getElementById('hoTricks').innerHTML = tricks.map(t => `
-        <div class="trick-line">
+    const suit = c => `<span class="${/[♥♦]/.test(c) ? 'heart' : ''}">${c}</span>`;
+    document.getElementById('hoTricksLabel').textContent = `Tricks · you ${h.player_tricks ?? gameState.player_tricks}, Marta ${h.computer_tricks ?? gameState.computer_tricks}`;
+    document.getElementById('hoTricks').innerHTML = tricks.map(t => {
+        const youLed = t.leader === 'You';
+        const led = youLed ? t.player_card : t.computer_card, ans = youLed ? t.computer_card : t.player_card;
+        return `<div class="trick-line">
             <span class="trick-number">${t.number}</span>
-            <span class="trick-cards">${t.player_card} · ${t.computer_card}</span>
-            <span class="trick-winner">${t.winner}</span>
-        </div>`).join('');
+            <span class="trick-cards"><b>${t.leader || '?'}</b> led ${suit(led)} · ${youLed ? 'Marta' : 'You'} ${suit(ans)}</span>
+            <span class="trick-winner ${t.winner === 'You' ? 'you' : 'marta'}">${t.winner}</span>
+        </div>`;
+    }).join('');
 
     pulseLoginIfNotLoggedIn();
 }

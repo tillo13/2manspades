@@ -562,3 +562,47 @@ def get_city_leaders_stats() -> List[Dict[str, Any]]:
     finally:
         if conn is not None:
             return_db_connection(conn)
+
+
+_POP_COL_OK = False
+
+def get_jukebox_pop(google_email: str) -> bool:
+    """Whether the jukebox opens on arrival for this player (profile flag, default on)."""
+    global _POP_COL_OK
+    if not google_email:
+        return True
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if not _POP_COL_OK:
+            from utilities.schema_guard import add_column_if_missing
+            add_column_if_missing(cur, 'twomanspades', 'players', 'jukebox_pop', 'BOOLEAN', default='TRUE')
+            conn.commit(); _POP_COL_OK = True
+        cur.execute("SELECT COALESCE(bool_and(jukebox_pop), TRUE) FROM twomanspades.players WHERE google_email = %s", (google_email,))
+        row = cur.fetchone(); cur.close()
+        return bool(row[0]) if row else True
+    except Exception as e:
+        print(f"[DB] Error getting jukebox_pop: {e}")
+        return True
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+def save_jukebox_pop(google_email: str, on: bool) -> bool:
+    if not google_email:
+        return False
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE twomanspades.players SET jukebox_pop = %s WHERE google_email = %s", (bool(on), google_email))
+        conn.commit(); cur.close()
+        return True
+    except Exception as e:
+        print(f"[DB] Error saving jukebox_pop: {e}")
+        return False
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
