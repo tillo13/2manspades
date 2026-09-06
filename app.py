@@ -83,6 +83,9 @@ def validate_json_body():
 if IS_PRODUCTION:
     start_async_db_logging()
     print("[STARTUP] Async database logging initialized")
+    # /stats payload is ~65 queries; build it once now so the first visitor never waits
+    from utilities.postgres_utils.stats import warm_stats_cache
+    warm_stats_cache()
 
 DEBUG_MODE = False
 session_tracker = {}
@@ -310,7 +313,10 @@ def cron_otto():
     if request.headers.get('X-Appengine-Cron') != 'true':
         abort(403)
     from utilities.otto import play_cron_tick
-    return jsonify({'ok': True, **play_cron_tick()})
+    result = play_cron_tick()
+    from utilities.postgres_utils.stats import stats_payload
+    stats_payload()           # keeps this process's /stats cache warm between visitors
+    return jsonify({'ok': True, **result})
 
 @app.route('/cron/andybot')
 def cron_andybot():
@@ -795,7 +801,11 @@ def instructions():
 @app.route('/stats')
 def stats():
     from utilities.postgres_utils.stats import stats_payload
-    return render_template('stats.html', **stats_payload())
+    # Same page for everyone (nothing per-user in it), so let App Engine's edge serve
+    # repeat loads for a minute without touching an instance at all.
+    resp = Response(render_template('stats.html', **stats_payload()))
+    resp.headers['Cache-Control'] = 'public, max-age=60'
+    return resp
 
 
 @app.route('/player/<name>')

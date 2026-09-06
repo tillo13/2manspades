@@ -14,40 +14,65 @@ from .connection import return_db_connection
 from .achievements import get_player_achievements, get_per_hand_stats
 from .players import get_unified_leaderboard
 
-# /stats is read-mostly and costs ~60 queries (measured 2026-09-05: 4–8 s server-side on the
-# shared micro instance), so the whole payload is cached for 60 s per process and computed
-# single-flight so 8 gunicorn threads can't stampede the pool.
+# /stats is read-mostly and costs ~65 queries (measured 2026-09-05: 4–8 s server-side on the
+# shared micro instance). Stale-while-revalidate (2026-09-06): the last payload is served
+# instantly, always; once it is older than _PAYLOAD_TTL one background thread rebuilds it
+# for the next visitor. Only a cold process ever makes a visitor wait, and warm_stats_cache()
+# at boot plus the Otto cron touching /stats every 15 min keep processes warm.
 _PAYLOAD = {'data': None, 'ts': 0.0}
-_PAYLOAD_TTL = 60
-_PAYLOAD_LOCK = threading.Lock()
+_PAYLOAD_TTL = 300
+_PAYLOAD_LOCK = threading.Lock()      # single-flight: one rebuild at a time, ever
+_REFRESHING = {'on': False}
+
+
+def _build_payload():
+    from utilities.jukebox import jukebox_stats
+    from .robots import robot_league
+    data = {
+        'google_leaders': get_unified_leaderboard(),
+        'fun_stats': get_fun_stats(),
+        'achievements': get_player_achievements(),
+        'special_cards': get_special_card_stats(),
+        'overall_stats': get_overall_game_stats(),
+        'per_hand_stats': get_per_hand_stats(),
+        'hoyt': jukebox_stats(),
+        'robots': robot_league(),
+        'marta_levels': get_marta_levels(),
+    }
+    data['styles'] = player_styles(data['google_leaders'], data['achievements'],
+                                   data['per_hand_stats'], data['robots'])
+    data['reads'] = marta_reads()
+    data['live'] = live_tables()
+    return data
+
+
+def _refresh_payload():
+    with _PAYLOAD_LOCK:
+        try:
+            _PAYLOAD.update(data=_build_payload(), ts=time.time())
+        except Exception as e:
+            print(f"[STATS] payload rebuild failed: {e}")
+        finally:
+            _REFRESHING['on'] = False
 
 
 def stats_payload():
-    """Everything /stats renders, as one dict; recomputed at most once a minute."""
-    if time.time() - _PAYLOAD['ts'] < _PAYLOAD_TTL:
+    """Everything /stats renders. Serves the cached payload at once; kicks off a background
+    rebuild when it is stale. Blocks only on a cold process (no payload yet)."""
+    if _PAYLOAD['data'] is None:
+        _refresh_payload()
         return _PAYLOAD['data']
-    with _PAYLOAD_LOCK:
-        if time.time() - _PAYLOAD['ts'] < _PAYLOAD_TTL:
-            return _PAYLOAD['data']
-        from utilities.jukebox import jukebox_stats
-        from .robots import robot_league
-        data = {
-            'google_leaders': get_unified_leaderboard(),
-            'fun_stats': get_fun_stats(),
-            'achievements': get_player_achievements(),
-            'special_cards': get_special_card_stats(),
-            'overall_stats': get_overall_game_stats(),
-            'per_hand_stats': get_per_hand_stats(),
-            'hoyt': jukebox_stats(),
-            'robots': robot_league(),
-            'marta_levels': get_marta_levels(),
-        }
-        data['styles'] = player_styles(data['google_leaders'], data['achievements'],
-                                       data['per_hand_stats'], data['robots'])
-        data['reads'] = marta_reads()
-        data['live'] = live_tables()
-        _PAYLOAD.update(data=data, ts=time.time())
-        return data
+    if time.time() - _PAYLOAD['ts'] >= _PAYLOAD_TTL and not _REFRESHING['on']:
+        _REFRESHING['on'] = True
+        threading.Thread(target=_refresh_payload, name='stats-refresh', daemon=True).start()
+    return _PAYLOAD['data']
+
+
+def warm_stats_cache():
+    """Build the payload once in the background at process boot so the first visitor is fast."""
+    if _PAYLOAD['data'] is None and not _REFRESHING['on']:
+        _REFRESHING['on'] = True
+        threading.Thread(target=_refresh_payload, name='stats-warm', daemon=True).start()
 
 
 def live_tables():
