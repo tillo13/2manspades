@@ -336,19 +336,23 @@ def calculate_hand_scores_with_bags(game):
     # Check for blind nil FIRST - it ends the game immediately
     if game.get('blind_nil') and game.get('player_bid') == 0:
         player_actual = game.get('player_tricks', 0)
+        # The game-over sentence must carry "<winner> WIN(S) X to Y": the stats views parse
+        # final scores out of it, and blind-nil endings without it showed as 0-0 on the
+        # player page for a year (8 games, fixed 2026-09-06).
+        marta = get_display_score(game.get('computer_score', 0), game.get('computer_bags', 0))
         if player_actual == 0:
             # INSTANT WIN - Set score to 500 to show massive victory
             game['player_score'] = 500
             game['game_over'] = True
             game['winner'] = 'player'
-            game['message'] = "BLIND NIL SUCCESS! You win the entire game instantly!"
+            game['message'] = f"BLIND NIL SUCCESS! You WIN the entire game instantly, 500 to {marta}!"
             return {'explanation': "BLIND NIL SUCCESS - INSTANT GAME WIN!"}
         else:
             # INSTANT LOSS - Keep Marta's current score, player gets massive penalty
             game['player_score'] = -500  # Show crushing defeat
             game['game_over'] = True
             game['winner'] = 'computer'
-            game['message'] = f"Blind Nil failed - you took {player_actual} tricks. Marta wins!"
+            game['message'] = f"Blind Nil failed - you took {player_actual} tricks. Marta WINS {marta} to -500!"
             return {'explanation': f"BLIND NIL FAILURE - took {player_actual} tricks - GAME OVER"}
 
     
