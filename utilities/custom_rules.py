@@ -306,6 +306,36 @@ def calculate_discard_score_with_winner(player_discard, computer_discard, player
         'denial_option_used': denial_option_used
     }
 
+def apply_keep_alive(game, discard_result):
+    """The middle always pays its winner, EXCEPT on the hand that would end the game: if the
+    middle's winner is behind and the opponent is going out, and throwing the middle back
+    pulls the opponent under 300, the winner forgoes the points and the opponent loses them
+    instead. Either/or, same for Marta and for a person, no choice needed (a player who is
+    behind never wants the game to end). Family rule from the sheet ("middle points can go up
+    or down"); on the site from 2026-09-06 forward only — Andy: 122 of 727 past games would
+    have gone another hand, not restated. Returns the explanation or None."""
+    if not discard_result or discard_result.get('denial_option_used') or game.get('game_over'):
+        return None
+    winner = discard_result.get('winner')
+    pts = discard_result.get('player_bonus', 0) if winner == 'player' else discard_result.get('computer_bonus', 0)
+    if not winner or pts <= 0:
+        return None
+    target = game.get('target_score', 300)
+    p_disp = get_display_score(game['player_score'], game.get('player_bags', 0))
+    c_disp = get_display_score(game['computer_score'], game.get('computer_bags', 0))
+    if winner == 'computer' and c_disp < p_disp and p_disp >= target and \
+            get_display_score(game['player_score'] - pts, game.get('player_bags', 0)) < target:
+        game['player_score'] -= pts
+        game['computer_score'] -= pts
+        return f"KEEP ALIVE: Marta throws the middle back instead of taking it: {pts} off you, game on"
+    if winner == 'player' and p_disp < c_disp and c_disp >= target and \
+            get_display_score(game['computer_score'] - pts, game.get('computer_bags', 0)) < target:
+        game['computer_score'] -= pts
+        game['player_score'] -= pts
+        return f"KEEP ALIVE: you throw the middle back instead of taking it: {pts} off Marta, game on"
+    return None
+
+
 def apply_bags_penalty(score, bags):
     """Apply bags penalty system."""
     penalty_applied = False

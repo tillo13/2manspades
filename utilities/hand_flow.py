@@ -7,7 +7,7 @@ from .custom_rules import (
     check_special_cards_in_trick, reduce_bags_safely, assign_even_odd_at_game_start,
     calculate_discard_score_with_winner, calculate_hand_scores_with_bags,
     get_player_names_with_parity, check_special_cards_in_discard,
-    check_blind_bidding_eligibility, get_display_score
+    check_blind_bidding_eligibility, get_display_score, apply_keep_alive
 )
 from .gameplay_logic import determine_trick_winner, init_game, init_new_hand, check_game_over
 from .computer_logic import (
@@ -577,8 +577,10 @@ def process_hand_completion(game, session):
     )
     
     # Apply stored discard results at the end of the hand
+    hand_discard = None
     if 'pending_discard_result' in game:
         discard_result = game['pending_discard_result']
+        hand_discard = discard_result
         game['player_score'] += discard_result['player_bonus']
         game['computer_score'] += discard_result['computer_bonus']
         
@@ -612,7 +614,12 @@ def process_hand_completion(game, session):
     
     # Calculate scoring with bags system
     scoring_result = calculate_hand_scores_with_bags(game)
-    
+
+    # The middle can be thrown back on a game-deciding hand (family rule, 2026-09-06)
+    kept_alive = apply_keep_alive(game, hand_discard)
+    if kept_alive:
+        game['discard_bonus_explanation'] = (game.get('discard_bonus_explanation') or '') + ' → ' + kept_alive
+
     # Check if blind nil ended the game (but don't return early - show full results)
     blind_nil_ending = game.get('game_over', False)
     
@@ -709,8 +716,10 @@ def process_auto_resolution(game, session):
     
     if auto_resolved:
         # Continue with normal hand completion logic
+        hand_discard = None
         if 'pending_discard_result' in game:
             discard_result = game['pending_discard_result']
+            hand_discard = discard_result
             game['player_score'] += discard_result['player_bonus']
             game['computer_score'] += discard_result['computer_bonus']
             
@@ -741,7 +750,11 @@ def process_auto_resolution(game, session):
         
         # Calculate scoring
         scoring_result = calculate_hand_scores_with_bags(game)
-        
+
+        kept_alive = apply_keep_alive(game, hand_discard)
+        if kept_alive:
+            game['discard_bonus_explanation'] = (game.get('discard_bonus_explanation') or '') + ' → ' + kept_alive
+
         # Check if blind nil ended the game (auto-resolve case)
         blind_nil_ending = game.get('game_over', False)
         
