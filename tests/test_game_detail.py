@@ -79,6 +79,21 @@ class FactualSummaryTests(unittest.TestCase):
         self.assertEqual(result['difficulties'], ['easy'])
         self.assertEqual([t['number'] for t in hands[0]['trick_history'] if t['auto_played']], [8, 9, 10])
         self.assertTrue(hands[0]['bids'][0]['made'])
+        self.assertEqual([b['player'] for b in hands[0]['bids']], ['Andy', 'Marta'])
+        self.assertEqual(hands[0]['first_bidder'], 'Andy')
+
+    def test_marta_bids_first_when_she_leads(self):
+        from utilities.postgres_utils.game_summary import summarize_game
+        hand = self.hand()
+        hand['final_bids']['first_leader'] = 'computer'
+        summarize_game([hand], dict(player_name='Andy', hands_played=1))
+        self.assertEqual([b['player'] for b in hand['bids']], ['Marta', 'Andy'])
+        self.assertEqual(hand['first_bidder'], 'Marta')
+        hand = self.hand()
+        hand.pop('final_bids')
+        hand['first_leader'] = 'computer'
+        summarize_game([hand], dict(player_name='Andy', hands_played=1))
+        self.assertEqual(hand['first_bidder'], 'Marta')
 
     def test_partial_history_does_not_invent_totals(self):
         from utilities.postgres_utils.game_summary import summarize_game

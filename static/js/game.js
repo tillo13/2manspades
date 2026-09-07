@@ -748,17 +748,18 @@ function confirmSelectedBid() {
 
 function cancelBidSelection() {
     resetBiddingState();
-
-    const biddingPrompt = document.querySelector('.bidding-prompt');
-    if (biddingPrompt) {
-        biddingPrompt.innerHTML = `How many tricks will you take?`;
-    }
 }
 
 function resetBiddingState() {
     selectedBid = null;
     confirmingBid = false;
     updateBidButtons();
+
+    // Clear "You selected: N" so the next hand doesn't open with last hand's bid
+    const biddingPrompt = document.querySelector('.bidding-prompt');
+    if (biddingPrompt) {
+        biddingPrompt.innerHTML = `How many tricks will you take?`;
+    }
 }
 
 // =============================================================================

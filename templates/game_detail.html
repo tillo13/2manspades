@@ -138,6 +138,7 @@
             <!-- Bids -->
             <div class="bids-section">
                 <strong>Bids:</strong>
+                {% if hand.first_bidder %}<span class="bid-first">{{ hand.first_bidder }} bid first</span>{% endif %}
                 {% for bid in hand.bids %}
                 <span class="bid-item {% if bid.is_blind %}blind{% elif bid.is_nil %}nil{% endif %}">
                     <span class="bid-player">{{ bid.player }}:</span>

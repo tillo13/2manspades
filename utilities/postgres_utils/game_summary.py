@@ -17,11 +17,16 @@ def summarize_game(hands, summary):
             for trick in history:
                 trick['auto_played'] = trick['number'] > 10 - h['auto_tricks']
         h['trick_totals'] = {name: sum(t['winner'] == name for t in history) for name in names} if full else None
-        final = h.get('final_bids')
-        if final and all(final.get(f'{seat}_bid') is not None for seat in ('player', 'computer')):
-            h['bids'] = [dict(player=name, amount=final[f'{seat}_bid'], is_nil=final[f'{seat}_bid'] == 0,
+        final = h.get('final_bids') or {}
+        # The first leader bids first (hand_flow: computer bids first when first_leader is computer).
+        leader = final.get('first_leader') or h.get('first_leader')
+        seats = ('computer', 'player') if leader == 'computer' else ('player', 'computer')
+        by_seat = dict(zip(('player', 'computer'), names))
+        if all(final.get(f'{seat}_bid') is not None for seat in seats):
+            h['bids'] = [dict(player=by_seat[seat], amount=final[f'{seat}_bid'], is_nil=final[f'{seat}_bid'] == 0,
                               is_blind=bool(final.get(f'{seat}_blind')))
-                         for seat, name in zip(('player', 'computer'), names)]
+                         for seat in seats]
+        h['first_bidder'] = h['bids'][0]['player'] if h['bids'] else (by_seat[seats[0]] if leader else None)
         bids = {b['player']: b for b in h['bids']}
         bids_complete = bids_complete and set(bids) == set(names)
         if full:

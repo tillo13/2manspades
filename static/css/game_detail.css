@@ -77,6 +77,10 @@
     flex-wrap: wrap;
     font-size: 0.9rem;
 }
+.bid-first {
+    color: #1976d2;
+    font-weight: 600;
+}
 .bid-item {
     display: inline;
 }
