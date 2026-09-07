@@ -214,3 +214,7 @@ _antiquated*/
 *.ogg
 *.opus
 .env.bak-*
+
+# Claude Code per-machine permissions: personal, never shared
+.claude/settings.local.json
+.claude/settings.local.json.bak*

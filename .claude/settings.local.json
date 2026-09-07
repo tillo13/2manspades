@@ -42,7 +42,8 @@
       "Bash(pkill *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://2manspades.com/referee)",
       "Bash(curl -s https://2manspades.com/referee)",
-      "Bash(curl -s https://2manspades.com/static/js/jukebox.js)"
+      "Bash(curl -s https://2manspades.com/static/js/jukebox.js)",
+      "Bash(gcloud app *)"
     ]
   }
 }
