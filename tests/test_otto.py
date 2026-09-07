@@ -187,6 +187,9 @@ class RatchetTests(unittest.TestCase):
         self.assertEqual(ratchet(41, False, 343, games=45, days_idle=40), 36)   # rust halves a loss
         self.assertEqual(ratchet(100, False, 30, games=225), 98)  # 6 × 0.5 × 0.5 = 1.5 → 2
         self.assertEqual(ratchet(0, True, 400, games=225), 8)     # wins climb in full height: 15 × 0.5
+        self.assertEqual(ratchet(42, True, 100, games=390, streak=78), 56)   # 9 × 0.5 × 3 = 13.5 → 14: Tom
+        self.assertEqual(ratchet(50, True, 10, streak=3), 56)      # 5 × 1.2
+        self.assertEqual(ratchet(50, False, 10, streak=4), 45)     # 5 × 0.75 × 1.4 = 5.25
         self.assertEqual([level_name(s) for s in (0, 14, 15, 44, 45, 79, 80, 100)],
                          ['easy', 'easy', 'medium', 'medium', 'hard', 'hard', 'ruthless', 'ruthless'])
         self.assertEqual(strength_of('hard'), 60)
@@ -215,7 +218,7 @@ class RatchetTests(unittest.TestCase):
         r, setting = self._finish_game('tom@example.com', 40)
         self.assertEqual({k: r[k] for k in ('before', 'after', 'from_level', 'level', 'won', 'margin', 'games')},
                          {'before': 60, 'after': 68, 'from_level': 'hard', 'level': 'hard', 'won': True, 'margin': 110, 'games': 40})
-        self.assertEqual(r['move'], {'delta': 8, 'extra': 4, 'games_k': 0.93, 'height_k': 1.0, 'idle_k': 1.0})
+        self.assertEqual(r['move'], {'delta': 8, 'extra': 4, 'games_k': 0.93, 'height_k': 1.0, 'idle_k': 1.0, 'streak_k': 1.0})
         self.assertEqual(setting, 68)
         r, setting = self._finish_game('new@example.com', 3)
         self.assertIsNone(r)

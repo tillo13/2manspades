@@ -196,6 +196,7 @@ function renderGameOver() {
         if (mv.games_k < 1) parts.push(`×${mv.games_k} for ${r.games} games on record (a long record moves less)`);
         if (mv.height_k < 1) parts.push(`×${mv.height_k} for the height of the dial (a loss up high drops less)`);
         if (mv.idle_k < 1) parts.push(`×${mv.idle_k} for ${r.days_idle} days away (rust)`);
+        if (mv.streak_k > 1) parts.push(`×${mv.streak_k} for ${r.streak} ${r.won ? 'wins' : 'losses'} in a row`);
         document.getElementById('goRatchetWhy').textContent =
             `${r.won ? 'Won' : 'Lost'} by ${m}: ${r.won ? '+' : '−'}${Math.abs(mv.delta)} (${parts.join('; ')})` +
             `${clamped ? `, held at the ${r.after >= r.before ? 'top' : 'bottom'} of the dial` : ''}.` +
