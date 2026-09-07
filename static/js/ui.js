@@ -130,7 +130,7 @@ function setDifficulty(strength) {
 // DELEGATED HANDLERS
 // =============================================================================
 const ACTIONS = {
-    startNewGame, nextHand, performAction, toggleComputerHand, sendMessage,   // the bubble is wired by jukebox.js
+    startNewGame, shareGame, nextHand, performAction, toggleComputerHand, sendMessage,   // the bubble is wired by jukebox.js
     openDifficultyModal, dismissLoginPrompt, handleLoginClick, confirmSelectedBid, cancelBidSelection,
     chooseNormalBidding, chooseBlindNil, chooseBlindBidding,
     selectBid: (el) => selectBid(parseInt(el.dataset.arg, 10)),

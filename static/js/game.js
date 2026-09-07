@@ -216,6 +216,7 @@ function renderGameOver() {
 
     const link = document.getElementById('goDetail');
     link.hidden = !gameState.game_id;
+    document.getElementById('goShare').hidden = !gameState.game_id;
     if (gameState.game_id) link.href = '/game/' + gameState.game_id;
 
     // every hand of the game, one row each: bid/tricks per seat (B = blind, red = set), the
@@ -236,6 +237,17 @@ function renderGameOver() {
         </tr>`).join('') + `</tbody></table>`;
 
     renderHistory();
+}
+
+async function shareGame(button) {
+    const url = document.getElementById('goDetail').href;
+    try {
+        await navigator.clipboard.writeText(url);
+        button.textContent = 'Link copied!';
+        setTimeout(() => { button.textContent = 'Share game'; }, 2000);
+    } catch {
+        window.prompt('Copy this game link:', url);
+    }
 }
 
 // Full history for the person at the table: record, streaks, margins, per-rung. Fetched once
