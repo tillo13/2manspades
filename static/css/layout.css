@@ -63,7 +63,6 @@
     .game-over { padding: 28px 24px 22px; margin-bottom: 20px; }
     .go-result { font-size: 32px; }
     .go-tile-v { font-size: 22px; }
-    .game-over button { padding: 16px 30px; font-size: 18px; }
 
     .cards {
         grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));

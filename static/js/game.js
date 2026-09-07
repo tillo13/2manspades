@@ -214,10 +214,9 @@ function renderGameOver() {
     document.getElementById('goTally').innerHTML = tiles.map(([k, v]) =>
         `<div class="go-tile"><div class="go-tile-v">${v}</div><div class="go-tile-k">${k}</div></div>`).join('');
 
-    const link = document.getElementById('goDetail');
-    link.hidden = !gameState.game_id;
-    document.getElementById('goShare').hidden = !gameState.game_id;
-    if (gameState.game_id) link.href = '/game/' + gameState.game_id;
+    gameUrl = gameState.game_id ? location.origin + '/game/' + gameState.game_id : null;
+    document.getElementById('goDetail').hidden = !gameUrl;
+    document.getElementById('goShare').hidden = !gameUrl;
 
     // every hand of the game, one row each: bid/tricks per seat (B = blind, red = set), the
     // middle with who took it, bags after the hand, running score
@@ -239,14 +238,20 @@ function renderGameOver() {
     renderHistory();
 }
 
+let gameUrl = null;
+
+function openDetail() {
+    if (gameUrl) location.assign(gameUrl);
+}
+
 async function shareGame(button) {
-    const url = document.getElementById('goDetail').href;
+    const label = button.querySelector('span');
     try {
-        await navigator.clipboard.writeText(url);
-        button.textContent = 'Link copied!';
-        setTimeout(() => { button.textContent = 'Share game'; }, 2000);
+        await navigator.clipboard.writeText(gameUrl);
+        label.textContent = 'Link copied!';
+        setTimeout(() => { label.textContent = 'Share game'; }, 2000);
     } catch {
-        window.prompt('Copy this game link:', url);
+        window.prompt('Copy this game link:', gameUrl);
     }
 }
 
@@ -308,6 +313,15 @@ function updatePhaseVisibility() {
         discardBlindSection.style.display = 'block';
     } else if (gameState.phase === 'bidding') {
         biddingSection.style.display = 'block';
+        // Say plainly who bid first. Marta's bid is already in when she leads the hand.
+        const title = document.querySelector('.bidding-title');
+        if (gameState.computer_bid !== null && gameState.player_bid === null) {
+            const blind = gameState.computer_blind_bid === gameState.computer_bid ? 'BLIND ' : '';
+            const bid = gameState.computer_bid === 0 ? 'NIL' : gameState.computer_bid;
+            title.innerHTML = `Marta bid first: <span class="bid-first-value">${blind}${bid}</span>`;
+        } else {
+            title.textContent = 'You bid first';
+        }
         if (!biddingSection.classList.contains('active')) {
             biddingSection.classList.add('active');
             resetBiddingState();

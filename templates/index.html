@@ -131,13 +131,13 @@
                     <div class="go-bar-rungs"><span>Easy</span><span>Medium</span><span>Hard</span><span>Ruthless</span></div>
                     <div class="go-ratchet-why" id="goRatchetWhy"></div>
                 </div>
+                <div class="go-actions">
+                    <button class="go-btn go-again" data-action="startNewGame">Play Again</button>
+                    <button class="go-btn go-share" id="goShare" data-action="shareGame" aria-live="polite" hidden><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18 16a3 3 0 0 0-2.4 1.2l-7-4.1a3 3 0 0 0 0-2.2l7-4.1A3 3 0 1 0 15 5a3 3 0 0 0 .1.7l-7 4.1a3 3 0 1 0 0 4.4l7 4.1A3 3 0 1 0 18 16z"/></svg><span>Share game</span></button>
+                    <button class="go-btn go-detail" id="goDetail" data-action="openDetail" hidden>Full breakdown</button>
+                </div>
                 <div class="go-tally" id="goTally"></div>
                 <div class="go-hands" id="goHands"></div>
-                <div class="go-actions">
-                    <button data-action="startNewGame">Play Again</button>
-                    <button id="goShare" data-action="shareGame" aria-live="polite" hidden>Share game</button>
-                    <a class="go-link" id="goDetail" href="/stats" hidden>Full breakdown</a>
-                </div>
                 <div class="go-history" id="goHistory" hidden></div>
             </div>
 

@@ -161,9 +161,14 @@
 .go-history .go-tally { margin-top: 10px; }
 .go-rungs { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: #666; }
 .go-rungs b { color: #333; }
-.go-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; margin-top: 18px; }
-.go-link { color: #667eea; font-size: 14px; text-decoration: none; }
-.go-link:hover { text-decoration: underline; }
+/* Actions sit under the ratchet dial, above the tally: three small buttons, one color each. */
+.go-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
+.game-over .go-btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 10px; font-size: 12px;
+    min-width: 0; border-radius: 6px; background: none; box-shadow: none; }
+.game-over .go-btn:hover:not(:disabled) { transform: none; filter: brightness(1.08); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); }
+.go-again { background: #28a745 !important; }
+.go-share { background: #1976d2 !important; }
+.go-detail { background: #fd7e14 !important; }
 
 /* HAND OVER (2026-09-06): the summary takes the board's place. Same shell as .game-over. */
 .hand-over { text-align: center; padding: 20px 18px 16px; background: #fff; border: 1px solid #e9ecef;
@@ -371,6 +376,7 @@ button:disabled {
     text-align: center;
 }
 
+.bid-first-value { color: #1976d2; }
 .bidding-title {
     font-size: 18px;
     font-weight: bold;
