@@ -123,10 +123,9 @@
             </div>
 
             <!-- Tricks Won -->
-            {% if hand.tricks %}
+            {% if hand.tricks and not hand.trick_history %}
             <div class="tricks-section">
                 <strong>Tricks won:</strong>
-                <span class="tricks-hint">(click below for card details)</span>
                 <div class="tricks-grid">
                     {% for trick in hand.tricks %}
                     <div class="trick {{ 'player-won' if trick.winner != 'Marta' else 'computer-won' }}">
@@ -140,25 +139,26 @@
 
             <!-- Trick Details -->
             {% if hand.trick_history %}
-            <button class="expand-tricks" data-action="toggleTricks" data-arg="{{ hand.hand_number }}">
-                Show Trick Details ▼
+            <button class="expand-tricks" data-action="toggleTricks" data-arg="{{ hand.hand_number }}" aria-expanded="true" aria-controls="tricks-{{ hand.hand_number }}">
+                Hide Trick Details ▲
             </button>
-            <div class="trick-history" id="tricks-{{ hand.hand_number }}">
+            <div class="trick-history show" id="tricks-{{ hand.hand_number }}">
                 <div class="trick-detail">
                     {% for trick in hand.trick_history %}
                     <div class="trick-detail-item {% if trick.winner != 'Marta' %}winner{% endif %}">
                         <div>
-                            <strong>Trick {{ trick.number }}</strong><br>
-                            <span class="card-played">
-                                {{ game.summary.player_name }}: <span class="{{ trick.player_card[-1]|lower }}s">{{ trick.player_card }}</span>
-                            </span><br>
-                            <span class="card-played">
-                                Marta: <span class="{{ trick.computer_card[-1]|lower }}s">{{ trick.computer_card }}</span>
-                            </span>
+                            <strong>Trick {{ trick.number }}</strong>
+                            {% if trick.laid_down %}<span class="trick-note">Laid down</span>{% endif %}
+                            {% set plays = [(game.summary.player_name, trick.player_card), ('Marta', trick.computer_card)] %}
+                            {% for name, card in (plays|reverse if trick.leader == 'Marta' else plays) %}
+                            <div class="card-played">
+                                <span>{{ name }}{% if name == trick.leader %} <span class="trick-note">led</span>{% endif %}</span>
+                                <span class="{{ 'red-card' if card[-1] in '♥♦' else 'black-card' }}">{{ card }}</span>
+                            </div>
+                            {% endfor %}
+                            {% if not trick.leader %}<div class="trick-note">Lead not recorded</div>{% endif %}
                         </div>
-                        <div style="font-size: 0.8rem; color: {% if trick.winner != 'Marta' %}#667eea{% else %}#fd7e14{% endif %};">
-                            {{ trick.winner }}
-                        </div>
+                        <div class="trick-winner">{{ trick.winner }} won</div>
                     </div>
                     {% endfor %}
                 </div>

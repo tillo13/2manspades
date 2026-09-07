@@ -37,7 +37,8 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         # rows are collapsed: events were being written twice.
         cur.execute("""
             SELECT DISTINCT ON (e.hand_number, e.event_type, e.event_data::text)
-                   e.event_type, e.hand_number, e.player, e.timestamp, e.event_data
+                   e.event_type, e.hand_number, e.player, e.timestamp, e.event_data,
+                   h.first_leader AS hand_first_leader
               FROM twomanspades.game_events e
               JOIN twomanspades.hands h ON h.hand_id = e.hand_id
               JOIN twomanspades.hands me ON me.hand_id = %s
@@ -67,6 +68,7 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             if hand_num not in hands:
                 hands[hand_num] = {
                     'hand_number': hand_num,
+                    'first_leader': event.get('hand_first_leader'),
                     'bids': [],
                     'tricks': [],
                     'scoring': None,
@@ -119,6 +121,8 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
                         t = dict(trick)
                         if t.get('winner') == 'You':
                             t['winner'] = summary['player_name']
+                        if t.get('leader') == 'You':
+                            t['leader'] = summary['player_name']
                         trick_history.append(t)
                     hand['trick_history'] = trick_history
 
@@ -171,6 +175,13 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
 
         # Add timing to hands
         for h in hands.values():
+            leader = {'player': summary['player_name'], 'computer': 'Marta'}.get(h['first_leader'])
+            previous_number = 0
+            for trick in sorted(h['trick_history'], key=lambda t: t['number']):
+                if not trick.get('leader'):
+                    trick['leader'] = leader if trick['number'] == previous_number + 1 else None
+                leader = trick['winner']
+                previous_number = trick['number']
             if h['hand_number'] in hand_timings:
                 h['timing'] = hand_timings[h['hand_number']]
 

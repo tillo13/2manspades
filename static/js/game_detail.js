@@ -3,6 +3,7 @@ function toggleTricks(handNumber) {
     const el = document.getElementById('tricks-' + handNumber);
     el.classList.toggle('show');
     const btn = el.previousElementSibling;
+    btn.setAttribute('aria-expanded', el.classList.contains('show'));
     if (el.classList.contains('show')) {
         btn.textContent = 'Hide Trick Details ▲';
     } else {
