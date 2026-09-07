@@ -25,6 +25,7 @@ class GameDetailTests(unittest.TestCase):
              patch('utilities.postgres_utils.records.return_db_connection'):
             game = get_game_details('game')
         self.assertEqual(game['hands'][0]['trick_history'][0]['leader'], 'Andy')
+        game['game_completed'] = {'final_message': 'GAME OVER! You WIN by mercy rule 410 to 44! (300+ point lead)'}
         app = Flask(__name__, template_folder=str(Path(__file__).resolve().parents[1] / 'templates'))
         with app.test_request_context('/'):
             html = render_template('game_detail.html', game=game)
@@ -37,6 +38,8 @@ class GameDetailTests(unittest.TestCase):
         second = html.split('<strong>Trick 2</strong>')[1].split('<strong>Trick 3</strong>')[0]
         self.assertLess(second.index('Marta'), second.index('Andy'))
         self.assertIn('red-card', html)
+        self.assertIn('Andy WINS by mercy rule 410 to 44!', html)
+        self.assertNotIn('You WIN', html)
         history[0].pop('leader')
         events[0]['hand_first_leader'] = 'computer'
         with patch('utilities.postgres_utils.records.get_db_connection', return_value=conn), \

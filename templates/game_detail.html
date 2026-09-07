@@ -179,7 +179,11 @@
         {% if game.game_completed %}
         <div class="game-end-message {% if not game.summary.won %}lost{% endif %}">
             <div class="game-end-text">
-                {{ game.game_completed.final_message or game.summary.final_message }}
+                {{ (game.game_completed.final_message or game.summary.final_message)
+                    |replace('You WIN', game.summary.player_name ~ ' WINS')
+                    |replace('You win', game.summary.player_name ~ ' wins')
+                    |replace('You won', game.summary.player_name ~ ' won')
+                    |replace('You ', game.summary.player_name ~ ' ') }}
             </div>
         </div>
         {% endif %}
