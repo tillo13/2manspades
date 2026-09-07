@@ -1,4 +1,5 @@
 /* /game/<id> page, on top of stats.css. */
+.back-button { position: static; display: inline-block; margin-bottom: 0.75rem; }
 .game-header {
     text-align: center;
     margin-bottom: 1.5rem;
@@ -24,6 +25,24 @@
 }
 .final-score .player-score { color: #667eea; font-weight: bold; }
 .final-score .computer-score { color: #fd7e14; font-weight: bold; }
+.game-meta a { color: #494fc0; font-weight: 600; }
+.game-comparison { width: 100%; border-collapse: collapse; margin-top: 1rem; table-layout: fixed; font-size: 0.9rem; }
+.game-comparison caption { text-align: left; font-weight: 700; color: #333; padding-bottom: 0.6rem; }
+.game-comparison th, .game-comparison td { padding: 0.55rem 0.25rem; border-bottom: 1px solid #dee2e6; overflow-wrap: anywhere; }
+.game-comparison th { text-align: left; font-weight: 500; color: #555; }
+.game-comparison th:first-child { width: 45%; }
+.game-comparison td, .game-comparison thead th:not(:first-child) { text-align: center; }
+.game-comparison td { font-weight: 700; font-variant-numeric: tabular-nums; }
+.score-progression { padding: 0 1rem 1rem; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 1.5rem; }
+.score-progression a { color: #494fc0; display: inline-block; padding: 0.25rem 0.5rem; }
+.hand-fact { padding: 0.75rem; border: 1px solid #e1e4e8; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.85rem; line-height: 1.5; color: #444; }
+.hand-fact p { margin: 0.35rem 0 0; overflow-wrap: anywhere; }
+.middle-fact { background: #faf8ee; }
+.middle-cards { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.4rem; }
+.middle-cards b { font-size: 1.15rem; margin-left: 0.3rem; }
+.middle-cards .red-card { color: #c62828; }
+.middle-cards .black-card { color: #222; }
+.bid-outcome { color: #555; font-size: 0.8rem; }
 
 .hand-card {
     background: white;

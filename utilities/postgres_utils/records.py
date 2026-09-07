@@ -38,7 +38,7 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
         cur.execute("""
             SELECT DISTINCT ON (e.hand_number, e.event_type, e.event_data::text)
                    e.event_type, e.hand_number, e.player, e.timestamp, e.event_data,
-                   h.first_leader AS hand_first_leader
+                   h.first_leader AS hand_first_leader, h.difficulty
               FROM twomanspades.game_events e
               JOIN twomanspades.hands h ON h.hand_id = e.hand_id
               JOIN twomanspades.hands me ON me.hand_id = %s
@@ -69,6 +69,10 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
                 hands[hand_num] = {
                     'hand_number': hand_num,
                     'first_leader': event.get('hand_first_leader'),
+                    'difficulty': event.get('difficulty'),
+                    'middle': None,
+                    'specials': [],
+                    'auto_resolution': None,
                     'bids': [],
                     'tricks': [],
                     'scoring': None,
@@ -77,7 +81,16 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
 
             hand = hands[hand_num]
 
-            if etype == 'action_regular_bid':
+            if etype == 'discard_scoring':
+                hand['middle'] = data
+            elif etype == 'special_card_effect':
+                hand['specials'].append(data)
+            elif etype == 'hand_auto_resolved':
+                hand['auto_resolution'] = data.get('explanation')
+                hand['auto_tricks'] = data.get('tricks_simulated')
+            elif etype == 'bidding_complete':
+                hand['final_bids'] = data
+            elif etype == 'action_regular_bid':
                 # Use actual player name instead of "You"
                 bid_player = summary['player_name'] if event['player'] == 'player' else 'Marta'
                 bid_amount = data['action_data']['bid_amount']
@@ -115,6 +128,8 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
                 }
                 # Extract trick history if available, convert "You" to player name
                 hand_results = data.get('hand_results', {})
+                hand['middle_explanation'] = hand_results.get('discard_info')
+                hand['auto_resolution'] = hand_results.get('auto_resolution') or hand['auto_resolution']
                 if 'trick_history' in hand_results:
                     trick_history = []
                     for trick in hand_results['trick_history']:
@@ -187,6 +202,8 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
 
         # Convert to sorted list
         hands_list = sorted(hands.values(), key=lambda h: h['hand_number'])
+        from .game_summary import summarize_game
+        summary.update(summarize_game(hands_list, summary))
 
         return {
             'hand_id': hand_id,

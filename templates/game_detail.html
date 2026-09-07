@@ -24,7 +24,7 @@
         <div class="game-header">
             <div class="game-meta">
                 {% if game.summary.player_name %}
-                Played by {{ game.summary.player_name }}
+                Played by <a href="{{ url_for('player_profile', name=game.summary.player_name) }}">{{ game.summary.player_name }}</a>
                 {% endif %}
             </div>
             <div class="game-result {{ 'won' if game.summary.won else 'lost' }}">
@@ -41,6 +41,18 @@
                 · {{ game.summary.player_bags }} bags
                 {% endif %}
             </div>
+            {% if game.summary.difficulties %}
+            <div class="game-meta">Marta: {{ game.summary.difficulties|map('title')|join(' / ') }}</div>
+            {% endif %}
+            {% if game.summary.comparison %}
+            <table class="game-comparison">
+                <caption>This game</caption>
+                <thead><tr><th scope="col">Result</th><th scope="col">{{ game.summary.player_name }}</th><th scope="col">Marta</th></tr></thead>
+                <tbody>{% for row in game.summary.comparison %}
+                    <tr><th scope="row">{{ row.label }}</th><td>{{ row.player }}</td><td>{{ row.computer }}</td></tr>
+                {% endfor %}</tbody>
+            </table>
+            {% endif %}
             {% if game.summary.game_start %}
             <div class="game-timing">
                 <div class="timing-row">
@@ -69,6 +81,18 @@
             {% endif %}
         </div>
 
+        {% if game.summary.progression %}
+        <div class="score-progression">
+            <table class="game-comparison">
+                <caption>Score after each hand</caption>
+                <thead><tr><th scope="col">Hand</th><th scope="col">{{ game.summary.player_name }}</th><th scope="col">Marta</th></tr></thead>
+                <tbody>{% for score in game.summary.progression %}
+                    <tr><th scope="row"><a href="#hand-{{ score.hand }}">{{ score.hand }}</a></th><td>{{ score.player }}</td><td>{{ score.computer }}</td></tr>
+                {% endfor %}</tbody>
+            </table>
+        </div>
+        {% endif %}
+
         <!-- Hand by Hand Breakdown -->
         <div class="section-title">Hand by Hand</div>
 
@@ -93,7 +117,7 @@
             {% endif %}
         </div>
         {% endif %}
-        <div class="hand-card">
+        <div class="hand-card" id="hand-{{ hand.hand_number }}">
             <div class="hand-header">
                 <div class="hand-number">Hand {{ hand.hand_number }}</div>
                 {% if hand.scoring %}
@@ -118,9 +142,38 @@
                 <span class="bid-item {% if bid.is_blind %}blind{% elif bid.is_nil %}nil{% endif %}">
                     <span class="bid-player">{{ bid.player }}:</span>
                     <span class="bid-amount">{% if bid.is_blind %}BLIND {% endif %}{% if bid.is_nil %}NIL{% else %}{{ bid.amount }}{% endif %}</span>
+                    {% if bid.taken is defined %}<span class="bid-outcome"> · {{ bid.taken }} taken · {{ 'Made' if bid.made else 'Set' }}</span>{% endif %}
                 </span>
                 {% endfor %}
             </div>
+
+            {% if hand.middle %}
+            <div class="hand-fact middle-fact">
+                <strong>Middle</strong>
+                <div class="middle-cards">
+                    {% for name, card in [(game.summary.player_name, hand.middle.player_card), ('Marta', hand.middle.computer_card)] %}
+                    <span>{{ name }} <b class="{{ 'red-card' if card and card[-1] in '♥♦' else 'black-card' }}">{{ card or 'Not recorded' }}</b></span>
+                    {% endfor %}
+                </div>
+                <p>{{ (hand.middle_explanation or hand.middle.explanation)|replace('You get ', game.summary.player_name ~ ' gets ')|replace('You ', game.summary.player_name ~ ' ')|replace('you ', game.summary.player_name ~ ' ') }}</p>
+            </div>
+            {% endif %}
+
+            {% if hand.specials %}
+            <div class="hand-fact">
+                <strong>Special cards</strong>
+                {% for effect in hand.specials %}
+                <p>Trick {{ effect.trick_number }}: {{ effect.explanation|replace('You ', game.summary.player_name ~ ' ')|replace('you ', game.summary.player_name ~ ' ') }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if hand.auto_resolution %}
+            <div class="hand-fact">
+                <strong>Automatic play</strong>
+                <p>{{ hand.auto_resolution|replace('You ', game.summary.player_name ~ ' ')|replace('you ', game.summary.player_name ~ ' ') }}</p>
+            </div>
+            {% endif %}
 
             <!-- Tricks Won -->
             {% if hand.tricks and not hand.trick_history %}
@@ -149,6 +202,7 @@
                         <div>
                             <strong>Trick {{ trick.number }}</strong>
                             {% if trick.laid_down %}<span class="trick-note">Laid down</span>{% endif %}
+                            {% if trick.auto_played and not trick.laid_down %}<span class="trick-note">Auto-played</span>{% endif %}
                             {% set plays = [(game.summary.player_name, trick.player_card), ('Marta', trick.computer_card)] %}
                             {% for name, card in (plays|reverse if trick.leader == 'Marta' else plays) %}
                             <div class="card-played">
