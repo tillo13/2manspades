@@ -338,6 +338,10 @@ function updateMessages() {
     if (carded) return;
 
     let messageToShow = gameState.message;
+    // While discarding, say who bids first this hand (the first leader bids first)
+    if (gameState.phase === 'discard') {
+        messageToShow += gameState.first_leader === 'computer' ? ' · Marta bids first' : ' · You bid first';
+    }
 
     showMessage(messageToShow, messageToShow.includes('WIN') || messageToShow.includes('BLIND NIL SUCCESS') ? 'success' : '');
 }

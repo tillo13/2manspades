@@ -130,7 +130,10 @@ class MartaReadTests(unittest.TestCase):
         payload = dict(PAYLOAD)
         payload['styles'] = []
         payload['reads'] = [{'player': 'Tom', 'title': 'The Accountant', 'evidence': '40.2% exact bids', 'hands': 3190}]
-        payload['live'] = [{'hand_id': 'abc', 'who': 'Luke', 'hand_number': 3, 'status': 'playing', 'ago': '4 min ago', 'winner': None, 'finished': False, 'last_seen': D, 'tables': 3}]
+        payload['live'] = {'playing': [{'hand_id': 'abc', 'who': 'Luke', 'hand_number': 3, 'ago': '4 min ago', 'player_score': 154,
+                                        'computer_score': 183, 'player_bid': 4, 'computer_bid': 3, 'player_tricks': 2, 'computer_tricks': 1}],
+                           'finished': [{'hand_id': 'def', 'who': 'Tom', 'hand_number': 9, 'status': 'won', 'ago': '20 min ago',
+                                         'player_score': 310, 'computer_score': 120, 'hands_played': 9}]}
         with ExitStack() as stack:
             stack.enter_context(redirect_stdout(StringIO()))
             isolate_services(stack)
@@ -139,7 +142,44 @@ class MartaReadTests(unittest.TestCase):
         self.assertIn("Marta's Read on the Table", html.replace('&#39;', "'"))
         self.assertIn('The Accountant', html)
         self.assertIn('At the Table Right Now', html)
-        self.assertIn('playing · hand 3', html)
+        self.assertIn('In a game now', html)
+        self.assertIn('154 · 183', html)
+        self.assertIn('hand 3 · bid 4/3 · tricks 2/1 · 4 min ago', html)
+        self.assertIn('Finished this hour', html)
+        self.assertIn('won 310 · 120', html)
+        self.assertIn('/game/def', html)
+
+    def test_live_split_separates_playing_from_finished(self):
+        from datetime import timedelta
+        from utilities.postgres_utils.stats import split_live
+        now = datetime(2026, 9, 7, 12, 0)
+        row = lambda **k: {**dict(hand_id='x', who='Luke', hand_number=2, finished=False, winner=None, now=now,
+                                  last_seen=now - timedelta(minutes=1), hand_player=None, hand_computer=None,
+                                  prev_player=50, prev_computer=32, player_bid=4, computer_bid=3), **k}
+        rows = [row(), row(hand_id='old', last_seen=now - timedelta(minutes=3)),
+                row(hand_id='idle', who='Jon', last_seen=now - timedelta(minutes=7)),
+                row(hand_id='done', who='Tom', finished=True, winner='computer', last_seen=now - timedelta(minutes=30))]
+        live = split_live(rows)
+        self.assertEqual([g['hand_id'] for g in live['playing']], ['x'])
+        self.assertEqual((live['playing'][0]['player_score'], live['playing'][0]['computer_score']), (50, 32))
+        self.assertEqual([(g['hand_id'], g['status'], g['ago'], g['player_score']) for g in live['finished']], [('done', 'lost', '30 min ago', 50)])
+        scored = split_live([row(hand_player=63, hand_computer=113)])
+        self.assertEqual(scored['playing'][0]['player_score'], 63)
+
+    def test_live_endpoint_is_one_query_and_uncached(self):
+        from unittest.mock import MagicMock
+        conn = MagicMock()
+        conn.cursor.return_value.fetchall.return_value = []
+        with ExitStack() as stack:
+            stack.enter_context(redirect_stdout(StringIO()))
+            isolate_services(stack)
+            stack.enter_context(patch('utilities.postgres_utils.stats.get_db_connection', return_value=conn))
+            stack.enter_context(patch('utilities.postgres_utils.stats.return_db_connection'))
+            resp = A.app.test_client().get('/stats/live')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(conn.cursor.return_value.execute.call_count, 1)
+        self.assertEqual(resp.headers['Cache-Control'], 'no-store')
+        self.assertIn('Nobody in the last hour', resp.get_data(as_text=True))
 
 
 class MartaReviewTests(unittest.TestCase):

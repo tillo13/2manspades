@@ -331,6 +331,7 @@ def build_safe_game_state(game, debug_mode=False):
         'spades_broken': game['spades_broken'],
         'phase': game['phase'],
         'turn': game['turn'],
+        'first_leader': game.get('first_leader', 'player'),   # who bids first this hand
         'trick_leader': game.get('trick_leader'),
         'hand_over': game.get('hand_over', False),
         'game_over': game.get('game_over', False),

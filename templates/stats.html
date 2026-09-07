@@ -61,21 +61,11 @@
         </div>
         {% endif %}
 
-        <!-- Who's at the table: any activity in the last hour -->
-        {% if live %}
+        <!-- Who's at the table: live block, polled by stats.js -->
         <div class="stats-section" id="live">
             <div class="section-title">At the Table Right Now</div>
-            <div class="achievement-card">
-                {% for g in live %}
-                <div class="achievement-row">
-                    <span class="achievement-player">{{ g.who }}</span>
-                    <span class="achievement-value {{ 'streak-value' if g.status == 'playing' else ('' if g.status == 'won' else 'loss-value') }}">{{ 'playing' if g.status == 'playing' else g.status }} · hand {{ g.hand_number or 1 }}</span>
-                    <span class="achievement-detail">{{ g.ago }}{% if g.tables > 1 %} · {{ g.tables }} tables this hour{% endif %}{% if g.finished %} · <a href="/game/{{ g.hand_id }}" class="game-link">open game</a>{% else %} · <a href="/player/{{ g.who }}" class="game-link">their games</a>{% endif %}</span>
-                </div>
-                {% endfor %}
-            </div>
+            <div id="liveTables">{% include '_live_tables.html' %}</div>
         </div>
-        {% endif %}
 
         <!-- Marta's read on the table: computed titles from each regular's own numbers -->
         {% if reads %}

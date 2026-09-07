@@ -81,6 +81,10 @@
 .achievement-row .achievement-detail { text-align: right; overflow-wrap: anywhere; }
 .achievement-row .achievement-player { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.live-title { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; margin: 10px 0 4px; }
+.live-title:first-child { margin-top: 0; }
+.live-empty { font-size: 13px; color: #999; padding: 4px 0; }
+
 .achievement-row:last-child {
     border-bottom: none;
 }

@@ -81,53 +81,81 @@ def warm_stats_cache():
 
 
 def live_tables():
-    """Tables with activity in the last hour: who, which hand, the score so far, whether the
-    game is still going, and a link into it. Anonymous tables show as their city or 'Someone'."""
+    """Two lists from one query over the last hour of game_events. `playing`: one line per
+    person at a table now (an event in the last 5 minutes, no game_completed yet) with the
+    running score and this hand's bids and tricks, read from events. `finished`: every game
+    that ended this hour with its final score. Each hand has its own hand_id; a game's hands
+    share player_id and started_at, which is how the running score reaches a hand in play.
+    Anonymous tables show as their city or 'Someone'."""
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
             WITH recent AS (
-                SELECT hand_id, MAX(timestamp) AS last_seen, MIN(timestamp) AS first_seen,
-                       MAX(hand_number) AS hand_number,
+                SELECT hand_id, MAX(timestamp) AS last_seen, MAX(hand_number) AS hand_number,
                        BOOL_OR(event_type = 'game_completed') AS finished,
-                       MAX(CASE WHEN event_type = 'game_completed' THEN event_data->>'winner' END) AS winner
+                       MAX(CASE WHEN event_type = 'game_completed' THEN event_data->>'winner' END) AS winner,
+                       MAX(CASE WHEN event_type = 'game_completed' THEN event_data->>'hands_played' END)::int AS hands_played,
+                       MAX(CASE WHEN event_type = 'hand_scoring' THEN event_data->'final_scores'->>'player_score' END)::int AS hand_player,
+                       MAX(CASE WHEN event_type = 'hand_scoring' THEN event_data->'final_scores'->>'computer_score' END)::int AS hand_computer,
+                       MAX(CASE WHEN event_type = 'bidding_complete' THEN event_data->>'player_bid' END)::int AS player_bid,
+                       MAX(CASE WHEN event_type = 'bidding_complete' THEN event_data->>'computer_bid' END)::int AS computer_bid,
+                       COUNT(*) FILTER (WHERE event_type = 'trick_completed' AND event_data->>'winner' = 'player') AS player_tricks,
+                       COUNT(*) FILTER (WHERE event_type = 'trick_completed' AND event_data->>'winner' = 'computer') AS computer_tricks
                   FROM twomanspades.game_events
                  WHERE timestamp > NOW() - INTERVAL '60 minutes'
                  GROUP BY hand_id)
-            SELECT r.hand_id, r.last_seen, r.hand_number, r.finished, r.winner,
+            SELECT r.*, NOW() AS now,
                    COALESCE(v.player_name, NULLIF(v.city, ''), 'Someone') AS who,
-                   h.hand_player_score, h.hand_computer_score
+                   prev.hand_player_score AS prev_player, prev.hand_computer_score AS prev_computer
               FROM recent r
               JOIN twomanspades.hands h ON h.hand_id = r.hand_id
               LEFT JOIN twomanspades.vw_player_identity v ON v.hand_id = r.hand_id
+              LEFT JOIN LATERAL (
+                   -- the previous hand's scoring event: display scores (with bags), same as the game shows
+                   SELECT (ev.event_data->'final_scores'->>'player_score')::int AS hand_player_score,
+                          (ev.event_data->'final_scores'->>'computer_score')::int AS hand_computer_score
+                     FROM twomanspades.hands p
+                     JOIN twomanspades.game_events ev ON ev.hand_id = p.hand_id AND ev.event_type = 'hand_scoring'
+                    WHERE p.player_id = h.player_id AND p.started_at = h.started_at
+                      AND p.created_at < h.created_at
+                    ORDER BY p.created_at DESC LIMIT 1) prev ON TRUE
              ORDER BY r.last_seen DESC
              LIMIT 60
         """)
         rows = [dict(r) for r in cur.fetchall()]
         cur.close()
-        now = datetime.now(rows[0]['last_seen'].tzinfo) if rows and rows[0]['last_seen'] else datetime.now()
-        # one line per person: their latest table, plus how many they opened this hour
-        # (a "New Game" click a minute is one player, not twelve)
-        seen, out = {}, []
-        for r in rows:
-            mins = int((now - r['last_seen']).total_seconds() // 60) if r['last_seen'] else None
-            r['ago'] = 'just now' if mins is not None and mins < 1 else (f"{mins} min ago" if mins is not None else '')
-            r['status'] = ('won' if r['winner'] == 'player' else 'lost') if r['finished'] else 'playing'
-            if r['who'] in seen:
-                seen[r['who']]['tables'] += 1
-                continue
-            r['tables'] = 1
-            seen[r['who']] = r
-            out.append(r)
-        return out
+        return split_live(rows)
     except Exception as e:
         print(f"Live tables failed: {e}")
-        return []
+        return {'playing': [], 'finished': []}
     finally:
         if conn is not None:
             return_db_connection(conn)
+
+
+def split_live(rows):
+    """Pure: query rows (newest first) -> {'playing': [...], 'finished': [...]}."""
+    playing, finished, seen = [], [], set()
+    for r in rows:
+        mins = int((r['now'] - r['last_seen']).total_seconds() // 60)
+        r['ago'] = 'just now' if mins < 1 else f"{mins} min ago"
+        # the last scored hand's cumulative score: final for a finished game, running otherwise
+        if r['hand_player'] is not None:
+            r['player_score'], r['computer_score'] = r['hand_player'], r['hand_computer']
+        else:
+            r['player_score'], r['computer_score'] = r['prev_player'] or 0, r['prev_computer'] or 0
+        if r['finished']:
+            r['status'] = 'won' if r['winner'] == 'player' else 'lost'
+            finished.append(r)
+            continue
+        if mins >= 5 or r['who'] in seen:
+            continue
+        seen.add(r['who'])
+        playing.append(r)
+    return {'playing': playing, 'finished': finished[:20]}
+
 
 
 # ─── Marta's read on the table ─────────────────────────────────────────────────

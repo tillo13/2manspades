@@ -33,3 +33,19 @@ document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action="toggleSection"]');
     if (el) toggleSection(el.dataset.arg);
 });
+
+// Live tables: refresh the block every 10 s while the tab is visible. The rest of the page
+// stays on the server's 5-minute payload cache.
+(function pollLive() {
+    const box = document.getElementById('liveTables');
+    if (!box) return;
+    async function refresh() {
+        if (document.hidden) return;
+        try {
+            const r = await fetch('/stats/live', { cache: 'no-store' });
+            if (r.ok) box.innerHTML = await r.text();
+        } catch {}
+    }
+    setInterval(refresh, 10000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+})();

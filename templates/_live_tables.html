@@ -1,0 +1,28 @@
+{# Who's at the table: served inside /stats and re-fetched by /stats/live every 10 s #}
+{% if live and live.playing %}
+<div class="live-title">In a game now</div>
+<div class="achievement-card">
+    {% for g in live.playing %}
+    <div class="achievement-row">
+        <span class="achievement-player">{{ g.who }}</span>
+        <span class="achievement-value streak-value">{{ g.player_score }} · {{ g.computer_score }}</span>
+        <span class="achievement-detail">hand {{ g.hand_number or 1 }}{% if g.player_bid is not none %} · bid {{ g.player_bid }}/{{ g.computer_bid }} · tricks {{ g.player_tricks }}/{{ g.computer_tricks }}{% endif %} · {{ g.ago }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% if live and live.finished %}
+<div class="live-title">Finished this hour</div>
+<div class="achievement-card">
+    {% for g in live.finished %}
+    <div class="achievement-row">
+        <span class="achievement-player">{{ g.who }}</span>
+        <span class="achievement-value {{ '' if g.status == 'won' else 'loss-value' }}">{{ g.status }} {{ g.player_score }} · {{ g.computer_score }}</span>
+        <span class="achievement-detail">{{ g.hands_played or g.hand_number }} hands · {{ g.ago }} · <a href="/game/{{ g.hand_id }}" class="game-link">open game</a></span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% if not (live and (live.playing or live.finished)) %}
+<div class="achievement-card"><div class="live-empty">Nobody in the last hour.</div></div>
+{% endif %}

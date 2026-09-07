@@ -885,6 +885,15 @@ def referee():
     return render_template('referee.html', proof=proof)
 
 
+@app.route('/stats/live')
+def stats_live():
+    # The one part of /stats that has to be fresh: one cheap query, never cached.
+    from utilities.postgres_utils.stats import live_tables
+    resp = Response(render_template('_live_tables.html', live=live_tables()))
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
 @app.route('/stats')
 def stats():
     from utilities.postgres_utils.stats import stats_payload
