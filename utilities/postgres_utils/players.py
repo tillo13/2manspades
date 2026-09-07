@@ -189,6 +189,11 @@ def _ensure_strength_column(cur):
         return
     from utilities.schema_guard import add_column_if_missing
     add_column_if_missing(cur, 'twomanspades', 'players', 'marta_strength', 'INTEGER')
+    # all-time peak + when it was set (2026-09-07); seeded from the current strength on first add
+    if add_column_if_missing(cur, 'twomanspades', 'players', 'marta_peak', 'INTEGER'):
+        add_column_if_missing(cur, 'twomanspades', 'players', 'marta_peak_at', 'TIMESTAMPTZ')
+        cur.execute("UPDATE twomanspades.players SET marta_peak = marta_strength, marta_peak_at = NOW() "
+                    "WHERE marta_strength IS NOT NULL AND marta_peak IS NULL")
     _STRENGTH_COL_OK = True
 
 
@@ -237,14 +242,38 @@ def save_user_strength(google_email: str, strength: int, ip_address: str = None)
         conn = get_db_connection()
         cur = conn.cursor()
         _ensure_strength_column(cur)
-        cur.execute(f"UPDATE twomanspades.players SET marta_strength = %s, difficulty = %s WHERE {col} = %s",
-                    (int(strength), level_name(strength), key))
+        cur.execute(f"""UPDATE twomanspades.players SET marta_strength = %s, difficulty = %s,
+                         marta_peak_at = CASE WHEN %s > COALESCE(marta_peak, -1) THEN NOW() ELSE marta_peak_at END,
+                         marta_peak = GREATEST(COALESCE(marta_peak, 0), %s) WHERE {col} = %s""",
+                    (int(strength), level_name(strength), int(strength), int(strength), key))
         conn.commit()
         cur.close()
         return True
     except Exception as e:
         print(f"[DB] Error saving strength: {e}")
         return False
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+def get_user_peak(google_email: str = None, ip_address: str = None):
+    """(peak strength, when it was set) or None."""
+    col, key = _player_key(google_email, ip_address)
+    if not col:
+        return None
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(f"SELECT marta_peak, marta_peak_at FROM twomanspades.players WHERE {col} = %s "
+                    "AND marta_peak IS NOT NULL ORDER BY marta_peak DESC LIMIT 1", (key,))
+        row = cur.fetchone()
+        cur.close()
+        return (row[0], row[1]) if row else None
+    except Exception as e:
+        print(f"[DB] Error getting peak: {e}")
+        return None
     finally:
         if conn is not None:
             return_db_connection(conn)

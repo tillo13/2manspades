@@ -55,7 +55,7 @@
                 {{ tile("{:,}".format(fun_stats.total_hands|default(0)|int), 'Hands Played') }}
                 {{ tile(fun_stats.human_wins|default(0) ~ '-' ~ fun_stats.marta_wins|default(0), 'Humans vs Marta') }}
                 {{ tile(fun_stats.human_win_pct|default(0) ~ '%', 'Human Win Rate') }}
-                {{ tile(fun_stats.avg_game_length|default(0) ~ ' hands', 'Avg Game') }}
+                {{ tile(fun_stats.avg_game_length|default(0), 'Avg Game (hands)') }}
                 {% if marta_levels %}{{ tile(marta_levels.avg_strength, 'Avg Marta Level (0-100)') }}{% endif %}
             </div>
         </div>
@@ -231,6 +231,9 @@
                 {% endcall %}{% endif %}
                 {% if per_hand_stats and per_hand_stats.biggest_sets %}{% call card('Biggest Sets (Single Hand)') %}
                     {% for h in per_hand_stats.biggest_sets %}{{ row(h.player, h.undertricks ~ ' tricks short', 'bid ' ~ h.bid ~ ', won ' ~ h.tricks_won ~ ', ' ~ when(h), 'loss-value') }}{% endfor %}
+                {% endcall %}{% endif %}
+                {% if achievements.highest_level %}{% call card('Highest Marta Level') %}
+                    {% for p in achievements.highest_level %}{{ row(p.player, p.level|title ~ (' ' ~ p.peak if p.peak is not none else ''), ('peak ' if p.peak is not none else 'since ') ~ when(p), 'streak-value') }}{% endfor %}
                 {% endcall %}{% endif %}
                 {% if achievements.blind_by_level %}{% call card('Blind Bids by Level') %}
                     {% for p in achievements.blind_by_level %}{{ row(p.player, 'Blind ' ~ p.level ~ ': ' ~ p.successes ~ '/' ~ p.attempts, p.success_rate|int ~ '%') }}{% endfor %}

@@ -372,4 +372,5 @@ def get_player_record(google_email=None, player_name=None):
         'avg_hands': round(sum(r[2] or 0 for r in rows) / len(rows), 1),
         'rungs': rungs,
         'since': rows[0][4].strftime('%b %Y') if rows[0][4] else None,
+        'last_played': rows[-1][4],
     }

@@ -58,11 +58,15 @@ except Exception as _e:
 app.secret_key = _get_secret('TWOMANSPADES_FLASK_SECRET')   # env override honored inside get_secret
 
 # Session configuration - keep users logged in for 30 days
-from datetime import timedelta
+from datetime import datetime, timedelta
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JS access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+# Only send the cookie when the session changed. With the default (re-send on every response) a
+# read-only request in flight during a play (the /state poll, a jukebox beat, the next song's audio)
+# answered with the PRE-play game and rolled the card back: "I had to play my card twice" (2026-09-07).
+app.config['SESSION_REFRESH_EACH_REQUEST'] = False
 
 
 @app.route('/health')
@@ -530,7 +534,7 @@ def _level_record(who):
 def _ratchet_after_game(game):
     """Game over: move Marta's strength for players with a track record and say so in the
     end-of-game message. Strangers and newcomers (< RATCHET_MIN_GAMES) are exempt."""
-    from utilities.computer_logic import ratchet, level_name, strength_of, RATCHET_MIN_GAMES
+    from utilities.computer_logic import ratchet_move, level_name, strength_of, RATCHET_MIN_GAMES
     from utilities.postgres_utils import save_user_strength
     from utilities.custom_rules import get_display_score
     who = _ratchet_identity()
@@ -543,13 +547,21 @@ def _ratchet_after_game(game):
     margin = get_display_score(game['player_score'], game.get('player_bags', 0)) - \
         get_display_score(game['computer_score'], game.get('computer_bags', 0))
     before = strength_of(session.get('difficulty', 'easy'))
-    after = ratchet(before, won, margin)
+    from utilities.postgres_utils import get_player_record, get_user_peak
+    rec = get_player_record(who['email'], who['name']) or {}
+    last = rec.get('last_played')
+    days_idle = (datetime.now(last.tzinfo) - last).days if last else 0
+    move = ratchet_move(before, won, margin, games, days_idle)
+    after = max(0, min(100, before + move['delta']))
     session['difficulty'] = after
     save_user_strength(who['email'], after, who['ip'])
+    peak = get_user_peak(who['email'], who['ip'])
     # Data only: the final screen draws it. (It used to be appended to the message as a
     # sentence, which put the same fact in two shapes and got the string rendered twice.)
     game['ratchet'] = {'before': before, 'after': after, 'from_level': level_name(before), 'level': level_name(after),
-                       'won': won, 'margin': margin, 'games': games}
+                       'won': won, 'margin': margin, 'games': games, 'days_idle': days_idle, 'move': move,
+                       'peak': {'strength': peak[0], 'level': level_name(peak[0]),
+                                'at': peak[1].strftime('%b %-d, %Y') if peak[1] else None} if peak else None}
 
 @app.route('/toggle_computer_hand', methods=['POST'])
 def toggle_computer_hand():

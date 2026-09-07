@@ -107,10 +107,25 @@ def strength_of(setting):
         return 0
 
 
-def ratchet(strength, won, margin):
-    """New strength after a finished game. Step 5-15 scaled by the final margin."""
-    step = 5 + min(10, abs(int(margin or 0)) // 25)
-    return max(0, min(100, strength_of(strength) + (step if won else -step)))
+def ratchet_move(strength, won, margin, games=RATCHET_MIN_GAMES, days_idle=0):
+    """How far Marta moves after a finished game, with the factors so the screen can say why
+    (Andy, 2026-09-07: a loss was -15 every time). step: 5 a game, +1 per 25 points of margin,
+    capped at 15. games_k: a long record moves less per game (1.0 at 25 games, 0.5 by 125).
+    height_k: a loss drops less the higher Marta sits (full at 0, half at 100); wins climb in full.
+    idle_k: a loss after 30+ days away counts half (rust). At least 1 point moves."""
+    s = strength_of(strength)
+    extra = min(10, abs(int(margin or 0)) // 25)
+    games_k = max(0.5, 1 - max(0, int(games or 0) - RATCHET_MIN_GAMES) / 200)
+    height_k = 1.0 if won else 0.5 + 0.5 * (1 - s / 100)
+    idle_k = 0.5 if (not won and (days_idle or 0) >= 30) else 1.0
+    delta = max(1, round((5 + extra) * games_k * height_k * idle_k))
+    return {'delta': delta if won else -delta, 'extra': extra, 'games_k': round(games_k, 2),
+            'height_k': round(height_k, 2), 'idle_k': idle_k}
+
+
+def ratchet(strength, won, margin, games=RATCHET_MIN_GAMES, days_idle=0):
+    """New strength after a finished game."""
+    return max(0, min(100, strength_of(strength) + ratchet_move(strength, won, margin, games, days_idle)['delta']))
 
 
 def strength_params(strength):

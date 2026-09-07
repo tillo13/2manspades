@@ -345,6 +345,38 @@ def get_player_achievements() -> Dict[str, Any]:
         ''')
         blind_by_level = [dict(row) for row in cur.fetchall()]
 
+        # Highest Marta level each person has reached: the ratchet's all-time peak (players.marta_peak,
+        # matched to a name through the hands they played) when there is one, else the top level they
+        # have finished a game at and the first game there (2026-09-07)
+        from utilities.computer_logic import DIFFICULTY_LEVELS, level_name
+        from .players import _ensure_strength_column
+        _ensure_strength_column(cur)
+        conn.commit()
+        cur.execute('''
+            WITH peaks AS (
+                SELECT v.player_name, MAX(p.marta_peak) AS peak,
+                       (array_agg(p.marta_peak_at ORDER BY p.marta_peak DESC NULLS LAST))[1] AS peak_at
+                FROM twomanspades.players p
+                JOIN twomanspades.hands h ON (p.google_email IS NOT NULL AND h.google_email = p.google_email)
+                                          OR (p.google_email IS NULL AND h.client_ip = p.ip_address)
+                JOIN twomanspades.vw_player_identity v ON v.hand_id = h.hand_id
+                WHERE p.marta_peak IS NOT NULL GROUP BY v.player_name)
+            SELECT DISTINCT ON (v.player_name) v.player_name AS player, COALESCE(h.difficulty, 'easy') AS level,
+                   COALESCE(v.completed_at, v.started_at) AS completed_at, v.hand_id,
+                   array_position(%s::text[], COALESCE(h.difficulty, 'easy')) AS rung, pk.peak, pk.peak_at
+            FROM twomanspades.vw_player_game_details v
+            JOIN twomanspades.hands h ON h.hand_id = v.hand_id
+            LEFT JOIN peaks pk ON pk.player_name = v.player_name
+            WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
+            ORDER BY v.player_name, rung DESC, COALESCE(v.completed_at, v.started_at)
+        ''', (list(DIFFICULTY_LEVELS),))
+        highest_level = [dict(r) for r in cur.fetchall()]
+        for r in highest_level:
+            if r['peak'] is not None:
+                r.update(level=level_name(r['peak']), rung=DIFFICULTY_LEVELS.index(level_name(r['peak'])) + 1,
+                         completed_at=r['peak_at'] or r['completed_at'], hand_id=None)
+        highest_level.sort(key=lambda r: (-r['rung'], -(r['peak'] or 0), r['completed_at']))
+
         cur.close()
         return_db_connection(conn)
 
@@ -359,7 +391,8 @@ def get_player_achievements() -> Dict[str, Any]:
             'worst_losses': worst_losses,
             'biggest_comebacks': biggest_comebacks,
             'blind_stats': blind_stats,
-            'blind_by_level': blind_by_level  # Blind bids broken down by level 5-10
+            'blind_by_level': blind_by_level,  # Blind bids broken down by level 5-10
+            'highest_level': highest_level
         }
 
     except Exception as e:

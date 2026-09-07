@@ -2,6 +2,7 @@
 // (shares chatInitialized) and before ui.js (which wires the buttons to these functions).
 let gameState = null;
 let selectedCard = null;
+let lastSelectAt = 0;
 let trickDisplayTimeout = null;
 let lastHandNumber = null;
 
@@ -188,14 +189,17 @@ function renderGameOver() {
         fill.className = 'go-bar-fill ' + (r.after >= r.before ? 'up' : 'down');
         document.getElementById('goBarBefore').style.left = r.before + '%';
         document.getElementById('goBarAfter').style.left = r.after + '%';
-        // the math, so the move is never a mystery: 5 a game, +1 per 25 points of margin, capped at 15
-        const m = Math.abs(r.margin || 0), extra = Math.min(10, Math.floor(m / 25)), step = 5 + extra;
-        const clamped = Math.abs(r.after - r.before) < step;
+        // the math, so the move is never a mystery: the server sends each factor (computer_logic.ratchet_move)
+        const m = Math.abs(r.margin || 0), mv = r.move, step = 5 + mv.extra;
+        const clamped = Math.abs(r.after - r.before) < Math.abs(mv.delta);
+        const parts = [`5 for the game` + (mv.extra ? `, ${mv.extra} more for the margin (1 per 25 points)` : '')];
+        if (mv.games_k < 1) parts.push(`×${mv.games_k} for ${r.games} games on record (a long record moves less)`);
+        if (mv.height_k < 1) parts.push(`×${mv.height_k} for the height of the dial (a loss up high drops less)`);
+        if (mv.idle_k < 1) parts.push(`×${mv.idle_k} for ${r.days_idle} days away (rust)`);
         document.getElementById('goRatchetWhy').textContent =
-            `${r.won ? 'Won' : 'Lost'} by ${m}: ${r.won ? '+' : '−'}${step} (5 for the game` +
-            (extra ? `, ${extra} more for the margin, 1 per 25 points` : ', under 25 points of margin so nothing extra') +
-            `)${clamped ? `, held at the ${r.after >= r.before ? 'top' : 'bottom'} of the dial` : ''}. ` +
-            `Applies because you have ${r.games} games on record (25 needed).`;
+            `${r.won ? 'Won' : 'Lost'} by ${m}: ${r.won ? '+' : '−'}${Math.abs(mv.delta)} (${parts.join('; ')})` +
+            `${clamped ? `, held at the ${r.after >= r.before ? 'top' : 'bottom'} of the dial` : ''}.` +
+            (r.peak ? ` Your best ever: ${cap(r.peak.level)} ${r.peak.strength}${r.peak.at ? ` (${r.peak.at})` : ''}.` : '');
     }
 
     const log = gameState.hand_log || [];
@@ -715,6 +719,11 @@ function selectCard(index) {
         return;
     }
 
+    // A second tap on the already-selected card within half a second plays it (Andy, 2026-09-07):
+    // one path for mouse double-click and touch double-tap (touchstart preventDefault kills dblclick).
+    const now = Date.now();
+    if (selectedCard === index && now - lastSelectAt < 500) { lastSelectAt = 0; return performAction(); }
+    lastSelectAt = now;
     selectedCard = index;
     updatePlayerHand();
     updateActionButtons();
