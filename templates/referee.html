@@ -60,6 +60,17 @@
     <p class="dist">Called with this many cards left:
         {% for k, v in S.by_cards_left.items() %}<span><b>{{ k }}</b> {{ '{:,}'.format(v) }}</span>{% endfor %}</p>
 
+    {% if S.strength_sweep %}
+    <h2>Marta's dial, measured</h2>
+    <p>Marta's strength (0 to 100) is the number the ratchet moves after each of your games. This is the proof that a higher
+        number is a harder Marta: easy Otto played her {{ '{:,}'.format(S.strength_sweep[0].games) }} seeded games at each
+        setting, the same deals every time, so only Marta changed.</p>
+    <table class="sweep"><thead><tr><th>Marta at</th><th>Marta won</th><th>Otto won</th><th>Marta win rate</th></tr></thead><tbody>
+        {% for r in S.strength_sweep %}<tr><td>{{ r.strength }}</td><td>{{ '{:,}'.format(r.marta) }}</td><td>{{ '{:,}'.format(r.otto) }}</td>
+            <td><div class="sweep-bar"><span style="width: {{ r.marta_pct }}%"></span></div>{{ r.marta_pct }}%</td></tr>{% endfor %}
+    </tbody></table>
+    {% endif %}
+
     <h2>Forty calls, played out</h2>
     <p>Chosen for variety: every size from ten cards down to two, both winners, the special cards in play. Otto sits in the player's
         seat. Under each call is the played-out result from the second run.</p>

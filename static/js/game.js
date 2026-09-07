@@ -189,16 +189,13 @@ function renderGameOver() {
         fill.className = 'go-bar-fill ' + (r.after >= r.before ? 'up' : 'down');
         document.getElementById('goBarBefore').style.left = r.before + '%';
         document.getElementById('goBarAfter').style.left = r.after + '%';
-        // the math, so the move is never a mystery: the server sends each factor (computer_logic.ratchet_move)
-        const m = Math.abs(r.margin || 0), mv = r.move, step = 5 + mv.extra;
-        const clamped = Math.abs(r.after - r.before) < Math.abs(mv.delta);
-        const parts = [`5 for the game` + (mv.extra ? `, ${mv.extra} more for the margin (1 per 25 points)` : '')];
-        if (mv.games_k < 1) parts.push(`×${mv.games_k} for ${r.games} games on record (a long record moves less)`);
-        if (mv.height_k < 1) parts.push(`×${mv.height_k} for the height of the dial (a loss up high drops less)`);
-        if (mv.idle_k < 1) parts.push(`×${mv.idle_k} for ${r.days_idle} days away (rust)`);
-        if (mv.streak_k > 1) parts.push(`×${mv.streak_k} for ${r.streak} ${r.won ? 'wins' : 'losses'} in a row`);
+        // the math, so the move is never a mystery: the server sends the factors (computer_logic.ratchet_move)
+        const mv = r.move, d = mv.delta;
+        const clamped = Math.abs(r.after - r.before) < Math.abs(d);
         document.getElementById('goRatchetWhy').textContent =
-            `${r.won ? 'Won' : 'Lost'} by ${m}: ${r.won ? '+' : '−'}${Math.abs(mv.delta)} (${parts.join('; ')})` +
+            `${r.won ? 'Won' : 'Lost'} by ${Math.abs(r.margin || 0)}. You've won ${mv.wins} of your last ${mv.window}` +
+            ` (Marta aims for you to win about 55%): ${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)}` +
+            `, at most ${mv.cap} a game ${r.games < 60 ? 'until 60 games on record' : 'now that your record is long'}` +
             `${clamped ? `, held at the ${r.after >= r.before ? 'top' : 'bottom'} of the dial` : ''}.` +
             (r.peak ? ` Your best ever: ${cap(r.peak.level)} ${r.peak.strength}${r.peak.at ? ` (${r.peak.at})` : ''}.` : '');
     }

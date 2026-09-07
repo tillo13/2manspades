@@ -109,12 +109,28 @@ def curate(calls, seed=1):
     return out
 
 
+def strength_sweep(n, strengths=range(0, 101, 10)):
+    """Easy Otto vs Marta at each strength, n seeded games each: the ratchet's promise that
+    a higher number is a harder Marta, measured (Andy, 2026-09-07). Same seeds at every strength."""
+    from utilities import otto
+    rows = []
+    for s in strengths:
+        w = m = 0
+        for seed in range(n):
+            r = otto.play_game(seed=seed, marta_difficulty=s)
+            w += r['winner'] == 'otto'; m += r['winner'] == 'marta'
+        rows.append({'strength': s, 'games': n, 'otto': w, 'marta': m, 'marta_pct': round(100.0 * m / n, 1)})
+    return rows
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('--games', type=int, default=10000)
+    ap.add_argument('--sweep', type=int, default=1000, help='games per strength in the sweep')
     ap.add_argument('--out', default=OUT)
     a = ap.parse_args(argv)
     summary, calls, diff = run_proof(a.games)
+    summary['strength_sweep'] = strength_sweep(a.sweep)
     json.dump({'summary': summary, 'calls': curate(calls)}, open(a.out, 'w'), ensure_ascii=False)
     print(json.dumps(summary))
     for s in diff[:3]:

@@ -549,14 +549,12 @@ def _ratchet_after_game(game):
     before = strength_of(session.get('difficulty', 'easy'))
     from utilities.postgres_utils import get_player_record, get_user_peak
     rec = get_player_record(who['email'], who['name']) or {}
+    # the game_completed row is written async: count this game ourselves unless the record's
+    # last game already is it (landed within the last 2 minutes)
     last = rec.get('last_played')
-    days_idle = (datetime.now(last.tzinfo) - last).days if last else 0
-    # the run this game extends; the game_completed row is written async, so count this game
-    # ourselves unless the record's last game is already it (landed within the last 2 minutes)
-    same_way = rec.get('streak_type') == ('win' if won else 'loss')
     counted = bool(last) and (datetime.now(last.tzinfo) - last).total_seconds() < 120
-    streak = (rec.get('streak', 0) if same_way else 0) + (0 if same_way and counted else 1)
-    move = ratchet_move(before, won, margin, games, days_idle, streak)
+    recent = list(rec.get('recent') or []) + ([] if counted else [won])
+    move = ratchet_move(before, recent, games)
     after = max(0, min(100, before + move['delta']))
     session['difficulty'] = after
     save_user_strength(who['email'], after, who['ip'])
@@ -564,7 +562,7 @@ def _ratchet_after_game(game):
     # Data only: the final screen draws it. (It used to be appended to the message as a
     # sentence, which put the same fact in two shapes and got the string rendered twice.)
     game['ratchet'] = {'before': before, 'after': after, 'from_level': level_name(before), 'level': level_name(after),
-                       'won': won, 'margin': margin, 'games': games, 'days_idle': days_idle, 'streak': streak, 'move': move,
+                       'won': won, 'margin': margin, 'games': games, 'move': move,
                        'peak': {'strength': peak[0], 'level': level_name(peak[0]),
                                 'at': peak[1].strftime('%b %-d, %Y') if peak[1] else None} if peak else None}
 

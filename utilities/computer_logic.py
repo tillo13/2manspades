@@ -79,11 +79,19 @@ LEVEL_BLURBS = {
 }
 
 
-# The ratchet (2026-09-06, Andy): for players with a track record, Marta's strength moves
-# with every finished game — up when they win, down when they lose, bigger swings for bigger
-# margins — so the standing flex is beating her at 100 game after game. Newcomers are exempt
-# until RATCHET_MIN_GAMES completed games so learning the game never gets punished.
-RATCHET_MIN_GAMES = 25
+# The ratchet (2026-09-06, Andy; rebuilt 2026-09-07 on the standard difficulty controller):
+# Marta's strength moves between games toward a target win rate for the person, the way
+# matchmaking does. Newcomers play easy Marta untouched for RATCHET_MIN_GAMES so learning the
+# game never gets punished; after that the move each game is
+#     cap * (win rate over the last RATCHET_WINDOW games - RATCHET_TARGET) * 2
+# so a 100% run climbs at the full cap and a rate at target holds. The cap is the system's
+# uncertainty: big while the record is short, small once it is long (Glicko/TrueSkill idea).
+# Margin is not an input: one blind nil should not be worth 15 points.
+RATCHET_MIN_GAMES = 20
+RATCHET_SETTLED_GAMES = 60     # record length at which the cap drops
+RATCHET_CAPS = (15, 8)         # (unsettled, settled) most points a game
+RATCHET_WINDOW = 10
+RATCHET_TARGET = 0.55
 
 
 def level_name(strength):
@@ -107,28 +115,19 @@ def strength_of(setting):
         return 0
 
 
-def ratchet_move(strength, won, margin, games=RATCHET_MIN_GAMES, days_idle=0, streak=1):
-    """How far Marta moves after a finished game, with the factors so the screen can say why
-    (Andy, 2026-09-07: a loss was -15 every time). step: 5 a game, +1 per 25 points of margin,
-    capped at 15. games_k: a long record moves less per game (1.0 at 25 games, 0.5 by 125).
-    height_k: a loss drops less the higher Marta sits (full at 0, half at 100); wins climb in full.
-    idle_k: a loss after 30+ days away counts half (rust). streak_k: a run in the same direction,
-    this game included, speeds the move from the third game on (+0.2 each, up to x3) so a
-    77-game winner meets a real Marta within a few games (Andy, 2026-09-07). At least 1 point moves."""
-    s = strength_of(strength)
-    extra = min(10, abs(int(margin or 0)) // 25)
-    games_k = max(0.5, 1 - max(0, int(games or 0) - RATCHET_MIN_GAMES) / 200)
-    height_k = 1.0 if won else 0.5 + 0.5 * (1 - s / 100)
-    idle_k = 0.5 if (not won and (days_idle or 0) >= 30) else 1.0
-    streak_k = 1 + min(2.0, max(0, int(streak or 1) - 2) * 0.2)
-    delta = max(1, round((5 + extra) * games_k * height_k * idle_k * streak_k))
-    return {'delta': delta if won else -delta, 'extra': extra, 'games_k': round(games_k, 2),
-            'height_k': round(height_k, 2), 'idle_k': idle_k, 'streak_k': round(streak_k, 1)}
+def ratchet_move(strength, recent, games=RATCHET_MIN_GAMES):
+    """How far Marta moves after a finished game. recent: won/lost of the last games, this one
+    included, newest last (at most RATCHET_WINDOW are used). Returns the factors for the screen."""
+    window = [bool(w) for w in (recent or [])][-RATCHET_WINDOW:] or [True]
+    rate = sum(window) / len(window)
+    cap = RATCHET_CAPS[0] if int(games or 0) < RATCHET_SETTLED_GAMES else RATCHET_CAPS[1]
+    delta = max(-cap, min(cap, round(cap * (rate - RATCHET_TARGET) * 2)))
+    return {'delta': delta, 'cap': cap, 'wins': sum(window), 'window': len(window), 'rate': round(rate, 2)}
 
 
-def ratchet(strength, won, margin, games=RATCHET_MIN_GAMES, days_idle=0, streak=1):
+def ratchet(strength, recent, games=RATCHET_MIN_GAMES):
     """New strength after a finished game."""
-    return max(0, min(100, strength_of(strength) + ratchet_move(strength, won, margin, games, days_idle, streak)['delta']))
+    return max(0, min(100, strength_of(strength) + ratchet_move(strength, recent, games)['delta']))
 
 
 def strength_params(strength):

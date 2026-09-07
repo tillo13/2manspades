@@ -310,7 +310,8 @@ def play_persona_tick(persona=ANDY):
     _save_state(f"{persona['tag']}_last_hour", stamp)
     strength = get_user_strength(persona['email']) or 0
     r = play_game(otto_difficulty=persona['params'], marta_difficulty=strength, persona=persona, source='persona')
-    after = ratchet(strength, r['winner'] == 'otto', r['otto_score'] - r['marta_score'])
+    recent = _push_recent(f"{persona['tag']}_recent", r['winner'] == 'otto')
+    after = ratchet(strength, recent)
     save_user_strength(persona['email'], after)
     return {'plan': plan, 'played': True, 'winner': persona['name'].split()[0] if r['winner'] == 'otto' else r['winner'],
             'score': f"{r['otto_score']}-{r['marta_score']}", 'hands': r['hands'],
@@ -380,7 +381,7 @@ def play_cron_tick():
         r = play_game(marta_difficulty=strength, source='cron')
         r['marta_strength'] = strength
         before = strength
-        strength = ratchet(strength, r['winner'] == 'otto', r['otto_score'] - r['marta_score'])
+        strength = ratchet(strength, _push_recent('otto_recent', r['winner'] == 'otto'))
         r['marta_strength_after'] = strength
         _persist(r)
         _save_state('marta_strength_vs_otto', strength)
@@ -388,6 +389,14 @@ def play_cron_tick():
                         'hands': r['hands'], 'marta_strength': f"{before} -> {strength} ({level_name(strength)})"})
     return {'target_today': target, 'played_before': played, 'played_now': played + due, 'games': results,
             'marta_strength_vs_otto': strength}
+
+
+def _push_recent(key, won):
+    """The bot's last 10 results (the ratchet's window), kept in bot_state as bits, newest last."""
+    bits = str(_read_state(key) or '1')[1:]          # a leading 1 keeps losses (zeros) from vanishing in the int
+    bits = (bits + ('1' if won else '0'))[-10:]
+    _save_state(key, int('1' + bits))
+    return [b == '1' for b in bits]
 
 
 def _save_state(key, value):

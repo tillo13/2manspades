@@ -373,4 +373,5 @@ def get_player_record(google_email=None, player_name=None):
         'rungs': rungs,
         'since': rows[0][4].strftime('%b %Y') if rows[0][4] else None,
         'last_played': rows[-1][4],
+        'recent': [bool(r[0]) for r in rows[-10:]],
     }

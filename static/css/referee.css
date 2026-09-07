@@ -23,3 +23,11 @@
 .pos-verdict.ok { color: #2e7d32; }
 .pos-verdict.bad { color: #c62828; }
 .foot { color: #999; font-size: 12px; margin-top: 20px; }
+
+/* Marta's dial, measured (2026-09-07) */
+.sweep { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+.sweep th, .sweep td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #e6e6ee; }
+.sweep th:first-child, .sweep td:first-child { text-align: left; }
+.sweep td:last-child { min-width: 160px; }
+.sweep-bar { display: inline-block; width: 90px; height: 8px; background: #eceef5; border-radius: 4px; vertical-align: middle; margin-right: 8px; overflow: hidden; }
+.sweep-bar span { display: block; height: 100%; background: #c0392b; border-radius: 4px; }
