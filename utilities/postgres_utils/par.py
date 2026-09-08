@@ -73,7 +73,13 @@ def _unsolved(cur, limit):
 
 
 def fill_par(limit=500, verbose=True):
-    """Solve up to `limit` unsolved hands and store them. Returns how many were written."""
+    """Solve up to `limit` unsolved hands and store them. Returns how many were written.
+
+    Read, then solve, then write — and the connection goes back before the solving starts.
+    The solver is pure CPU and touches nothing; holding one of the app's two connections
+    across it turned the every-15-minutes cron tick into a starvation window for whoever was
+    playing at the time (2026-09-08, ticks up to 48s).
+    """
     import time
     from utilities.marta_mind import _code, _count, _Ctx
     conn = None
@@ -83,39 +89,54 @@ def fill_par(limit=500, verbose=True):
         _ensure_table(cur)
         conn.commit()
         rows = _unsolved(cur, limit)
-        out, t0 = [], time.time()
-        for r in rows:
-            try:
-                pc, cc = json.loads(r['p_cards']), json.loads(r['c_cards'])
-                ph = [_card(c) for c in pc if c != r['p_out']]
-                ch = [_card(c) for c in cc if c != r['c_out']]
-            except Exception:
-                continue
-            if len(ph) != 10 or len(ch) != 10:
-                continue
-            # the solver speaks from Marta's seat: leader 0 is her, 1 is the human
-            leader = 0 if r['first_leader'] == 'computer' else 1
-            m = sum(1 << _code(c) for c in ch)
-            p = sum(1 << _code(c) for c in ph)
-            ctx = _Ctx({}, float('inf'), tricks_only=True)
-            marta_par = _count(m, p, leader, ctx, {})
-            out.append((r['hand_id'], r['hand_number'], 10 - marta_par, marta_par, r['first_leader']))
-        if out:
+        cur.close()
+    except Exception as e:
+        print(f"[PAR] could not read unsolved hands: {e}")
+        return 0
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+    # No database from here until every hand is solved. `rows` is already materialised.
+    out, t0 = [], time.time()
+    for r in rows:
+        try:
+            pc, cc = json.loads(r['p_cards']), json.loads(r['c_cards'])
+            ph = [_card(c) for c in pc if c != r['p_out']]
+            ch = [_card(c) for c in cc if c != r['c_out']]
+        except Exception:
+            continue
+        if len(ph) != 10 or len(ch) != 10:
+            continue
+        # the solver speaks from Marta's seat: leader 0 is her, 1 is the human
+        leader = 0 if r['first_leader'] == 'computer' else 1
+        m = sum(1 << _code(c) for c in ch)
+        p = sum(1 << _code(c) for c in ph)
+        ctx = _Ctx({}, float('inf'), tricks_only=True)
+        marta_par = _count(m, p, leader, ctx, {})
+        out.append((r['hand_id'], r['hand_number'], 10 - marta_par, marta_par, r['first_leader']))
+    solve_secs = time.time() - t0
+
+    if out:
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
             psycopg2.extras.execute_values(cur, '''
                 INSERT INTO twomanspades.hand_par (hand_id, hand_number, player_par, computer_par, first_leader)
                 VALUES %s ON CONFLICT (hand_id, hand_number) DO NOTHING
             ''', out)
             conn.commit()
-        if verbose:
-            print(f"[PAR] solved {len(out)} of {len(rows)} candidates in {time.time() - t0:.1f}s")
-        cur.close()
-        return len(out)
-    except Exception as e:
-        print(f"[PAR] fill failed: {e}")
-        return 0
-    finally:
-        if conn is not None:
-            return_db_connection(conn)
+            cur.close()
+        except Exception as e:
+            print(f"[PAR] could not store {len(out)} solved hands: {e}")
+            return 0
+        finally:
+            if conn is not None:
+                return_db_connection(conn)
+    if verbose:
+        print(f"[PAR] solved {len(out)} of {len(rows)} candidates in {solve_secs:.1f}s")
+    return len(out)
 
 
 def par_coverage():

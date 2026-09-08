@@ -3,6 +3,7 @@
 The pool is 2 connections behind a 2-slot checkout gate; one leaked slot per
 failed call would wedge the whole app after two failures."""
 from contextlib import ExitStack, redirect_stdout
+import json
 from io import StringIO
 import threading
 import unittest
@@ -110,6 +111,36 @@ class ReleaseTests(unittest.TestCase):
             client = A.app.test_client()
             self.assertEqual(client.post('/new_game', json={}).status_code, 200)
             slow.assert_not_called()
+
+    def test_par_solver_holds_no_connection_while_solving(self):
+        """fill_par must give the connection back before it starts solving. The solver is pure
+        CPU for tens of seconds; holding one of two connections across it starved whoever was
+        playing during the every-15-minutes cron tick."""
+        from utilities.postgres_utils import par
+        import utilities.marta_mind as mm
+        hand = [f'{r}♣' for r in ('2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q')]
+        other = [f'{r}♥' for r in ('2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q')]
+        row = {'hand_id': 'h1', 'hand_number': 1, 'p_cards': json.dumps(hand),
+               'c_cards': json.dumps(other), 'p_out': hand[0], 'c_out': other[0],
+               'first_leader': 'player'}
+
+        connection._slots = threading.BoundedSemaphore(2)
+        free_while_solving = []
+        pool, conn = fake_pool(fail_after_ping=False)
+        with ExitStack() as st:
+            st.enter_context(redirect_stdout(StringIO()))
+            st.enter_context(patch.object(connection, '_get_pool', return_value=pool))
+            st.enter_context(patch.object(par, '_unsolved', return_value=[row]))
+            st.enter_context(patch.object(par, '_ensure_table'))
+            st.enter_context(patch.object(mm, '_count',
+                                          side_effect=lambda *a, **k: (
+                                              free_while_solving.append(connection._slots._value), 4)[1]))
+            st.enter_context(patch('psycopg2.extras.execute_values'))
+            self.assertEqual(par.fill_par(limit=10), 1)
+
+        self.assertEqual(free_while_solving, [2],
+                         'fill_par was still holding a pooled connection while the solver ran')
+        self.assertEqual(connection._slots._value, 2, 'fill_par leaked a slot')
 
     def test_double_return_is_harmless(self):
         connection._slots = threading.BoundedSemaphore(2)
