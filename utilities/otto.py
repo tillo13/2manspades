@@ -103,7 +103,12 @@ def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persis
         if persona:
             # a human-shaped game: started a while ago, logged under the person's identity
             game['game_started_at'] = time.time() - 60 * random.uniform(8, 20)
-            game['client_info'] = {'ip_address': None, 'user_agent': persona.get('tag', 'bot'),
+            # players.ip_address is NOT NULL, so a persona with no IP could never open a hand and
+            # every andybot game since 2026-09-06 was dropped on the floor (the error is caught and
+            # logged inside create_hand_with_player, so the cron looked healthy). TEST-NET-1
+            # (RFC 5737) is reserved for documentation: it can never collide with a real visitor,
+            # and the IP-to-person map has no row for it.
+            game['client_info'] = {'ip_address': PERSONA_IP, 'user_agent': persona.get('tag', 'bot'),
                                    'google_auth': {'email': persona['email'], 'name': persona['name'],
                                                    'google_id': persona.get('google_id'),
                                                    'picture': None}}
@@ -269,6 +274,7 @@ def _record_hand(game, decisions):
 # goes blind whenever offered, ignores Marta's bid for the total.
 ANDY = {'email': 'andy.tillo@gmail.com', 'name': 'Andy Tillo', 'google_id': '103015520286665847399',
         'tag': 'andybot', 'params': {'bid_offset': 1.2, 'max_bid': 8, 'lead_high': 1.0}}
+PERSONA_IP = '192.0.2.1'        # RFC 5737 TEST-NET-1: never a real client
 _PLAYED_BY_OK = False
 
 
