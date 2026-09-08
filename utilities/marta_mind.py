@@ -328,11 +328,73 @@ def roll_thinking(game):
 
 NIL_WORLDS = 12                 # enough to separate a real nil from a hopeful one
 # She must escape every trick in this share of the worlds she deals. Swept on 400 identical
-# games (_oneoff/nil_sweep.py, 2026-09-08): off 50.2% and 0 nils; 0.75 and 0.5 both 50.2% and 0
-# nils; 0.3 fired once and made it; 0.15 fired twice and made one; 0.0 (shape only, no solving)
-# fired 91 times, made 12% of them and cost a point of win rate. A failed nil is -100, so the
-# gate stays strict: rare by design, and right when it fires.
-NIL_CONFIDENCE = 0.3
+# games (_oneoff/nil_sweep.py, 2026-09-08), judging each world by a real playout rather than by
+# best play: 0.75 never fires, 0.5 fires twice and makes half, 0.15 fires 18 times and makes
+# 22%, and shape alone with no playout fires 91 times and makes 12% while costing a point of
+# win rate. A failed nil is -100, so the gate sits where the ones she takes are ones she makes.
+NIL_CONFIDENCE = 0.5
+
+
+def _duck(hand, led):
+    """Her nil play: the highest card that still loses, else the lowest thing she can shed."""
+    if led is None:
+        return min(hand)
+    same = [c for c in hand if _suit(c) == _suit(led)]
+    if same:
+        under = [c for c in same if not _takes(led, c)]
+        return max(under) if under else min(same)
+    off = [c for c in hand if _suit(c) != SPADE]
+    return max(off) if off else min(hand)
+
+
+def _opponent_play(cards, trick, game, hand_size):
+    """What the person across the table would really do, using their own strategy rather than a
+    solver. Nil is lost to an opponent who ducks under her, and at low strength nobody does; a
+    double-dummy test assumes they always would, which is why it called every nil unsafe."""
+    from .computer_logic import computer_lead_strategy, computer_follow_strategy
+    hand = [{'rank': _rank(c), 'suit': SUITS[_suit(c)], 'value': c & 15} for c in cards]
+    state = dict(game)
+    state['computer_hand'] = hand
+    state['computer_bid'] = game.get('player_bid') or 0
+    state['computer_tricks'] = game.get('player_tricks') or 0
+    state['player_bid'] = game.get('computer_bid') or 0
+    state['player_tricks'] = game.get('computer_tricks') or 0
+    if trick is None:
+        idx = computer_lead_strategy(hand, bool(game.get('spades_broken')), state)
+    else:
+        led = {'rank': _rank(trick), 'suit': SUITS[_suit(trick)], 'value': trick & 15}
+        idx = computer_follow_strategy(hand, [{'player': 'player', 'card': led}], state)
+    return cards[idx if idx is not None else 0]
+
+
+def _rank(code):
+    v = code & 15
+    return {11: 'J', 12: 'Q', 13: 'K', 14: 'A'}.get(v, str(v))
+
+
+def _tricks_if_she_ducks(m, p, leader, game):
+    """Play one world out: she ducks everything, they play their own game. Tricks she takes."""
+    mh, ph = [c for c in range(64) if m >> c & 1], [c for c in range(64) if p >> c & 1]
+    broken = bool(game.get('spades_broken'))
+    took, turn = 0, leader
+    while mh and ph:
+        if turn == 0:
+            led = _duck(mh, None) if broken or any(_suit(c) != SPADE for c in mh) else min(mh)
+            if not broken and _suit(led) == SPADE and any(_suit(c) != SPADE for c in mh):
+                led = min(c for c in mh if _suit(c) != SPADE)
+            mh.remove(led)
+            ans = _opponent_play(ph, led, game, len(ph)); ph.remove(ans)
+            hers = not _takes(led, ans)
+        else:
+            led = _opponent_play(ph, None, game, len(ph)); ph.remove(led)
+            ans = _duck(mh, led); mh.remove(ans)
+            hers = _takes(led, ans)
+        broken = broken or _suit(led) == SPADE or _suit(ans) == SPADE
+        took += hers
+        if took:
+            return took                      # one trick is all it takes; stop early
+        turn = 0 if hers else 1
+    return took
 
 
 def nil_is_safe(hand, game):
@@ -352,14 +414,10 @@ def nil_is_safe(hand, game):
         random.setstate(saved)
     if not worlds:
         return False
-    ctx = _Ctx(game, time.perf_counter() + MAX_BUDGET_MS / 1000.0, tricks_only=True)
     clean = total = 0.0
     for p, w in worlds:
-        try:
-            if _count(m, p, leader, ctx, {}) == 0:
-                clean += w
-        except _Budget:
-            break
+        if _tricks_if_she_ducks(m, p, leader, game) == 0:
+            clean += w
         total += w
     if total < 4:
         return False

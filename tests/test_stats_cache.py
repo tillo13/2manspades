@@ -11,10 +11,24 @@ from utilities.postgres_utils import stats as S
 
 HELPERS = ('get_unified_leaderboard', 'get_fun_stats', 'get_player_achievements',
            'get_special_card_stats', 'get_overall_game_stats', 'get_per_hand_stats')
+# imported inside _build_payload, so they are patched where they live (as jukebox_stats is)
+LATE = (('utilities.postgres_utils.career.career_stats', {}),
+        ('utilities.postgres_utils.sabermetrics.advanced_stats', {}))
 
 
 class StatsCacheTests(unittest.TestCase):
+    @staticmethod
+    def _settle():
+        """The app warms the payload in a thread at boot, and that build got slower when the
+        career and advanced stats joined it. Left running, it flips _REFRESHING back on and
+        overwrites the payload mid-test. Wait it out before touching module state."""
+        import threading
+        for t in threading.enumerate():
+            if t.name in ('stats-warm', 'stats-refresh'):
+                t.join(timeout=90)
+
     def setUp(self):
+        self._settle()
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(redirect_stdout(StringIO()))
@@ -22,8 +36,11 @@ class StatsCacheTests(unittest.TestCase):
         for name in HELPERS:
             self.calls[name] = self.stack.enter_context(patch.object(S, name, return_value={} if 'leaderboard' not in name else []))
         self.calls['jukebox_stats'] = self.stack.enter_context(patch('utilities.jukebox.jukebox_stats', return_value={}))
+        for path, value in LATE:
+            self.calls[path] = self.stack.enter_context(patch(path, return_value=value))
         S._PAYLOAD.update(data=None, ts=0.0)
         S._REFRESHING['on'] = False
+        self.addCleanup(self._settle)
         self.client = A.app.test_client()
 
     def total_calls(self):
