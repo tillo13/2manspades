@@ -5,6 +5,7 @@ import psycopg2.pool
 import json
 import os
 import threading
+import time
 from datetime import datetime
 from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
@@ -440,6 +441,42 @@ def get_player_bid_bias(google_email=None, player_name=None):
     finally:
         if conn is not None:
             return_db_connection(conn)
+
+
+# The query above reads every trick this person has ever played: 4.1s mean, 21.6s worst,
+# measured in production. From 2026-09-07 it ran inside POST /new_game, which is what made
+# Play Again take 11 seconds — and, because the whole app shares two database connections,
+# froze /my_record and /jukebox/stats alongside it. It is an average over hundreds of hands,
+# so it does not need to be fresh, and it must never be on the request path.
+_BIAS_CACHE = {}        # (email, name) -> (bias, computed_at)
+_BIAS_PENDING = {}      # (email, name) -> queued_at
+_BIAS_TTL = 3600
+_BIAS_RETRY = 120       # a refresh that was dropped or died gets asked for again
+
+
+def get_player_bid_bias_cached(google_email=None, player_name=None):
+    """The bid bias without touching the database. A miss returns None — Marta plays her
+    default — and asks the background worker for the real number, which the next game uses."""
+    key = (google_email or '', player_name or '')
+    if not any(key):
+        return None
+    cached = _BIAS_CACHE.get(key)
+    if cached and time.time() - cached[1] < _BIAS_TTL:
+        return cached[0]
+    if time.time() - _BIAS_PENDING.get(key, 0) > _BIAS_RETRY:
+        _BIAS_PENDING[key] = time.time()
+        from ..logging_utils import queue_db_operation
+        queue_db_operation(_refresh_bid_bias, key)
+    return cached[0] if cached else None
+
+
+def _refresh_bid_bias(key):
+    """Background only. Recompute one person's bias and park it in the cache."""
+    try:
+        _BIAS_CACHE[key] = (get_player_bid_bias(key[0] or None, key[1] or None), time.time())
+    finally:
+        _BIAS_PENDING.pop(key, None)
+    return True
 
 
 def get_player_record(google_email=None, player_name=None):

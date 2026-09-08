@@ -330,6 +330,8 @@ def cron_otto():
     result['par_solved'] = fill_par(limit=120)   # here, never on the page path: solving is slow
     from utilities.postgres_utils.stats import stats_payload
     stats_payload()           # keeps this process's /stats cache warm between visitors
+    from utilities.postgres_utils.rerolls import ensure_reroll_view
+    ensure_reroll_view()      # one-time; a catalog SELECT on every tick after that
     return jsonify({'ok': True, **result})
 
 @app.route('/cron/andybot')
@@ -523,8 +525,8 @@ def _with_opp_model(game):
     (utilities/marta_mind.py). Strangers get the default."""
     who = _ratchet_identity() if IS_PRODUCTION else None
     if who:
-        from utilities.postgres_utils import get_player_bid_bias
-        bias = get_player_bid_bias(who['email'], who['name'])
+        from utilities.postgres_utils import get_player_bid_bias_cached
+        bias = get_player_bid_bias_cached(who['email'], who['name'])
         if bias is not None:
             game['opp_model'] = {'bid_bias': bias}
     return game

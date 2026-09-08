@@ -8,7 +8,7 @@ import threading
 import unittest
 from unittest.mock import patch, MagicMock
 
-from tests.support import load_app
+from tests.support import load_app, isolate_services
 
 load_app()
 from utilities.postgres_utils import connection
@@ -88,6 +88,28 @@ class ReleaseTests(unittest.TestCase):
                 pool, conn = self.run_helper(helper, args, fail=False)
                 self.assert_slots_free(helper, 'success')
                 conn.close.assert_not_called()
+
+    def test_new_game_never_waits_on_the_bid_bias_query(self):
+        """POST /new_game must not run get_player_bid_bias. It reads every trick the player
+        has ever played — 4.1s mean, 21.6s worst in production — and on 2026-09-08 it sat on
+        the request path and made Play Again take 11 seconds, holding one of the app's two
+        connections long enough to freeze /my_record and /jukebox/stats alongside it."""
+        import app as A
+        from utilities.postgres_utils import records
+        with ExitStack() as st:
+            st.enter_context(redirect_stdout(StringIO()))
+            isolate_services(st)
+            st.enter_context(patch.object(A, 'IS_PRODUCTION', True))
+            st.enter_context(patch.object(A, '_ratchet_identity',
+                                          return_value={'email': 'a@b.c', 'name': None, 'ip': None}))
+            # `_with_opp_model` imports from the package at call time, so the package
+            # attribute is the only name that patching actually intercepts.
+            slow = st.enter_context(patch.object(db, 'get_player_bid_bias', return_value=0.5))
+            records._BIAS_CACHE.clear()
+            records._BIAS_PENDING.clear()
+            client = A.app.test_client()
+            self.assertEqual(client.post('/new_game', json={}).status_code, 200)
+            slow.assert_not_called()
 
     def test_double_return_is_harmless(self):
         connection._slots = threading.BoundedSemaphore(2)
