@@ -12,6 +12,11 @@ def create_deck():
             deck.append({'rank': rank, 'suit': suit, 'value': get_card_value(rank)})
     return deck
 
+def card_name(card):
+    """'A♠' for a card dict; None for no card. The one place this string is made."""
+    return f"{card['rank']}{card['suit']}" if card else None
+
+
 def get_card_value(rank):
     """Get numerical value of a card rank"""
     if rank == 'A':

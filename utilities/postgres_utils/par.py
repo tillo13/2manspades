@@ -15,7 +15,6 @@ import psycopg2.extras
 from .connection import get_db_connection, return_db_connection
 
 _TABLE_OK = False
-RANKS = {'J': 11, 'Q': 12, 'K': 13, 'A': 14}
 
 
 def _ensure_table(cur):
@@ -37,8 +36,9 @@ def _ensure_table(cur):
 
 def _card(code):
     """'10♣' / 'A♠' -> the dict shape the solver's coder expects."""
+    from utilities.gameplay_logic import get_card_value
     rank, suit = code[:-1], code[-1]
-    return {'rank': rank, 'suit': suit, 'value': RANKS.get(rank, 0) or int(rank)}
+    return {'rank': rank, 'suit': suit, 'value': get_card_value(rank)}
 
 
 def _unsolved(cur, limit):

@@ -88,8 +88,7 @@ def _code(card):
     return SUITS.index(card['suit']) * 16 + card['value']
 
 
-def _key(card):
-    return f"{card['rank']}{card['suit']}"
+from .gameplay_logic import card_name as _key
 
 
 def _suit(code):

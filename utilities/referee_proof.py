@@ -20,8 +20,8 @@ SPECIALS = ('7♦', '10♣')
 
 
 def run_proof(n, quiet=True):
-    from utilities import otto, hand_flow, computer_logic
-    c = lambda x: f"{x['rank']}{x['suit']}"
+    from utilities import otto, hand_flow, computer_logic, referee
+    from utilities.gameplay_logic import card_name as c
     calls, times, seed_now = [], [], [0]
     _orig, _ld = computer_logic.autoplay_remaining_cards, computer_logic.lay_down
 
@@ -47,6 +47,7 @@ def run_proof(n, quiet=True):
             if quiet:
                 st.enter_context(redirect_stdout(StringIO()))
             st.enter_context(patch.object(computer_logic, 'lay_down', timed))
+            st.enter_context(patch.object(referee, 'lay_down', timed))   # its real home: autoplay calls it directly
             if full:
                 st.enter_context(patch.object(hand_flow, 'process_auto_resolution', lambda *a, **k: False))
                 st.enter_context(patch.object(otto, 'process_auto_resolution', lambda *a, **k: False))
@@ -156,8 +157,14 @@ def main(argv=None):
     ap.add_argument('--out', default=OUT)
     a = ap.parse_args(argv)
     summary, calls, diff = run_proof(a.games)
-    summary['strength_sweep'] = strength_sweep(a.sweep)
-    summary['card_curve'] = card_curve(a.sweep)
+    if a.sweep:                      # --sweep 0 regenerates the lay-down proof alone
+        summary['strength_sweep'] = strength_sweep(a.sweep)
+        summary['card_curve'] = card_curve(a.sweep)
+    else:
+        old = json.load(open(a.out)).get('summary', {})
+        for k in ('strength_sweep', 'card_curve'):
+            if old.get(k):
+                summary[k] = old[k]
     json.dump({'summary': summary, 'calls': curate(calls)}, open(a.out, 'w'), ensure_ascii=False)
     print(json.dumps(summary))
     for s in diff[:3]:
