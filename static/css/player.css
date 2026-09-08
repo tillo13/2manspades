@@ -115,3 +115,8 @@
     }
 }
     
+
+/* A stat that links here says which games it is showing (2026-09-08) */
+.games-filter { font-size: 13px; color: var(--muted, #777); margin: -4px 0 12px; line-height: 1.45; }
+.games-filter a { color: #5a67d8; text-decoration: none; }
+.games-filter a:hover { text-decoration: underline; }

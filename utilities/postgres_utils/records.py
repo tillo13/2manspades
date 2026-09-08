@@ -222,9 +222,12 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             return_db_connection(conn)
 
 
-def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
+def get_player_games(player_name: str, only: str = None) -> Optional[Dict[str, Any]]:
     """Get all games for a specific player, sorted by date descending.
-    Includes both completed and abandoned games."""
+    Includes both completed and abandoned games.
+
+    only='streak' trims the list to the current run of wins or losses, so a stat on the stats
+    page can hand over the games behind it instead of asking to be believed (Andy, 2026-09-08)."""
     conn = None
     try:
         conn = get_db_connection()
@@ -306,10 +309,15 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
         abandoned_count = sum(1 for g in games if g.get('is_abandoned'))
         summary['abandoned'] = abandoned_count
 
+        shown = None
+        if only in ('streak', 'best'):
+            games, shown = _run_of_games(games, only)
+
         return {
             'player_name': player_name,
             'summary': summary,
-            'games': games
+            'games': games,
+            'shown': shown,
         }
 
     except Exception as e:
@@ -318,6 +326,36 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
     finally:
         if conn is not None:
             return_db_connection(conn)
+
+
+def _run_of_games(games, which):
+    """The games behind a streak stat, newest first, plus a line saying what is on screen.
+    which='streak' is the run still going; 'best' is the longest winning run ever. Abandoned
+    games have no result, so they are skipped rather than counted as a loss."""
+    played = [g for g in games if g.get('won') is not None]
+    if not played:
+        return games, None
+    runs, cur = [], []
+    for g in played:                                  # newest first, so each run is newest first too
+        if cur and g['won'] != cur[-1]['won']:
+            runs.append(cur); cur = []
+        cur.append(g)
+    if cur:
+        runs.append(cur)
+    if which == 'best':
+        wins = [r for r in runs if r[0]['won']]
+        if not wins:
+            return [], 'no wins on record yet'
+        run = max(wins, key=len)
+        when = run[0]['game_time'].strftime('%B %-d, %Y')
+        return run, f"the best run on record: {len(run)} wins in a row, ending {when}"
+    run = runs[0]
+    kind = run[0]['won']
+    word = 'wins' if kind else 'losses'
+    after = played[len(run):]
+    tail = (f", back to the last {'loss' if kind else 'win'} on "
+            f"{after[0]['game_time'].strftime('%B %-d, %Y')}") if after else ", every game on record"
+    return run, f"{len(run)} {word} in a row{tail}"
 
 
 def get_player_bid_bias(google_email=None, player_name=None):

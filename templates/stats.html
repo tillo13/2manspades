@@ -47,7 +47,9 @@
             <div class="subtitle">Every completed game at the table, plus the practice table where Marta plays herself</div>
         </div>
 
-        <!-- 1. Overview -->
+                <div class="group-title"><span>At the table</span><small>what is happening right now</small></div>
+
+<!-- 1. Overview -->
         {% if fun_stats %}
         <div class="stats-section overall-banner">
             <div class="overall-stats-grid">
@@ -60,14 +62,126 @@
             </div>
         </div>
         {% endif %}
-
-        <!-- Who's at the table: live block, polled by stats.js -->
+<!-- Who's at the table: live block, polled by stats.js -->
         <div class="stats-section" id="live">
             <div class="section-title">At the Table Right Now</div>
             <div id="liveTables">{% include '_live_tables.html' %}</div>
         </div>
+        <div class="group-title"><span>The players</span><small>who wins, how they play, and what they have piled up</small></div>
 
-        <!-- Marta's read on the table: computed titles from each regular's own numbers -->
+<!-- 2. Leaderboard -->
+        <div class="stats-section">
+            <div class="section-title">Player Leaderboard</div>
+            {% if google_leaders %}
+            <div class="table-container desktop-table">
+                <table class="stats-table">
+                    <thead>
+                        <tr><th>Rank</th><th>Player</th><th>W-L</th><th>Win %</th><th>Games</th><th>High Score</th><th>Avg Win</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for player in google_leaders %}
+                        <tr class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong><a href="/player/{{ player.player_name }}" class="player-link">{{ player.player_name }}</a></strong></td>
+                            <td class="win-loss-stat">{{ player.wins }}-{{ player.losses }}</td>
+                            <td class="percentage">{{ player.win_rate or 0 }}%</td>
+                            <td>{{ player.total_games }}</td>
+                            <td class="win-stat">{{ player.highest_score or '-' }}{% if player.highest_score_bags is not none %} ({{ player.highest_score_bags }} bags){% endif %}</td>
+                            <td class="win-stat">{{ player.avg_winning_score or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mobile-cards">
+                {% for player in google_leaders %}
+                <div class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                    <div class="player-header">
+                        <div class="player-rank">#{{ loop.index }}</div>
+                        <div class="player-name"><a href="/player/{{ player.player_name }}" class="player-link">{{ player.player_name }}</a></div>
+                        <div class="win-loss-record">{{ player.wins }}-{{ player.losses }} ({{ player.win_rate or 0 }}%)</div>
+                    </div>
+                    <div class="player-stats">
+                        <div class="stat-item"><div class="stat-label">Games</div><div class="stat-value">{{ player.total_games }}</div></div>
+                        <div class="stat-item"><div class="stat-label">Losses</div><div class="stat-value loss-stat">{{ player.losses }}</div></div>
+                        <div class="stat-item"><div class="stat-label">High</div><div class="stat-value win-stat">{{ player.highest_score or '-' }}{% if player.highest_score_bags is not none %} ({{ player.highest_score_bags }}){% endif %}</div></div>
+                        <div class="stat-item"><div class="stat-label">Avg Win</div><div class="stat-value win-stat">{{ player.avg_winning_score or '-' }}</div></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-stats">No players yet - be the first to play!</div>
+            {% endif %}
+        </div>
+        <!-- Career: the numbers that only go up, so a broken streak is not a reset -->
+        {% if career and career.records %}
+        <div class="stats-section">
+            <div class="section-title">Career Records</div>
+            <p class="section-blurb">A streak resets the day it breaks. These do not.</p>
+            <div class="table-wrapper">
+                <table class="styles-table">
+                    <thead><tr><th>Player</th><th>Best run</th><th>Games</th><th>Hands</th><th>Tricks</th><th>Points</th><th>Playing since</th></tr></thead>
+                    <tbody>
+                        {% for r in career.records %}
+                        {% set b = (career.best_streaks | selectattr('player', 'equalto', r.player) | list | first) %}
+                        <tr>
+                            <td><a href="/player/{{ r.player }}" class="player-link">{{ r.player }}</a></td>
+                            <td class="win-stat">{% if b and b.best_win %}<a href="/player/{{ r.player }}?only=best" class="player-link">{{ b.best_win }} wins</a>
+                                <small>{{ b.win_ended.strftime('%b %Y') if b.win_ended }}</small>{% else %}-{% endif %}</td>
+                            <td>{{ "{:,}".format(r.games) }}</td>
+                            <td>{{ "{:,}".format(r.hands) }}</td>
+                            <td>{{ "{:,}".format(r.tricks) }}</td>
+                            <td>{{ "{:,}".format(r.points) }}</td>
+                            <td>{{ r.first_game.strftime('%b %Y') }} <small>{{ "{:,}".format(r.days) }} days</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="achievements-grid">
+                {% if career.by_hour %}{% call card('When They Play Best') %}
+                    {% for r in career.by_hour %}{{ row(r.player, r.part, r.win_pct ~ '% of ' ~ r.games ~ ' games') }}{% endfor %}
+                {% endcall %}{% endif %}
+                {% if career.first_leader %}{% call card('Is Leading First Worth Anything?') %}
+                    {% for r in career.first_leader %}{{ row(r.player, (r.led_win_pct - r.marta_led_win_pct)|round(1) ~ ' pts',
+                        'led first ' ~ r.led_win_pct ~ '% (' ~ r.led ~ ') · Marta led ' ~ r.marta_led_win_pct ~ '% (' ~ r.marta_led ~ ')',
+                        'streak-value' if r.led_win_pct >= r.marta_led_win_pct else 'loss-value') }}{% endfor %}
+                {% endcall %}{% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+<!-- 3. Playing styles: each person next to the bots as the control -->
+        {% if styles %}
+        <div class="stats-section">
+            <div class="section-title">Playing Styles</div>
+            <p class="section-blurb">How each player actually plays, with Otto and Marta from the practice table as the
+                control: that pair is the house algorithm playing itself, so the gap to a human is the human.</p>
+            <div class="table-container">
+                <table class="stats-table styles-table">
+                    <thead>
+                        <tr><th>Player</th><th>Hands</th><th>Exact Bids</th><th>Fav Bid</th><th>Bags / Hand</th><th>Tricks / Hand</th><th>Nil</th><th>Blind</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in styles %}
+                        <tr class="{% if p.control %}control{% endif %}">
+                            <td>{{ p.player }}</td>
+                            <td>{{ p.hands or '-' }}</td>
+                            <td>{{ p.exact_pct }}%</td>
+                            <td>{{ p.fav_bid if p.fav_bid is not none else (p.avg_bid ~ ' avg' if p.avg_bid is not none else '-') }}</td>
+                            <td>{{ p.bags_per_hand if p.bags_per_hand is not none else '-' }}</td>
+                            <td>{{ p.tricks if p.tricks is not none else '-' }}</td>
+                            <td>{{ p.nil or '-' }}</td>
+                            <td>{{ p.blind or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+<!-- Marta's read on the table: computed titles from each regular's own numbers -->
         {% if reads %}
         <div class="stats-section" id="reads">
             <div class="section-title">Marta's Read on the Table</div>
@@ -122,84 +236,9 @@
                 </div>
             </div>
         </div>
+        <div class="group-title"><span>The record book</span><small>single games and hands nobody has beaten</small></div>
 
-        <!-- 2. Leaderboard -->
-        <div class="stats-section">
-            <div class="section-title">Player Leaderboard</div>
-            {% if google_leaders %}
-            <div class="table-container desktop-table">
-                <table class="stats-table">
-                    <thead>
-                        <tr><th>Rank</th><th>Player</th><th>W-L</th><th>Win %</th><th>Games</th><th>High Score</th><th>Avg Win</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for player in google_leaders %}
-                        <tr class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                            <td>{{ loop.index }}</td>
-                            <td><strong><a href="/player/{{ player.player_name }}" class="player-link">{{ player.player_name }}</a></strong></td>
-                            <td class="win-loss-stat">{{ player.wins }}-{{ player.losses }}</td>
-                            <td class="percentage">{{ player.win_rate or 0 }}%</td>
-                            <td>{{ player.total_games }}</td>
-                            <td class="win-stat">{{ player.highest_score or '-' }}{% if player.highest_score_bags is not none %} ({{ player.highest_score_bags }} bags){% endif %}</td>
-                            <td class="win-stat">{{ player.avg_winning_score or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="mobile-cards">
-                {% for player in google_leaders %}
-                <div class="player-card competitive-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
-                    <div class="player-header">
-                        <div class="player-rank">#{{ loop.index }}</div>
-                        <div class="player-name"><a href="/player/{{ player.player_name }}" class="player-link">{{ player.player_name }}</a></div>
-                        <div class="win-loss-record">{{ player.wins }}-{{ player.losses }} ({{ player.win_rate or 0 }}%)</div>
-                    </div>
-                    <div class="player-stats">
-                        <div class="stat-item"><div class="stat-label">Games</div><div class="stat-value">{{ player.total_games }}</div></div>
-                        <div class="stat-item"><div class="stat-label">Losses</div><div class="stat-value loss-stat">{{ player.losses }}</div></div>
-                        <div class="stat-item"><div class="stat-label">High</div><div class="stat-value win-stat">{{ player.highest_score or '-' }}{% if player.highest_score_bags is not none %} ({{ player.highest_score_bags }}){% endif %}</div></div>
-                        <div class="stat-item"><div class="stat-label">Avg Win</div><div class="stat-value win-stat">{{ player.avg_winning_score or '-' }}</div></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="no-stats">No players yet - be the first to play!</div>
-            {% endif %}
-        </div>
-
-        <!-- 3. Playing styles: each person next to the bots as the control -->
-        {% if styles %}
-        <div class="stats-section">
-            <div class="section-title">Playing Styles</div>
-            <p class="section-blurb">How each player actually plays, with Otto and Marta from the practice table as the
-                control: that pair is the house algorithm playing itself, so the gap to a human is the human.</p>
-            <div class="table-container">
-                <table class="stats-table styles-table">
-                    <thead>
-                        <tr><th>Player</th><th>Hands</th><th>Exact Bids</th><th>Fav Bid</th><th>Bags / Hand</th><th>Tricks / Hand</th><th>Nil</th><th>Blind</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for p in styles %}
-                        <tr class="{% if p.control %}control{% endif %}">
-                            <td>{{ p.player }}</td>
-                            <td>{{ p.hands or '-' }}</td>
-                            <td>{{ p.exact_pct }}%</td>
-                            <td>{{ p.fav_bid if p.fav_bid is not none else (p.avg_bid ~ ' avg' if p.avg_bid is not none else '-') }}</td>
-                            <td>{{ p.bags_per_hand if p.bags_per_hand is not none else '-' }}</td>
-                            <td>{{ p.tricks if p.tricks is not none else '-' }}</td>
-                            <td>{{ p.nil or '-' }}</td>
-                            <td>{{ p.blind or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- 4. Records: the games people talk about -->
+<!-- 4. Records: the games people talk about -->
         {% if achievements %}
         <div class="stats-section">
             <div class="section-title">Records</div>
@@ -220,7 +259,8 @@
                     {% for p in achievements.streaks %}
                         {% set opp = ('last loss' if p.streak_type == 'win' else 'last win') %}
                         {% set detail %}{{ opp }}: {% if p.last_opposite_date %}<a href="/game/{{ p.last_opposite_hand_id }}" class="streak-game-link">{{ p.last_opposite_date.strftime('%b %-d') }}</a>, {{ p.last_opposite_player_score }}-{{ p.last_opposite_computer_score }}{% else %}never{% endif %}{% endset %}
-                        {{ row(p.player, p.streak ~ (' wins in a row' if p.streak_type == 'win' else ' losses in a row'), detail, 'streak-value' if p.streak_type == 'win' else 'loss-value') }}
+                        {% set label %}<a href="/player/{{ p.player }}?only=streak" class="player-link">{{ p.streak }}{{ ' wins in a row' if p.streak_type == 'win' else ' losses in a row' }}</a>{% endset %}
+                        {{ row(p.player, label, detail, 'streak-value' if p.streak_type == 'win' else 'loss-value') }}
                     {% endfor %}
                 {% endcall %}{% endif %}
                 {% if per_hand_stats and per_hand_stats.biggest_hand_points %}{% call card('Biggest Hand') %}
@@ -241,8 +281,73 @@
             </div>
         </div>
         {% endif %}
+<!-- 6. Special cards -->
+        {% if special_cards %}
+        <div class="stats-section special-cards-section">
+            <div class="section-title">Special Cards: 10♣ &amp; 7♦</div>
+            <div class="special-cards-intro">
+                The <strong>10 of Clubs</strong> (-1 bag) and <strong>7 of Diamonds</strong> (-2 bags) are game-changers. Win the trick containing them to reduce your bags!
+            </div>
+            <div class="special-cards-grid">
+                <div class="special-card-box ten-clubs">
+                    <div class="card-icon">10♣</div><div class="card-name">10 of Clubs</div><div class="card-effect">-1 bag per capture</div>
+                    {% for c in special_cards.overall_captures if c.card == '10 of Clubs' %}<div class="capture-stat">{{ c.winner }}: {{ c.times }}</div>{% endfor %}
+                </div>
+                <div class="special-card-box seven-diamonds">
+                    <div class="card-icon">7♦</div><div class="card-name">7 of Diamonds</div><div class="card-effect">-2 bags per capture</div>
+                    {% for c in special_cards.overall_captures if c.card == '7 of Diamonds' %}<div class="capture-stat">{{ c.winner }}: {{ c.times }}</div>{% endfor %}
+                </div>
+            </div>
+            <div class="achievements-grid">
+                {% if special_cards.player_captures %}{% call card('Captures by Player') %}
+                    {% for p in special_cards.player_captures %}{{ row(p.player, p.bags_saved_per_game ~ ' bags/game', '10♣ ' ~ p.ten_clubs ~ ' · 7♦ ' ~ p.seven_diamonds ~ ' · ' ~ p.total_bags_saved ~ ' bags saved') }}{% endfor %}
+                {% endcall %}{% endif %}
+                {% if special_cards.win_rate_with_special %}{% call card('Win Rate When Capturing') %}
+                    {% for p in special_cards.win_rate_with_special %}{{ row(p.player, p.win_rate ~ '%', p.wins ~ '/' ~ p.games_with_special ~ ' games') }}{% endfor %}
+                {% endcall %}{% endif %}
+            </div>
+            {% if special_cards.marta_captures %}
+            <div class="marta-comparison">Marta has captured: 10♣ {{ special_cards.marta_captures.ten_clubs or 0 }}x, 7♦ {{ special_cards.marta_captures.seven_diamonds or 0 }}x</div>
+            {% endif %}
+        </div>
+        {% endif %}
+<!-- 7. By the numbers: all-time totals and time -->
+        {% if overall_stats %}
+        <div class="stats-section overall-records-section">
+            <div class="section-title">By the Numbers</div>
+            <div class="all-time-subtitle">Big numbers from every game ever played{% if overall_stats.first_game_date %} · since {{ overall_stats.first_game_date }}{% endif %}</div>
+            <div class="big-numbers-grid">
+                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.grand_total_points|int) }}</div><div class="big-label">Total Points Scored</div><div class="big-detail">Humans: {{ "{:,}".format(overall_stats.total_player_points|int) }} | Marta: {{ "{:,}".format(overall_stats.total_computer_points|int) }}</div></div>
+                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_cards_played|int) }}</div><div class="big-label">Cards Played</div><div class="big-detail">That's {{ (overall_stats.total_cards_played / 52)|int }} complete decks!</div></div>
+                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_tricks|int) }}-{{ "{:,}".format(overall_stats.total_computer_tricks|int) }}</div><div class="big-label">Tricks Won</div><div class="big-detail">Humans vs Marta</div></div>
+                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_bags|int) }}</div><div class="big-label">Human Bags</div><div class="big-detail">Marta has {{ "{:,}".format(overall_stats.total_computer_bags|int) }} bags</div></div>
+            </div>
+            <div class="records-grid">
+                {% if overall_stats.highest_player_score_ever %}<div class="record-item"><span class="record-label">Highest Player Score</span><span class="record-value highlight-value">{{ overall_stats.highest_player_score_ever }}{% if overall_stats.highest_player_score_bags %} ({{ overall_stats.highest_player_score_bags }} bags){% endif %}</span></div>{% endif %}
+                {% if overall_stats.highest_computer_score_ever %}<div class="record-item"><span class="record-label">Highest Marta Score</span><span class="record-value">{{ overall_stats.highest_computer_score_ever }}</span></div>{% endif %}
+                {% if overall_stats.lowest_winning_score %}<div class="record-item"><span class="record-label">Lowest Winning Score</span><span class="record-value">{{ overall_stats.lowest_winning_score }} to {{ overall_stats.lowest_win_opponent_score }}{% if overall_stats.lowest_win_bags %} ({{ overall_stats.lowest_win_bags }} bags){% endif %}</span></div>{% endif %}
+                {% if overall_stats.biggest_comeback_deficit %}<div class="record-item"><span class="record-label">Biggest Comeback</span><span class="record-value highlight-value">Down {{ overall_stats.biggest_comeback_deficit }}+</span></div>{% endif %}
+                {% if overall_stats.most_popular_bid is defined %}<div class="record-item"><span class="record-label">Most Popular Bid</span><span class="record-value">{{ overall_stats.most_popular_bid }} ({{ "{:,}".format(overall_stats.most_popular_bid_times) }}x)</span></div>{% endif %}
+                {% if overall_stats.total_nil_attempts %}<div class="record-item"><span class="record-label">Nil Success Rate</span><span class="record-value">{{ overall_stats.successful_nils }}/{{ overall_stats.total_nil_attempts }} ({{ overall_stats.nil_success_rate }}%)</span></div>{% endif %}
+                {% if overall_stats.blind_nil_attempts %}<div class="record-item"><span class="record-label">Blind Nil Attempts</span><span class="record-value">{{ overall_stats.blind_nil_successes or 0 }}/{{ overall_stats.blind_nil_attempts }} successful</span></div>{% endif %}
+                {% if overall_stats.avg_hand_spades_broken %}<div class="record-item"><span class="record-label">Avg Hand Spades Break</span><span class="record-value">Hand {{ overall_stats.avg_hand_spades_broken }}</span></div>{% endif %}
+                {% if per_hand_stats and per_hand_stats.avg_player_tricks_per_hand %}<div class="record-item"><span class="record-label">Tricks per Hand</span><span class="record-value">Humans {{ per_hand_stats.avg_player_tricks_per_hand }} · Marta {{ per_hand_stats.avg_computer_tricks_per_hand }}</span></div>{% endif %}
+            </div>
+            {% if fun_stats %}
+            <div class="time-records-grid">
+                <div class="time-record-item"><span class="time-record-label">Avg Game Duration</span><span class="time-record-value">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</span></div>
+                <div class="time-record-item"><span class="time-record-label">Avg Hand Duration</span><span class="time-record-value">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</span></div>
+                <div class="time-record-item fastest"><span class="time-record-label">Fastest Game</span><span class="time-record-value">{{ fun_stats.min_game_duration_minutes|default(0) }} min {% if fun_stats.fastest_game_hand_id %}<a href="/game/{{ fun_stats.fastest_game_hand_id }}" class="game-link">({{ fun_stats.fastest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
+                <div class="time-record-item slowest"><span class="time-record-label">Slowest Game</span><span class="time-record-value">{{ fun_stats.max_game_duration_minutes|default(0) }} min {% if fun_stats.slowest_game_hand_id %}<a href="/game/{{ fun_stats.slowest_game_hand_id }}" class="game-link">({{ fun_stats.slowest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
+                <div class="time-record-item fastest"><span class="time-record-label">Shortest Game</span><span class="time-record-value">{{ fun_stats.shortest_game|default(0) }} hands {% if fun_stats.shortest_game_hand_id %}<a href="/game/{{ fun_stats.shortest_game_hand_id }}" class="game-link">({{ fun_stats.shortest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
+                <div class="time-record-item slowest"><span class="time-record-label">Longest Game</span><span class="time-record-value">{{ fun_stats.longest_game|default(0) }} hands {% if fun_stats.longest_game_hand_id %}<a href="/game/{{ fun_stats.longest_game_hand_id }}" class="game-link">({{ fun_stats.longest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        <div class="group-title"><span>Marta</span><small>her dial, and the practice table where she plays herself</small></div>
 
-        <!-- 5. Marta: her levels, and the practice table where she plays herself -->
+<!-- 5. Marta: her levels, and the practice table where she plays herself -->
         {% if marta_levels or (robots and robots.games) %}
         <div class="stats-section" id="marta">
             <div class="section-title">Marta</div>
@@ -282,74 +387,9 @@
             {% endif %}
         </div>
         {% endif %}
+        <div class="group-title"><span>The jukebox</span><small>what has been playing while you lose</small></div>
 
-        <!-- 6. Special cards -->
-        {% if special_cards %}
-        <div class="stats-section special-cards-section">
-            <div class="section-title">Special Cards: 10♣ &amp; 7♦</div>
-            <div class="special-cards-intro">
-                The <strong>10 of Clubs</strong> (-1 bag) and <strong>7 of Diamonds</strong> (-2 bags) are game-changers. Win the trick containing them to reduce your bags!
-            </div>
-            <div class="special-cards-grid">
-                <div class="special-card-box ten-clubs">
-                    <div class="card-icon">10♣</div><div class="card-name">10 of Clubs</div><div class="card-effect">-1 bag per capture</div>
-                    {% for c in special_cards.overall_captures if c.card == '10 of Clubs' %}<div class="capture-stat">{{ c.winner }}: {{ c.times }}</div>{% endfor %}
-                </div>
-                <div class="special-card-box seven-diamonds">
-                    <div class="card-icon">7♦</div><div class="card-name">7 of Diamonds</div><div class="card-effect">-2 bags per capture</div>
-                    {% for c in special_cards.overall_captures if c.card == '7 of Diamonds' %}<div class="capture-stat">{{ c.winner }}: {{ c.times }}</div>{% endfor %}
-                </div>
-            </div>
-            <div class="achievements-grid">
-                {% if special_cards.player_captures %}{% call card('Captures by Player') %}
-                    {% for p in special_cards.player_captures %}{{ row(p.player, p.bags_saved_per_game ~ ' bags/game', '10♣ ' ~ p.ten_clubs ~ ' · 7♦ ' ~ p.seven_diamonds ~ ' · ' ~ p.total_bags_saved ~ ' bags saved') }}{% endfor %}
-                {% endcall %}{% endif %}
-                {% if special_cards.win_rate_with_special %}{% call card('Win Rate When Capturing') %}
-                    {% for p in special_cards.win_rate_with_special %}{{ row(p.player, p.win_rate ~ '%', p.wins ~ '/' ~ p.games_with_special ~ ' games') }}{% endfor %}
-                {% endcall %}{% endif %}
-            </div>
-            {% if special_cards.marta_captures %}
-            <div class="marta-comparison">Marta has captured: 10♣ {{ special_cards.marta_captures.ten_clubs or 0 }}x, 7♦ {{ special_cards.marta_captures.seven_diamonds or 0 }}x</div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        <!-- 7. By the numbers: all-time totals and time -->
-        {% if overall_stats %}
-        <div class="stats-section overall-records-section">
-            <div class="section-title">By the Numbers</div>
-            <div class="all-time-subtitle">Big numbers from every game ever played{% if overall_stats.first_game_date %} · since {{ overall_stats.first_game_date }}{% endif %}</div>
-            <div class="big-numbers-grid">
-                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.grand_total_points|int) }}</div><div class="big-label">Total Points Scored</div><div class="big-detail">Humans: {{ "{:,}".format(overall_stats.total_player_points|int) }} | Marta: {{ "{:,}".format(overall_stats.total_computer_points|int) }}</div></div>
-                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_cards_played|int) }}</div><div class="big-label">Cards Played</div><div class="big-detail">That's {{ (overall_stats.total_cards_played / 52)|int }} complete decks!</div></div>
-                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_tricks|int) }}-{{ "{:,}".format(overall_stats.total_computer_tricks|int) }}</div><div class="big-label">Tricks Won</div><div class="big-detail">Humans vs Marta</div></div>
-                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_bags|int) }}</div><div class="big-label">Human Bags</div><div class="big-detail">Marta has {{ "{:,}".format(overall_stats.total_computer_bags|int) }} bags</div></div>
-            </div>
-            <div class="records-grid">
-                {% if overall_stats.highest_player_score_ever %}<div class="record-item"><span class="record-label">Highest Player Score</span><span class="record-value highlight-value">{{ overall_stats.highest_player_score_ever }}{% if overall_stats.highest_player_score_bags %} ({{ overall_stats.highest_player_score_bags }} bags){% endif %}</span></div>{% endif %}
-                {% if overall_stats.highest_computer_score_ever %}<div class="record-item"><span class="record-label">Highest Marta Score</span><span class="record-value">{{ overall_stats.highest_computer_score_ever }}</span></div>{% endif %}
-                {% if overall_stats.lowest_winning_score %}<div class="record-item"><span class="record-label">Lowest Winning Score</span><span class="record-value">{{ overall_stats.lowest_winning_score }} to {{ overall_stats.lowest_win_opponent_score }}{% if overall_stats.lowest_win_bags %} ({{ overall_stats.lowest_win_bags }} bags){% endif %}</span></div>{% endif %}
-                {% if overall_stats.biggest_comeback_deficit %}<div class="record-item"><span class="record-label">Biggest Comeback</span><span class="record-value highlight-value">Down {{ overall_stats.biggest_comeback_deficit }}+</span></div>{% endif %}
-                {% if overall_stats.most_popular_bid is defined %}<div class="record-item"><span class="record-label">Most Popular Bid</span><span class="record-value">{{ overall_stats.most_popular_bid }} ({{ "{:,}".format(overall_stats.most_popular_bid_times) }}x)</span></div>{% endif %}
-                {% if overall_stats.total_nil_attempts %}<div class="record-item"><span class="record-label">Nil Success Rate</span><span class="record-value">{{ overall_stats.successful_nils }}/{{ overall_stats.total_nil_attempts }} ({{ overall_stats.nil_success_rate }}%)</span></div>{% endif %}
-                {% if overall_stats.blind_nil_attempts %}<div class="record-item"><span class="record-label">Blind Nil Attempts</span><span class="record-value">{{ overall_stats.blind_nil_successes or 0 }}/{{ overall_stats.blind_nil_attempts }} successful</span></div>{% endif %}
-                {% if overall_stats.avg_hand_spades_broken %}<div class="record-item"><span class="record-label">Avg Hand Spades Break</span><span class="record-value">Hand {{ overall_stats.avg_hand_spades_broken }}</span></div>{% endif %}
-                {% if per_hand_stats and per_hand_stats.avg_player_tricks_per_hand %}<div class="record-item"><span class="record-label">Tricks per Hand</span><span class="record-value">Humans {{ per_hand_stats.avg_player_tricks_per_hand }} · Marta {{ per_hand_stats.avg_computer_tricks_per_hand }}</span></div>{% endif %}
-            </div>
-            {% if fun_stats %}
-            <div class="time-records-grid">
-                <div class="time-record-item"><span class="time-record-label">Avg Game Duration</span><span class="time-record-value">{{ fun_stats.avg_game_duration_minutes|default(0) }} min</span></div>
-                <div class="time-record-item"><span class="time-record-label">Avg Hand Duration</span><span class="time-record-value">{{ fun_stats.avg_hand_duration_minutes|default(0) }} min</span></div>
-                <div class="time-record-item fastest"><span class="time-record-label">Fastest Game</span><span class="time-record-value">{{ fun_stats.min_game_duration_minutes|default(0) }} min {% if fun_stats.fastest_game_hand_id %}<a href="/game/{{ fun_stats.fastest_game_hand_id }}" class="game-link">({{ fun_stats.fastest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
-                <div class="time-record-item slowest"><span class="time-record-label">Slowest Game</span><span class="time-record-value">{{ fun_stats.max_game_duration_minutes|default(0) }} min {% if fun_stats.slowest_game_hand_id %}<a href="/game/{{ fun_stats.slowest_game_hand_id }}" class="game-link">({{ fun_stats.slowest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
-                <div class="time-record-item fastest"><span class="time-record-label">Shortest Game</span><span class="time-record-value">{{ fun_stats.shortest_game|default(0) }} hands {% if fun_stats.shortest_game_hand_id %}<a href="/game/{{ fun_stats.shortest_game_hand_id }}" class="game-link">({{ fun_stats.shortest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
-                <div class="time-record-item slowest"><span class="time-record-label">Longest Game</span><span class="time-record-value">{{ fun_stats.longest_game|default(0) }} hands {% if fun_stats.longest_game_hand_id %}<a href="/game/{{ fun_stats.longest_game_hand_id }}" class="game-link">({{ fun_stats.longest_game_date.strftime('%Y%b%-d') }})</a>{% endif %}</span></div>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        <!-- 8. Hoyt Axton jukebox -->
+<!-- 8. Hoyt Axton jukebox -->
         {% if hoyt and hoyt.totals and hoyt.totals.plays %}
         <div class="stats-section hoyt-section" id="hoyt">
             <div class="section-title">Hoyt Axton Jukebox</div>

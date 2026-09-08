@@ -56,6 +56,9 @@
 
         <div class="stats-section">
             <div class="section-title">Game History</div>
+            {% if player.shown %}
+            <p class="games-filter">Showing {{ player.shown }}. <a href="/player/{{ player.player_name }}">Show every game</a></p>
+            {% endif %}
             <div class="games-list">
                 {% for game in player.games %}
                 <div class="game-row {% if game.is_abandoned %}abandoned{% endif %}">

@@ -937,7 +937,7 @@ def stats():
 def player_profile(name):
     """Show all games for a specific player."""
     from utilities.postgres_utils import get_player_games
-    player_data = get_player_games(name)
+    player_data = get_player_games(name, only=request.args.get('only'))
     if not player_data:
         return render_template('404.html', message=f"Player '{name}' not found"), 404
     return render_template('player.html', player=player_data)

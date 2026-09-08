@@ -28,6 +28,7 @@ _REFRESHING = {'on': False}
 def _build_payload():
     from utilities.jukebox import jukebox_stats
     from .robots import robot_league
+    from .career import career_stats
     data = {
         'google_leaders': get_unified_leaderboard(),
         'fun_stats': get_fun_stats(),
@@ -38,6 +39,7 @@ def _build_payload():
         'hoyt': jukebox_stats(),
         'robots': robot_league(),
         'marta_levels': get_marta_levels(),
+        'career': career_stats(),
     }
     data['styles'] = player_styles(data['google_leaders'], data['achievements'],
                                    data['per_hand_stats'], data['robots'])
