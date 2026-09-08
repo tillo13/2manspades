@@ -716,3 +716,10 @@ button:disabled {
     background: #5a6268;
 }
 
+
+/* What the hand was worth, against what was bid (2026-09-08) */
+.ho-par { font-size: 12.5px; color: #666; text-align: center; padding: 7px 8px; margin: 8px 0 2px;
+          background: #f5f6fb; border-radius: 7px; line-height: 1.45; }
+.ho-par b { color: #333; }
+.ho-par-on { color: #2e7d32; font-weight: 600; }
+.ho-par-off { color: #b26a00; font-weight: 600; }

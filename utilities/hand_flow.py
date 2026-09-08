@@ -66,6 +66,7 @@ def process_bidding_phase(game, session, bid, request):
     
     game['phase'] = 'playing'
     first_leader = game.get('first_leader', 'player')
+    _stash_par(game, first_leader)
     game['turn'] = first_leader
     game['trick_leader'] = first_leader
     
@@ -564,6 +565,27 @@ def computer_lead_with_logging(game, session_obj=None):
             log_game_event('spades_broken', {'broken_by': 'computer', 'card': f"{card['rank']}{card['suit']}"}, session_obj)
 
 
+def _stash_par(game, first_leader):
+    """What this hand was worth against perfect play, worked out once now while both hands are
+    known and kept for the hand-over screen. Bidding four and taking four looks the same whether
+    the hand was worth four or worth seven; only against par is a bid measurable, and every
+    person at this table underbids by about a trick (utilities/postgres_utils/sabermetrics.py).
+    Solving is ~20 ms and happens once per hand, never during a trick."""
+    game.pop('hand_par', None)          # never let the last hand's price show on this one
+    try:
+        from .marta_mind import _code, _count, _Ctx
+        mine, theirs = game.get('player_hand') or [], game.get('computer_hand') or []
+        if len(mine) != len(theirs) or not mine:
+            return
+        m = sum(1 << _code(c) for c in theirs)
+        p = sum(1 << _code(c) for c in mine)
+        marta = _count(m, p, 0 if first_leader == 'computer' else 1, _Ctx({}, float('inf'), tricks_only=True), {})
+        game['hand_par'] = {'player': len(mine) - marta, 'computer': marta}
+    except Exception as e:
+        print(f"[PAR] could not price this hand: {e}")
+        game.pop('hand_par', None)
+
+
 def process_hand_completion(game, session):
     """All ten tricks played: score the hand."""
     log_game_event(
@@ -690,6 +712,8 @@ def _complete_hand(game, session, auto_explanation=None):
             'computer': game.get('computer_parity', 'odd').title()
         },
         'discard_info': game.get('discard_bonus_explanation', ''),
+        'par': game.get('hand_par'),
+        'bids': {'player': game.get('player_bid'), 'computer': game.get('computer_bid')},
         'scoring': scoring_result['explanation'],
         'trick_history': _tricks_with_leaders(game),
         'totals': {

@@ -635,6 +635,22 @@ function updateHandOver() {
     const info = (r.discard_info || '').replace(/^Discards:\s*/, '').replace(/(\S+[♥♦])/g, '<span class="heart">$1</span>');
     document.getElementById('hoMiddle').innerHTML = info;
 
+    // What the hand was worth against perfect play, next to what was bid. Everyone at this
+    // table bids about a trick under par, and until now nothing said so (Andy, 2026-09-08).
+    const par = document.getElementById('hoPar');
+    if (par) {
+        if (r.par && r.bids && r.bids.player !== null && r.bids.player !== undefined) {
+            const worth = r.par.player, bid = r.bids.player, off = bid - worth;
+            const verdict = off === 0 ? 'you bid it exactly'
+                : off < 0 ? `you bid ${-off} under it` : `you bid ${off} over it`;
+            par.innerHTML = `<b>This hand was worth ${worth}</b> against perfect play · ` +
+                `<span class="${off === 0 ? 'ho-par-on' : 'ho-par-off'}">${verdict}</span>`;
+            par.hidden = false;
+        } else {
+            par.hidden = true;
+        }
+    }
+
     // every line of the scoring record, as written
     const lines = (r.scoring || '').split(' | ').map(x => x.trim()).filter(Boolean);
     document.getElementById('hoNotes').innerHTML = lines.map(n =>
