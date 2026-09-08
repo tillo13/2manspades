@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Otto vs Marta, {{ g.played_at.strftime('%b %-d %H:%M') }} | Two-Man Spades{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats_sections.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/referee.css') }}">
+{% endblock %}
+{% block content %}
+    <a href="/stats#marta" class="back-button">&larr; Back to the Robot League</a>
+    <div class="container">
+        <div class="header">
+            <h1>{{ 'Otto' if g.winner == 'otto' else 'Marta' }} won, {{ g.otto_score }} to {{ g.marta_score }}</h1>
+            <div class="subtitle">{{ g.hands }} hands · {{ g.first_leader }} led first ·
+                Marta at {{ g.marta_strength if g.marta_strength is not none else 0 }} ·
+                {{ g.played_at.strftime('%B %-d, %Y at %H:%M') }}</div>
+        </div>
+
+        <div class="stats-section">
+            <div class="section-title">Hand by Hand</div>
+            <div class="table-container">
+                <table class="stats-table styles-table">
+                    <thead><tr><th>Hand</th><th>Otto bid</th><th>Otto took</th><th>Marta bid</th><th>Marta took</th><th>Score</th></tr></thead>
+                    <tbody>
+                        {% for h in g.hands_log %}
+                        <tr>
+                            <td>{{ h.hand }}</td>
+                            <td>{{ h.otto_bid }}{% if h.otto_blind %} blind{% endif %}</td>
+                            <td class="{{ 'win-stat' if h.otto_tricks == h.otto_bid else '' }}">{{ h.otto_tricks }}{% if h.otto_over %} (+{{ h.otto_over }}){% endif %}</td>
+                            <td>{{ h.marta_bid }}{% if h.marta_blind %} blind{% endif %}</td>
+                            <td class="{{ 'win-stat' if h.marta_tricks == h.marta_bid else '' }}">{{ h.marta_tricks }}{% if h.marta_over %} (+{{ h.marta_over }}){% endif %}</td>
+                            <td>{{ h.otto_score }} · {{ h.marta_score }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="foot">Seed {{ g.seed }} · bags {{ g.otto_bags }}/{{ g.marta_bags }} ·
+                {{ g.ms }} ms to play ·
+                {{ g.decision_counts | map(attribute='n') | sum }} decisions logged
+                ({% for d in g.decision_counts %}{{ d.n }} {{ d.kind }}{{ ', ' if not loop.last }}{% endfor %})</p>
+        </div>
+    </div>
+{% endblock %}

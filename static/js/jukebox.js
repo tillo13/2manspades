@@ -71,7 +71,7 @@
         render(); renderPills();
     }
     function toggle() {
-        if (!state.album) return play(neighbor(+1));
+        if (!state.album) return play(randomStart());
         if (!audio.src) return play(current(), state.pos, 'resume');   // saved-but-paused state: nothing loaded yet
         if (audio.paused) { state.playing = true; fadeIn(1); audio.play().then(() => setResumePrompt(false)).catch(() => setResumePrompt(true)); }
         else { state.playing = false; audio.pause(); beat(false, false, 'paused'); }
@@ -86,7 +86,11 @@
     }
     function prev() { if (audio.currentTime > 4) { audio.currentTime = 0; return; } play(neighbor(-1)); }
     function playAlbum(id, n, source) { state.mode = 'album'; play({ album: id, n: n || 1 }, 0, source || 'album'); }
-    function shuffleAll() { state.mode = 'shuffle'; state.seed = Date.now(); buildOrder(); play(order[0]); }
+    function shuffleAll() { state.mode = 'shuffle'; state.seed = Date.now(); buildOrder(); play(randomStart()); }
+    // Where a cold start begins. It used to be order[0] every time, and the shuffle is seeded
+    // from Date.now(), so visits close together drew nearly the same order and the same record
+    // kept opening the night (Andy, 2026-09-08: "the stats show the same album a lot").
+    function randomStart() { return order[Math.floor(Math.random() * order.length)] || order[0]; }
 
     // On arrival (Andy, 2026-09-06): open the Hoyt panel with the play button up front, unless
     // music is already going or the player has turned the pop off in their profile. The press

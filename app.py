@@ -171,14 +171,14 @@ def handle_error(error):
     error_type = type(error).__name__
     error_message = str(error)
     error_key = f"{error_type}_{error_message[:50]}"  # Unique key for this error
-    
-    # Rate limiting: only email once per hour per error type
-    current_time = time.time()
-    last_email_time = LAST_ERROR_EMAIL_TIME.get(error_key, 0)
-    
-    if current_time - last_email_time > 3600:  # 3600 seconds = 1 hour
-        LAST_ERROR_EMAIL_TIME[error_key] = current_time
-        
+
+    # One email per problem, counted, shared across instances (utilities/error_alerts.py). The
+    # old limit was a dict on the instance, so a crash loop mailed once per instance per hour
+    # and again for every fresh one — that is what got the sending address spam-blocked.
+    from utilities.error_alerts import record as record_alert
+    send_it, held = record_alert(error_key)
+
+    if send_it:
         # Get request context
         endpoint = request.endpoint or 'unknown'
         client_ip = get_client_ip(request)
@@ -205,6 +205,7 @@ blind_decision_made: {game.get('blind_decision_made', 'NOT SET')}
 Error Type: {error_type}
 Error Message: {error_message}
 Endpoint: {endpoint}
+Repeats: {held or 'first time this hour'}
 Player IP: {client_ip}
 Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -218,7 +219,7 @@ STACK TRACE:
         # Send email (non-blocking, won't slow down response)
         try:
             send_simple_email(
-                subject=f"[2MANSPADES BUG] {error_type} in {endpoint}",
+                subject=f"[2MANSPADES BUG] {error_type} in {endpoint}" + (f" (+{held.split()[0]} held)" if held and held[0].isdigit() else ""),
                 body=email_body,
                 to_email="andy.tillo@gmail.com"  # YOUR EMAIL HERE
             )
@@ -325,6 +326,8 @@ def cron_otto():
         abort(403)
     from utilities.otto import play_cron_tick
     result = play_cron_tick()
+    from utilities.postgres_utils.par import fill_par
+    result['par_solved'] = fill_par(limit=120)   # here, never on the page path: solving is slow
     from utilities.postgres_utils.stats import stats_payload
     stats_payload()           # keeps this process's /stats cache warm between visitors
     return jsonify({'ok': True, **result})
@@ -941,6 +944,16 @@ def player_profile(name):
     if not player_data:
         return render_template('404.html', message=f"Player '{name}' not found"), 404
     return render_template('player.html', player=player_data)
+
+
+@app.route('/bot/<game_id>')
+def bot_game_detail(game_id):
+    """One practice-table game, hand by hand. The Robot League list links here."""
+    from utilities.postgres_utils import bot_game
+    game = bot_game(game_id)
+    if not game:
+        return render_template('404.html', message='No such practice game'), 404
+    return render_template('bot_game.html', g=game)
 
 
 @app.route('/game/<hand_id>')

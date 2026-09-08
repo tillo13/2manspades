@@ -119,8 +119,8 @@
         <div class="stats-section">
             <div class="section-title">Career Records</div>
             <p class="section-blurb">A streak resets the day it breaks. These do not.</p>
-            <div class="table-wrapper">
-                <table class="styles-table">
+            <div class="table-container">
+                <table class="stats-table styles-table">
                     <thead><tr><th>Player</th><th>Best run</th><th>Games</th><th>Hands</th><th>Tricks</th><th>Points</th><th>Playing since</th></tr></thead>
                     <tbody>
                         {% for r in career.records %}
@@ -311,6 +311,16 @@
                         {{ row(p.player, label, detail, 'streak-value' if p.streak_type == 'win' else 'loss-value') }}
                     {% endfor %}
                 {% endcall %}{% endif %}
+                {% if career and career.best_streaks %}{% call card('Longest Runs Ever') %}
+                    {% for b in career.best_streaks %}
+                        {% if b.best_win %}
+                        {% set label %}<a href="/player/{{ b.player }}?only=best" class="player-link">{{ b.best_win }} wins in a row</a>{% endset %}
+                        {% set detail %}ended {{ b.win_ended.strftime('%b %-d, %Y') if b.win_ended }}{% if b.best_loss and b.best_loss > 1 %} · worst run
+                            <a href="/player/{{ b.player }}?only=worst" class="player-link">{{ b.best_loss }} losses</a>{% endif %}{% endset %}
+                        {{ row(b.player, label, detail, 'streak-value') }}
+                        {% endif %}
+                    {% endfor %}
+                {% endcall %}{% endif %}
                 {% if per_hand_stats and per_hand_stats.biggest_hand_points %}{% call card('Biggest Hand') %}
                     {% for h in per_hand_stats.biggest_hand_points %}{{ row(h.player, '+' ~ h.points_scored ~ ' pts', 'hand ' ~ h.hand_number ~ ', ' ~ when(h), 'streak-value') }}{% endfor %}
                 {% endcall %}{% endif %}
@@ -367,7 +377,7 @@
             <div class="big-numbers-grid">
                 <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.grand_total_points|int) }}</div><div class="big-label">Total Points Scored</div><div class="big-detail">Humans: {{ "{:,}".format(overall_stats.total_player_points|int) }} | Marta: {{ "{:,}".format(overall_stats.total_computer_points|int) }}</div></div>
                 <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_cards_played|int) }}</div><div class="big-label">Cards Played</div><div class="big-detail">That's {{ (overall_stats.total_cards_played / 52)|int }} complete decks!</div></div>
-                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_tricks|int) }}-{{ "{:,}".format(overall_stats.total_computer_tricks|int) }}</div><div class="big-label">Tricks Won</div><div class="big-detail">Humans vs Marta</div></div>
+                <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_tricks|int) }}</div><div class="big-label">Tricks Won by Humans</div><div class="big-detail">Marta has taken {{ "{:,}".format(overall_stats.total_computer_tricks|int) }}</div></div>
                 <div class="big-number-card"><div class="big-number">{{ "{:,}".format(overall_stats.total_player_bags|int) }}</div><div class="big-label">Human Bags</div><div class="big-detail">Marta has {{ "{:,}".format(overall_stats.total_computer_bags|int) }} bags</div></div>
             </div>
             <div class="records-grid">
@@ -429,7 +439,10 @@
                     {% for s in robots.seats %}{{ row(s.seat, s.exact_pct ~ '% exact bids', s.avg_bags ~ ' bags/hand · avg bid ' ~ s.avg_bid ~ ' · nil ' ~ s.nil_made ~ '/' ~ s.nil_tried ~ ' · blind ' ~ s.blind_made ~ '/' ~ s.blind_tried) }}{% endfor %}
                 {% endcall %}{% endif %}
                 {% if robots.recent %}{% call card("Otto's Recent Games") %}
-                    {% for g in robots.recent %}{{ row(g.winner|title ~ ' won', g.otto_score ~ ' to ' ~ g.marta_score, g.hands ~ ' hands, ' ~ g.first_leader ~ ' led first, ' ~ (g.played_at.strftime('%b %-d %H:%M') if g.played_at else ''), 'streak-value' if g.winner == 'otto' else 'loss-value') }}{% endfor %}
+                    {% for g in robots.recent %}
+                        {% set score %}<a href="/bot/{{ g.game_id }}" class="player-link">{{ g.otto_score }} to {{ g.marta_score }}</a>{% endset %}
+                        {{ row(g.winner|title ~ ' won', score, g.hands ~ ' hands, ' ~ g.first_leader ~ ' led first, ' ~ (g.played_at.strftime('%b %-d %H:%M') if g.played_at else ''), 'streak-value' if g.winner == 'otto' else 'loss-value') }}
+                    {% endfor %}
                 {% endcall %}{% endif %}
             </div>
             {% endif %}

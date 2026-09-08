@@ -30,8 +30,6 @@ def _build_payload():
     from .robots import robot_league
     from .career import career_stats
     from .sabermetrics import advanced_stats
-    from .par import fill_par
-    fill_par(limit=300, verbose=False)      # solve any hands played since the last rebuild
     data = {
         'google_leaders': get_unified_leaderboard(),
         'fun_stats': get_fun_stats(),
@@ -369,6 +367,7 @@ def player_styles(leaders, achievements, per_hand, robots):
         controls.append({'player': f"{s['seat']} (bot)", 'hands': s['hands'], 'exact_pct': s['exact_pct'],
                          'bags_per_hand': s['avg_bags'], 'nil': f"{s['nil_made']}/{s['nil_tried']}",
                          'blind': f"{s['blind_made']}/{s['blind_tried']}", 'avg_bid': s['avg_bid'],
+                         'fav_bid': s.get('fav_bid'), 'tricks': s.get('tricks_per_hand'),
                          'control': True})
     return humans + controls
 
@@ -547,7 +546,9 @@ def get_fun_stats() -> Dict[str, Any]:
                     hand_number,
                     timestamp as end_time,
                     LAG(timestamp) OVER (PARTITION BY hand_id ORDER BY hand_number) as prev_time
-                FROM twomanspades.vw_hand_scoring
+                FROM (SELECT DISTINCT ON (hand_id, hand_number) hand_id, hand_number, timestamp
+                        FROM twomanspades.game_events WHERE event_type = 'hand_scoring'
+                       ORDER BY hand_id, hand_number, timestamp) s
                 WHERE TRUE
                 AND hand_id IN (
                     SELECT hand_id FROM twomanspades.game_events

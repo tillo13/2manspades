@@ -46,7 +46,9 @@ def robot_league():
                    COUNT(*) FILTER (WHERE blind) AS blind_tried,
                    COUNT(*) FILTER (WHERE blind AND tricks >= bid) AS blind_made,
                    ROUND(AVG(over), 2) AS avg_bags,
-                   ROUND(AVG(bid), 2) AS avg_bid
+                   ROUND(AVG(bid), 2) AS avg_bid,
+                   ROUND(AVG(tricks), 2) AS avg_tricks,
+                   MODE() WITHIN GROUP (ORDER BY bid) AS fav_bid
               FROM (
                 SELECT 'Otto' AS seat, (data->>'otto_bid')::int AS bid, (data->>'otto_tricks')::int AS tricks,
                        (data->>'otto_blind')::boolean AS blind, (data->>'otto_over')::int AS over
@@ -61,6 +63,8 @@ def robot_league():
         seats = [dict(r) for r in cur.fetchall()]
         for s in seats:
             s['exact_pct'] = round(100.0 * s['exact'] / s['hands'], 1) if s['hands'] else 0
+            s['tricks_per_hand'] = round(float(s['avg_tricks']), 2) if s.get('avg_tricks') is not None else None
+            s['fav_bid'] = s.get('fav_bid')
         out['seats'] = seats
         cur.execute("""
             SELECT game_id, played_at, winner, otto_score, marta_score, hands, first_leader, seed, marta_strength
@@ -78,6 +82,42 @@ def robot_league():
     except Exception as e:
         print(f"Robot league stats failed: {e}")
         return {}
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
+def bot_game(game_id):
+    """One practice-table game, hand by hand, for /bot/<game_id>. Andy, 2026-09-08: the recent
+    games list should open the game the way a human game does. None if there is no such game."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT game_id, played_at, winner, otto_score, marta_score, hands, first_leader,
+                   seed, marta_strength, otto_bags, marta_bags, source, ms
+              FROM twomanspades.bot_games WHERE game_id = %s
+        """, (game_id,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        game = dict(row)
+        cur.execute("""
+            SELECT hand, data FROM twomanspades.bot_decisions
+             WHERE game_id = %s AND kind = 'hand' ORDER BY hand
+        """, (game_id,))
+        game['hands_log'] = [dict(r['data'], hand=r['hand']) for r in cur.fetchall()]
+        cur.execute("""
+            SELECT kind, COUNT(*) AS n FROM twomanspades.bot_decisions
+             WHERE game_id = %s GROUP BY 1 ORDER BY 2 DESC
+        """, (game_id,))
+        game['decision_counts'] = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        return game
+    except Exception as e:
+        print(f"Bot game lookup failed: {e}")
+        return None
     finally:
         if conn is not None:
             return_db_connection(conn)

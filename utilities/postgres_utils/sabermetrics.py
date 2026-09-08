@@ -92,7 +92,9 @@ def advanced_stats() -> Dict[str, Any]:
                 SELECT ge.hand_id, ge.hand_number,
                        (ge.event_data->>'player_bid')::int    AS bid,
                        (ge.event_data->>'player_tricks')::int AS took
-                  FROM twomanspades.vw_hand_completed ge
+                  FROM (SELECT DISTINCT ON (hand_id, hand_number) hand_id, hand_number, event_data
+                          FROM twomanspades.game_events WHERE event_type = 'hand_completed'
+                         ORDER BY hand_id, hand_number, timestamp) ge
                  WHERE (ge.event_data->>'player_bid') IS NOT NULL)
             SELECT v.player_name AS player, COUNT(*) AS hands,
                    ROUND(AVG(ABS(b.bid - hp.player_par)), 2)          AS avg_miss,
@@ -117,14 +119,18 @@ def advanced_stats() -> Dict[str, Any]:
                 SELECT ge.hand_id, ge.hand_number,
                        (ge.event_data->'final_scores'->>'player_score')::int   AS p,
                        (ge.event_data->'final_scores'->>'computer_score')::int AS c
-                  FROM twomanspades.vw_hand_scoring ge),
+                  FROM (SELECT DISTINCT ON (hand_id, hand_number) hand_id, hand_number, event_data
+                          FROM twomanspades.game_events WHERE event_type = 'hand_scoring'
+                         ORDER BY hand_id, hand_number, timestamp) ge),
             before AS (
                 SELECT hand_id, hand_number + 1 AS hand_number, p, c FROM scored),
             bids AS (
                 SELECT ge.hand_id, ge.hand_number,
                        (ge.event_data->>'player_bid')::int    AS bid,
                        (ge.event_data->>'player_tricks')::int AS took
-                  FROM twomanspades.vw_hand_completed ge
+                  FROM (SELECT DISTINCT ON (hand_id, hand_number) hand_id, hand_number, event_data
+                          FROM twomanspades.game_events WHERE event_type = 'hand_completed'
+                         ORDER BY hand_id, hand_number, timestamp) ge
                  WHERE (ge.event_data->>'player_bid') IS NOT NULL)
             SELECT v.player_name AS player,
                    COUNT(*) FILTER (WHERE tight)                                     AS tight_hands,
