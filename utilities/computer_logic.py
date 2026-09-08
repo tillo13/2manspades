@@ -393,45 +393,60 @@ def computer_discard_strategy(computer_hand, game_state):
 
 # BIDDING STRATEGY
 
+def nil_score(hand):
+    """How safe a nil looks, higher is safer. The weights are read off the family's own 43 nil
+    attempts (_oneoff/nil_patterns.py, 2026-09-08), not invented: what separated the ones they
+    made from the ones they blew was the top off-suit card (nothing above a queen made 71% of
+    them, a king or ace made 28%), how many queens-or-better they held off-suit, how many cards
+    of five or lower, whether they were void anywhere, and how high their spades were. A long
+    low suit is safe, not dangerous — you duck under it all night.
+    """
+    sp = [c['value'] for c in hand if c['suit'] == '♠']
+    off = [c['value'] for c in hand if c['suit'] != '♠']
+    lens = {}
+    for c in hand:
+        if c['suit'] != '♠':
+            lens[c['suit']] = lens.get(c['suit'], 0) + 1
+
+    top = max(off, default=0)
+    s = 3 if top <= 11 else 2 if top == 12 else 0 if top == 13 else -1
+    s += max(0, 2 - sum(1 for v in off if v >= 12))
+    low = sum(1 for c in hand if c['value'] <= 5)
+    s += 2 if low >= 5 else 1 if low >= 4 else 0
+    s += 1 if all(lens.get(x, 0) > 0 for x in SUITS_NO_SPADE) else 0
+    high_spade = max(sp, default=0)
+    s += 2 if high_spade <= 5 else 0 if high_spade <= 10 else -3
+    s += 1 if len(sp) <= 2 else 0
+    return s
+
+
+SUITS_NO_SPADE = ('♣', '♦', '♥')
+# The score alone is not enough, and the reason is worth keeping. Fit on the family's nil
+# attempts it looked strong — at 8 they had made 9 of the 13 hands it keeps — but those are
+# hands they had ALREADY chosen to nil, so the fit only learned to sort good nils from bad ones
+# inside a set someone else had filtered. Turned loose on every hand, score >= 8 fired 2.95
+# times per 100 hands (about the family's own rate) and made 14% (_oneoff/nil_variants.py,
+# 1500 games each). The playout is what puts it back on its feet: score >= 6 with a playout
+# check made 38% at 0.52 per 100 hands, against the family's 42% at 2.05.
+NIL_SCORE_MIN = 6
+
+
 def should_bid_nil(hand, game_state):
-    """Nil is a decision about the cards, not about the scoreboard (Andy, 2026-09-08).
+    """Nil is a read, not a proof (Andy, 2026-09-08: "it doesn't have to always be a guarantee,
+    frankly it's an estimate anyway").
 
-    The old rule needed eight things at once, two of which never co-occur — Otto measured zero
-    nil bids in 87,000 hands — and on top of that required being 80 points behind, which made a
-    hand-quality call into a desperation move. Marta went nil 0 times in 805 practice hands
-    while the family tried it 205 times and made 55% of them.
-
-    What is left is the thing that actually loses a nil: a card you cannot get under. No spade
-    she cannot duck, nothing above a queen outside spades, and a lone queen only where the suit
-    is long enough to throw under it. Measured against par (utilities/postgres_utils/par.py) on
-    the solved hands, this fires about as often as a nil is genuinely there.
-
-    Strong Marta does not use this at all: from strength 60 she deals out the hands the opponent
-    could hold, solves them, and bids nil when she takes no tricks in most of them (marta_mind).
+    The old rule wanted eight things at once, two of which never co-occur, plus being 80 points
+    behind — it fired zero times in 87,000 hands. A double-dummy check replaced it and was no
+    better: a perfect opponent can nearly always force a trick, so it fired once in 400 games.
+    Both were answering the wrong question. The family goes nil on one hand in 48 and makes 42%
+    of them, and what they are reading is the shape of the hand. So this reads the same shape,
+    with the weights taken from their results, and a playout as a second opinion rather than a
+    veto.
     """
     if game_state.get('player_bid') == 0:
         return False                        # both sides nil is a coin flip; play it straight
-
-    spades = [c for c in hand if c['suit'] == '♠']
-    if len(spades) > NIL_MAX_SPADES or any(c['value'] >= 11 for c in spades):
-        return False                        # a high spade wins a trick whether she likes it or not
-
-    others = [c for c in hand if c['suit'] != '♠']
-    if any(c['value'] >= 13 for c in others):
-        return False                        # an ace or king off-suit is a trick she cannot refuse
-
-    lengths = {}
-    for c in others:
-        lengths[c['suit']] = lengths.get(c['suit'], 0) + 1
-    queens = [c for c in others if c['value'] == 12]
-    if len(queens) > 1 or any(lengths[c['suit']] < 3 for c in queens):
-        return False                        # a queen is survivable only with cards to duck under it
-
-    if sum(1 for c in others if c['value'] >= 10) > NIL_MAX_HIGH:
-        return False                        # too much that has to be dodged
-
-    # The shape says a nil is possible; the solver says whether it is real. Shape alone made
-    # only 12% of the nils it called for, and a failed nil is -100 (_oneoff/nil_ab.py).
+    if nil_score(hand) < NIL_SCORE_MIN:
+        return False
     from .marta_mind import nil_is_safe
     return nil_is_safe(hand, game_state)
 

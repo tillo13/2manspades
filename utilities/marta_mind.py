@@ -332,7 +332,7 @@ NIL_WORLDS = 12                 # enough to separate a real nil from a hopeful o
 # best play: 0.75 never fires, 0.5 fires twice and makes half, 0.15 fires 18 times and makes
 # 22%, and shape alone with no playout fires 91 times and makes 12% while costing a point of
 # win rate. A failed nil is -100, so the gate sits where the ones she takes are ones she makes.
-NIL_CONFIDENCE = 0.5
+NIL_CONFIDENCE = 0.3
 
 
 def _duck(hand, led):
@@ -373,7 +373,20 @@ def _rank(code):
 
 
 def _tricks_if_she_ducks(m, p, leader, game):
-    """Play one world out: she ducks everything, they play their own game. Tricks she takes."""
+    """Play one world out: she ducks everything, they play their own game. Tricks she takes.
+
+    The opponent's cards are chosen by their real strategy, which reports every choice to the
+    decision tap — so the imagined plays have to be muted, or they land in the ledger as if they
+    happened and the trick-outcome stamper pairs the wrong ones up."""
+    from .computer_logic import _tap
+    quiet, _tap.sink = getattr(_tap, 'sink', None), None
+    try:
+        return _playout(m, p, leader, game)
+    finally:
+        _tap.sink = quiet
+
+
+def _playout(m, p, leader, game):
     mh, ph = [c for c in range(64) if m >> c & 1], [c for c in range(64) if p >> c & 1]
     broken = bool(game.get('spades_broken'))
     took, turn = 0, leader
