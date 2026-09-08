@@ -219,11 +219,18 @@
             const b = $('chatBubbleIcon');
             if (b.classList.contains('needs-tap')) { state.playing = true; audio.play().then(() => setResumePrompt(false)).catch(() => {}); openSheet('hoyt'); return; }
             if (sheetOpen()) { closeSheet(); return; }
-            // unread Marta reply wins; otherwise whichever tab was last used
+            // Marta unless he was actually working the jukebox. The bubble used to reopen
+            // whichever tab was last shown, and the arrival pop sets that to Hoyt, so from the
+            // first second of every visit the bubble led to the record player and the message
+            // box was unreachable. (Tom, 2026-09-08: "since Hoyt I'm not able to berate Marta".)
             const unread = (typeof unreadMessages !== 'undefined' && unreadMessages > 0);
-            openSheet(unread ? 'marta' : ($('tableSheet').dataset.tab || 'marta'));
+            const chosen = $('tableSheet').dataset.tabChosen === 'hoyt';
+            openSheet(unread || !chosen ? 'marta' : 'hoyt');
         };
-        $('tsClose').onclick = closeSheet; $('tsTabMarta').onclick = () => showTab('marta'); $('tsTabHoyt').onclick = () => showTab('hoyt');
+        // tabChosen records a tab HE picked; the arrival pop and the mini-player do not set it,
+        // so they can never redirect the bubble away from Marta.
+        const pick = (tab) => { $('tableSheet').dataset.tabChosen = tab; showTab(tab); };
+        $('tsClose').onclick = closeSheet; $('tsTabMarta').onclick = () => pick('marta'); $('tsTabHoyt').onclick = () => pick('hoyt');
         $('jbPlay').onclick = toggle; $('jbNext').onclick = next; $('jbPrev').onclick = prev;
         if ($('jbMini')) {
             $('jbMiniPlay').onclick = toggle; $('jbMiniNext').onclick = () => next();

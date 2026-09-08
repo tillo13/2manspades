@@ -305,5 +305,56 @@ class PersonaTests(unittest.TestCase):
         with patch('utilities.otto.play_persona_tick', return_value={'plan': [], 'played': False, 'reason': 'x'}):
             self.assertEqual(client.get('/cron/andybot', headers={'X-Appengine-Cron': 'true'}).status_code, 200)
 
+
+class BotStateTests(unittest.TestCase):
+    """bot_state.value is a 32-bit INTEGER; the results window must always fit in it."""
+
+    def test_window_round_trips_and_never_overflows(self):
+        from utilities import otto
+        INT_MAX = 2_147_483_647
+        store = {}
+        with patch.object(otto, '_read_state', lambda k: store.get(k)), \
+             patch.object(otto, '_save_state', lambda k, v: store.__setitem__(k, int(v))):
+            expected = []
+            for i in range(40):                      # well past the 10-wide window
+                won = i % 3 == 0
+                expected = (expected + [won])[-10:]
+                self.assertEqual(otto._push_recent('t', won), expected, i)
+                self.assertLessEqual(store['t'], INT_MAX, f'overflowed bot_state.value on push {i}')
+                self.assertLessEqual(store['t'], 2047, 'a window should never exceed 11 bits')
+
+    def test_a_run_of_losses_keeps_its_length(self):
+        from utilities import otto
+        store = {}
+        with patch.object(otto, '_read_state', lambda k: store.get(k)), \
+             patch.object(otto, '_save_state', lambda k, v: store.__setitem__(k, int(v))):
+            for _ in range(10):
+                out = otto._push_recent('t', False)
+            self.assertEqual(out, [False] * 10)      # the sentinel is what stops zeros vanishing
+
+
+
+class BotStateRecoveryTests(unittest.TestCase):
+    """A window that is not a window must be discarded, never read as history."""
+
+    def test_old_base_ten_value_is_not_read_as_a_record(self):
+        from utilities import otto
+        store = {'t': 1101101011}                    # what the old base-10 code left behind
+        with patch.object(otto, '_read_state', lambda k: store.get(k)), \
+             patch.object(otto, '_save_state', lambda k, v: store.__setitem__(k, int(v))):
+            with redirect_stdout(StringIO()):
+                self.assertEqual(otto._push_recent('t', True), [True])    # starts clean, not 10 bits of noise
+            self.assertLessEqual(store['t'], 2047)
+
+    def test_garbage_and_zero_are_discarded(self):
+        from utilities import otto
+        for bad in (0, -5, 110211, 2 ** 31):
+            store = {'t': bad}
+            with patch.object(otto, '_read_state', lambda k: store.get(k)), \
+                 patch.object(otto, '_save_state', lambda k, v: store.__setitem__(k, int(v))):
+                with redirect_stdout(StringIO()):
+                    self.assertEqual(otto._push_recent('t', False), [False], bad)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -161,7 +161,7 @@ def get_user_level_record(google_email: str = None, player_name: str = None) -> 
             SELECT h.difficulty,
                    COUNT(*) FILTER (WHERE v.won)     AS wins,
                    COUNT(*) FILTER (WHERE NOT v.won) AS losses
-              FROM twomanspades.vw_player_game_details v
+              FROM twomanspades.vw_player_games v
               JOIN twomanspades.hands h ON h.hand_id = v.hand_id
              WHERE v.player_name = COALESCE(%s, (SELECT split_part(google_name, ' ', 1) FROM twomanspades.players
                                                  WHERE google_email = %s AND google_name IS NOT NULL LIMIT 1))
@@ -503,7 +503,7 @@ def get_player_city_membership(client_ip):
 
 
 def get_unified_leaderboard() -> List[Dict[str, Any]]:
-    """Get unified leaderboard from vw_unified_leaderboard view.
+    """Get the leaderboard from vw_leaderboard (the deduped one; see vw_player_games).
     Combines Google-auth games with location-inferred games for known players:
     Tom (Helena/MT), Luke (Rocklin/CA + Virginia), Andy (Seattle/WA), Jon (Elliston/MT).
     """
@@ -512,7 +512,7 @@ def get_unified_leaderboard() -> List[Dict[str, Any]]:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        cur.execute("SELECT * FROM twomanspades.vw_unified_leaderboard")
+        cur.execute("SELECT * FROM twomanspades.vw_leaderboard")
 
         results = cur.fetchall()
         cur.close()

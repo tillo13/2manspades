@@ -84,8 +84,8 @@ def get_player_achievements() -> Dict[str, Any]:
         cur.execute('''
             SELECT v.player_name as player, v.hand_id, v.final_player_score, v.final_computer_score,
                    v.margin, v.player_bags, COALESCE(v.completed_at, gc.timestamp) as completed_at
-            FROM twomanspades.vw_player_game_details v
-            LEFT JOIN twomanspades.game_events gc ON v.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+            FROM twomanspades.vw_player_games v
+            LEFT JOIN twomanspades.vw_game_completion gc ON v.hand_id = gc.hand_id
             WHERE v.won = true AND v.player_name != 'Other'
             AND v.final_player_score IS NOT NULL
             ORDER BY v.margin ASC LIMIT 5
@@ -96,8 +96,8 @@ def get_player_achievements() -> Dict[str, Any]:
         cur.execute('''
             SELECT v.player_name as player, v.hand_id, v.final_player_score, v.final_computer_score,
                    v.margin, v.player_bags, COALESCE(v.completed_at, gc.timestamp) as completed_at
-            FROM twomanspades.vw_player_game_details v
-            LEFT JOIN twomanspades.game_events gc ON v.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+            FROM twomanspades.vw_player_games v
+            LEFT JOIN twomanspades.vw_game_completion gc ON v.hand_id = gc.hand_id
             WHERE v.won = true AND v.player_name != 'Other'
             AND v.final_player_score IS NOT NULL
             ORDER BY v.margin DESC LIMIT 5
@@ -117,9 +117,8 @@ def get_player_achievements() -> Dict[str, Any]:
                     v.final_player_score,
                     v.final_computer_score,
                     ROW_NUMBER() OVER (PARTITION BY v.player_name ORDER BY ge.timestamp DESC) as rn
-                FROM twomanspades.vw_player_game_details v
-                JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
-                    AND ge.event_type = 'game_completed'
+                FROM twomanspades.vw_player_games v
+                JOIN twomanspades.vw_game_completion ge ON v.hand_id = ge.hand_id
                 WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
             ),
             first_result AS (
@@ -181,7 +180,7 @@ def get_player_achievements() -> Dict[str, Any]:
                 SUM(hands_played) as total_hands,
                 ROUND(SUM(player_bags)::numeric / NULLIF(SUM(hands_played), 0), 2) as bags_per_hand,
                 COUNT(*) as games
-            FROM twomanspades.vw_player_game_details
+            FROM twomanspades.vw_player_games
             WHERE player_name IS NOT NULL AND player_name != 'Other'
             AND player_bags IS NOT NULL
             GROUP BY player_name
@@ -218,8 +217,8 @@ def get_player_achievements() -> Dict[str, Any]:
             SELECT v.player_name as player, v.hand_id, v.final_player_score, v.final_computer_score,
                    v.final_computer_score - v.final_player_score as margin, v.player_bags,
                    COALESCE(v.completed_at, gc.timestamp) as completed_at
-            FROM twomanspades.vw_player_game_details v
-            LEFT JOIN twomanspades.game_events gc ON v.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+            FROM twomanspades.vw_player_games v
+            LEFT JOIN twomanspades.vw_game_completion gc ON v.hand_id = gc.hand_id
             WHERE v.won = false AND v.player_name != 'Other'
             AND v.final_player_score IS NOT NULL
             ORDER BY (v.final_computer_score - v.final_player_score) DESC LIMIT 5
@@ -253,8 +252,8 @@ def get_player_achievements() -> Dict[str, Any]:
                 v.player_bags,
                 v.hands_played
             FROM worst_deficits wd
-            JOIN twomanspades.vw_player_game_details v ON wd.hand_id = v.hand_id
-            LEFT JOIN twomanspades.game_events gc ON v.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+            JOIN twomanspades.vw_player_games v ON wd.hand_id = v.hand_id
+            LEFT JOIN twomanspades.vw_game_completion gc ON v.hand_id = gc.hand_id
             WHERE v.won = true AND v.player_name IS NOT NULL AND v.player_name != 'Other'
             ORDER BY ABS(wd.worst_deficit) DESC
             LIMIT 5
@@ -364,7 +363,7 @@ def get_player_achievements() -> Dict[str, Any]:
             SELECT DISTINCT ON (v.player_name) v.player_name AS player, COALESCE(h.difficulty, 'easy') AS level,
                    COALESCE(v.completed_at, v.started_at) AS completed_at, v.hand_id,
                    array_position(%s::text[], COALESCE(h.difficulty, 'easy')) AS rung, pk.peak, pk.peak_at
-            FROM twomanspades.vw_player_game_details v
+            FROM twomanspades.vw_player_games v
             JOIN twomanspades.hands h ON h.hand_id = v.hand_id
             LEFT JOIN peaks pk ON pk.player_name = v.player_name
             WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
@@ -424,7 +423,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
                     ge.hand_number
                 FROM twomanspades.game_events ge
                 JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
-                LEFT JOIN twomanspades.game_events gc ON ge.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+                LEFT JOIN twomanspades.vw_game_completion gc ON ge.hand_id = gc.hand_id
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND v.player_name IS NOT NULL AND v.player_name != 'Other'
                 AND ge.hand_number IS NOT NULL
@@ -462,7 +461,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
                     ge.hand_number
                 FROM twomanspades.game_events ge
                 JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
-                LEFT JOIN twomanspades.game_events gc ON ge.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+                LEFT JOIN twomanspades.vw_game_completion gc ON ge.hand_id = gc.hand_id
                 WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
                 AND v.player_name IS NOT NULL AND v.player_name != 'Other'
                 AND ge.hand_number IS NOT NULL
@@ -512,7 +511,7 @@ def get_per_hand_stats() -> Dict[str, Any]:
                 COALESCE(v.completed_at, gc.timestamp, hs.event_timestamp) as completed_at
             FROM hand_scores hs
             JOIN twomanspades.vw_player_identity v ON hs.hand_id = v.hand_id
-            LEFT JOIN twomanspades.game_events gc ON hs.hand_id = gc.hand_id AND gc.event_type = 'game_completed'
+            LEFT JOIN twomanspades.vw_game_completion gc ON hs.hand_id = gc.hand_id
             WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
             AND hs.prev_score IS NOT NULL
             AND (hs.cumulative_score - hs.prev_score) > 0

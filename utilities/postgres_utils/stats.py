@@ -645,7 +645,7 @@ def get_overall_game_stats() -> Dict[str, Any]:
         # Highest single game score ever (with bags)
         cur.execute('''
             SELECT final_player_score, player_bags, player_name
-            FROM twomanspades.vw_player_game_details
+            FROM twomanspades.vw_player_games
             WHERE final_player_score IS NOT NULL
             ORDER BY final_player_score DESC
             LIMIT 1
@@ -658,7 +658,7 @@ def get_overall_game_stats() -> Dict[str, Any]:
 
         cur.execute('''
             SELECT final_computer_score
-            FROM twomanspades.vw_player_game_details
+            FROM twomanspades.vw_player_games
             WHERE final_computer_score IS NOT NULL
             ORDER BY final_computer_score DESC
             LIMIT 1
@@ -674,7 +674,7 @@ def get_overall_game_stats() -> Dict[str, Any]:
                 v.final_computer_score,
                 v.player_name,
                 v.player_bags
-            FROM twomanspades.vw_player_game_details v
+            FROM twomanspades.vw_player_games v
             WHERE v.won = true
             ORDER BY v.final_player_score ASC
             LIMIT 1
@@ -822,7 +822,7 @@ def get_special_card_stats() -> Dict[str, Any]:
         cur.execute('''
             WITH player_games AS (
                 SELECT player_name, COUNT(*) as games_played
-                FROM twomanspades.vw_player_game_details
+                FROM twomanspades.vw_player_games
                 WHERE player_name IS NOT NULL AND player_name != 'Other'
                 GROUP BY player_name
             ),

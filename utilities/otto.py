@@ -398,11 +398,25 @@ def play_cron_tick():
             'marta_strength_vs_otto': strength}
 
 
+_WINDOW = 10
+_WINDOW_MAX = (1 << (_WINDOW + 1)) - 1      # sentinel + 10 bits = 2047, the largest a window can be
+
+
 def _push_recent(key, won):
-    """The bot's last 10 results (the ratchet's window), kept in bot_state as bits, newest last."""
-    bits = str(_read_state(key) or '1')[1:]          # a leading 1 keeps losses (zeros) from vanishing in the int
-    bits = (bits + ('1' if won else '0'))[-10:]
-    _save_state(key, int('1' + bits))
+    """The bot's last 10 results (the ratchet's window), kept in bot_state as BINARY, newest last.
+    The leading 1 is a sentinel so a run of losses does not shorten the window. Read and write are
+    base 2 on purpose: bot_state.value is a 32-bit INTEGER, and parsing the bit string as base 10
+    made every full window an 11-digit decimal, which overflowed the column on every cron tick from
+    2026-09-06 until this was fixed on 09-08. Eleven bits can never exceed 2047. Anything outside
+    that range is a leftover from the old shape (or any other corruption) and is thrown away rather
+    than read as history: bits of noise would look like a real record and quietly mis-tune Marta."""
+    raw = int(_read_state(key) or 1)
+    if not 1 <= raw <= _WINDOW_MAX:      # base-10 leftovers and any other corruption: start clean
+        print(f"[OTTO] {key}={raw} is not a {_WINDOW} -result window; resetting")
+        raw = 1
+    bits = format(raw, 'b')[1:]
+    bits = (bits + ('1' if won else '0'))[-_WINDOW:]
+    _save_state(key, int('1' + bits, 2))
     return [b == '1' for b in bits]
 
 

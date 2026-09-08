@@ -23,7 +23,7 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             SELECT player_name, final_player_score, final_computer_score,
                    player_bags, won, margin, hands_played, completed_at,
                    game_end_reason, final_message
-            FROM twomanspades.vw_player_game_details
+            FROM twomanspades.vw_player_games
             WHERE hand_id = %s
         """, (hand_id,))
         summary = cur.fetchone()
@@ -240,7 +240,7 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
                 MAX(final_player_score) as highest_score,
                 MIN(final_player_score) as lowest_score,
                 ROUND(AVG(final_player_score)::numeric, 0) as avg_score
-            FROM twomanspades.vw_player_game_details
+            FROM twomanspades.vw_player_games
             WHERE player_name = %s
         ''', (player_name,))
         summary = dict(cur.fetchone())
@@ -259,9 +259,8 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
                     ge.timestamp as game_time,
                     v.game_end_reason,
                     false as is_abandoned
-                FROM twomanspades.vw_player_game_details v
-                JOIN twomanspades.game_events ge ON v.hand_id = ge.hand_id
-                    AND ge.event_type = 'game_completed'
+                FROM twomanspades.vw_player_games v
+                JOIN twomanspades.vw_game_completion ge ON v.hand_id = ge.hand_id
                 WHERE v.player_name = %s
             ),
             abandoned_games AS (
@@ -367,7 +366,7 @@ def get_player_record(google_email=None, player_name=None):
         cur = conn.cursor()
         cur.execute("""
             SELECT v.won, v.margin, v.hands_played, h.difficulty, v.completed_at
-              FROM twomanspades.vw_player_game_details v
+              FROM twomanspades.vw_player_games v
               JOIN twomanspades.hands h ON h.hand_id = v.hand_id
              WHERE v.player_name = COALESCE(%s, (SELECT split_part(google_name, ' ', 1) FROM twomanspades.players
                                                  WHERE google_email = %s AND google_name IS NOT NULL LIMIT 1))
