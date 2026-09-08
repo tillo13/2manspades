@@ -253,5 +253,58 @@ class LadderTests(unittest.TestCase):
                 self.assertEqual(g['marta_sees'], [], strength)
 
 
+
+class NilTests(unittest.TestCase):
+    """Nil is a decision about the cards, checked by the solver before it is taken."""
+
+    def _hand(self, codes):
+        from utilities.postgres_utils.par import _card
+        return [_card(c) for c in codes]
+
+    def _state(self, marta, human):
+        return {'computer_hand': marta, 'player_hand': human, 'player_bid': 3, 'phase': 'bidding',
+                'difficulty': 0, 'trick_history': [], 'first_leader': 'player',
+                'computer_tricks': 0, 'player_tricks': 0}
+
+    def test_shape_gates_reject_the_obvious(self):
+        from utilities.computer_logic import should_bid_nil
+        base = self._hand(['2♣', '3♣', '4♣', '2♦', '3♦', '4♦', '2♥', '3♥', '2♠', '3♠'])
+        self.assertFalse(should_bid_nil(self._hand(['A♣'] + [c for c in ('3♣', '4♣', '2♦', '3♦', '4♦', '2♥', '3♥', '2♠', '3♠')]),
+                                        self._state([], [])), 'an off-suit ace must never nil')
+        self.assertFalse(should_bid_nil(self._hand(['A♠', '3♣', '4♣', '2♦', '3♦', '4♦', '2♥', '3♥', '2♠', '3♠']),
+                                        self._state([], [])), 'a high spade must never nil')
+        self.assertFalse(should_bid_nil(base, {'player_bid': 0}), 'never nil against a nil')
+        self.assertEqual(len(base), 10)
+
+    def test_the_solver_has_the_last_word(self):
+        from utilities import computer_logic as cl
+        # a hand that passes every shape gate, against a human hand that can force a trick
+        marta = self._hand(['2♣', '3♣', '4♣', '2♦', '3♦', '4♦', '2♥', '3♥', '2♠', '3♠'])
+        human = self._hand(['A♣', 'K♣', 'Q♣', 'A♦', 'K♦', 'Q♦', 'A♥', 'K♥', 'A♠', 'K♠'])
+        state = self._state(marta, human)
+        state['computer_hand'] = marta
+        seen = {}
+        import utilities.marta_mind as mm
+        real = mm.nil_is_safe
+        mm.nil_is_safe = lambda h, g: seen.setdefault('called', True) or real(h, g)
+        try:
+            cl.should_bid_nil(marta, state)
+        finally:
+            mm.nil_is_safe = real
+        self.assertTrue(seen.get('called'), 'the shape gates must hand off to the solver')
+
+    def test_nil_check_does_not_disturb_the_deal(self):
+        import random
+        import utilities.marta_mind as mm
+        marta = self._hand(['2♣', '3♣', '4♣', '2♦', '3♦', '4♦', '2♥', '3♥', '2♠', '3♠'])
+        human = self._hand(['A♣', 'K♣', 'Q♣', 'A♦', 'K♦', 'Q♦', 'A♥', 'K♥', 'A♠', 'K♠'])
+        random.seed(7)
+        before = [random.random() for _ in range(3)]
+        random.seed(7)
+        mm.nil_is_safe(marta, self._state(marta, human))
+        after = [random.random() for _ in range(3)]
+        self.assertEqual(before, after, 'asking about nil must not change the cards that come next')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -44,9 +44,6 @@ from .gameplay_logic import card_name as _c
 #   bid_offset   calibration add: the evaluator underestimates by ~1.5 tricks/hand at 0
 #   bag_avoid    multiplier on the bid when sitting on 5+ bags
 #   max_bid      cap on a regular bid
-#   nil_deficit  points behind before nil is considered (80 = the original rule)
-#   nil_loose    drop the two-twos / all-low-cards gates (measured: nil still only 8% made,
-#                so no preset uses it; the knob stays for experiments)
 #   lead_high    probability of leading the highest safe card while tricks are still owed
 #   mistake_chance  probability a follow is a random legal card (0 everywhere today)
 # Measured vs easy, 2,000 games each: bid_offset peaks at +1.0 (58%), lead_high alone 57%,
@@ -62,7 +59,7 @@ from .gameplay_logic import card_name as _c
 #                one she throws in the middle 50%. So short specials go to the middle as she
 #                climbs, until the play that cashes them (trump drawing) exists.
 _EASY = {'bid_boost': 0.3, 'bag_avoid': 0.92, 'max_bid': 6, 'mistake_chance': 0,
-         'bid_offset': 0.0, 'nil_deficit': 80, 'nil_loose': False, 'lead_high': 0.0, 'nil_hunt': 0.0,
+         'bid_offset': 0.0, 'lead_high': 0.0, 'nil_hunt': 0.0,
          'memory': 0.0, 'special_hold': 1}
 
 DIFFICULTY_LEVELS = ('easy', 'medium', 'hard', 'ruthless')
@@ -162,7 +159,8 @@ BID_ACCURACY_BOOST = 0.3            # How much to boost base expectations (highe
 NIL_RISK_TOLERANCE = 0.8            # Threshold for nil bidding (lower = more nil attempts)
 BLIND_DESPERATION_THRESHOLD = 120   # Points behind before considering blind bids
 SCORE_BASED_ADJUSTMENT = 0.05       # How much score differential affects bidding
-NIL_STRICTNESS = 0.8                # Lower = more likely to nil (minimum expectation for non-nil)
+NIL_MAX_SPADES = 3                  # more than this and one of them takes a trick sooner or later
+NIL_MAX_HIGH = 2                    # cards of ten or better outside spades she must dodge
 MAX_REASONABLE_BID = 6              # mnost she can bid
 
 
@@ -396,58 +394,47 @@ def computer_discard_strategy(computer_hand, game_state):
 # BIDDING STRATEGY
 
 def should_bid_nil(hand, game_state):
+    """Nil is a decision about the cards, not about the scoreboard (Andy, 2026-09-08).
+
+    The old rule needed eight things at once, two of which never co-occur — Otto measured zero
+    nil bids in 87,000 hands — and on top of that required being 80 points behind, which made a
+    hand-quality call into a desperation move. Marta went nil 0 times in 805 practice hands
+    while the family tried it 205 times and made 55% of them.
+
+    What is left is the thing that actually loses a nil: a card you cannot get under. No spade
+    she cannot duck, nothing above a queen outside spades, and a lone queen only where the suit
+    is long enough to throw under it. Measured against par (utilities/postgres_utils/par.py) on
+    the solved hands, this fires about as often as a nil is genuinely there.
+
+    Strong Marta does not use this at all: from strength 60 she deals out the hands the opponent
+    could hold, solves them, and bids nil when she takes no tricks in most of them (marta_mind).
     """
-    Determine if computer should bid nil
-    """
-    player_score = game_state.get('player_score', 0)
-    computer_score = game_state.get('computer_score', 0)
-    player_bid = game_state.get('player_bid', 0)
-    params = get_difficulty_params(game_state.get('difficulty', 'easy'))
+    if game_state.get('player_bid') == 0:
+        return False                        # both sides nil is a coin flip; play it straight
 
-    # Get hand strength
-    sure_tricks, probable_tricks, special_bonus = analyze_hand_strength(hand)
-    total_expectation = sure_tricks + probable_tricks + special_bonus
+    spades = [c for c in hand if c['suit'] == '♠']
+    if len(spades) > NIL_MAX_SPADES or any(c['value'] >= 11 for c in spades):
+        return False                        # a high spade wins a trick whether she likes it or not
 
-    # Use configurable nil threshold
-    if total_expectation > NIL_STRICTNESS:
-        return False
+    others = [c for c in hand if c['suit'] != '♠']
+    if any(c['value'] >= 13 for c in others):
+        return False                        # an ace or king off-suit is a trick she cannot refuse
 
-    # Must have very few spades and they must be low
-    spades = [card for card in hand if card['suit'] == '♠']
-    if len(spades) > 3:  # At most 3 spades
-        return False
+    lengths = {}
+    for c in others:
+        lengths[c['suit']] = lengths.get(c['suit'], 0) + 1
+    queens = [c for c in others if c['value'] == 12]
+    if len(queens) > 1 or any(lengths[c['suit']] < 3 for c in queens):
+        return False                        # a queen is survivable only with cards to duck under it
 
-    # No high spades allowed
-    for spade in spades:
-        if spade['value'] >= 11:  # No J, Q, K, A of spades
-            return False
+    if sum(1 for c in others if c['value'] >= 10) > NIL_MAX_HIGH:
+        return False                        # too much that has to be dodged
 
-    other_suits = [card for card in hand if card['suit'] != '♠']
-    if not params['nil_loose']:
-        # Original gates. Otto measured them at 0 nil bids in 87,000 hands (2026-09-06):
-        # a deal never carries two twos AND all-low side suits AND a sub-0.8 expectation.
-        # Must have at least 2 twos for safety
-        twos = [card for card in hand if card['rank'] == '2']
-        if len(twos) < 2:
-            return False
+    # The shape says a nil is possible; the solver says whether it is real. Shape alone made
+    # only 12% of the nils it called for, and a failed nil is -100 (_oneoff/nil_ab.py).
+    from .marta_mind import nil_is_safe
+    return nil_is_safe(hand, game_state)
 
-        # Must have mostly very low cards (2-7) in other suits
-        low_cards = [card for card in other_suits if card['value'] <= 7]
-
-        if len(low_cards) < len(other_suits) - 1:
-            return False
-
-    # No aces or kings in other suits
-    high_other_suits = [card for card in other_suits if card['value'] >= 13]
-    if len(high_other_suits) > 0:
-        return False
-
-    # Don't nil if player already bid nil
-    if player_bid == 0:
-        return False
-
-    # Only nil when behind by the level's deficit (80 = the original rule)
-    return computer_score < player_score - params['nil_deficit']
 
 def should_bid_blind(hand, game_state):
     """

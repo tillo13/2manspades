@@ -326,6 +326,46 @@ def roll_thinking(game):
 
 
 
+NIL_WORLDS = 12                 # enough to separate a real nil from a hopeful one
+# She must escape every trick in this share of the worlds she deals. Swept on 400 identical
+# games (_oneoff/nil_sweep.py, 2026-09-08): off 50.2% and 0 nils; 0.75 and 0.5 both 50.2% and 0
+# nils; 0.3 fired once and made it; 0.15 fired twice and made one; 0.0 (shape only, no solving)
+# fired 91 times, made 12% of them and cost a point of win rate. A failed nil is -100, so the
+# gate stays strict: rare by design, and right when it fires.
+NIL_CONFIDENCE = 0.3
+
+
+def nil_is_safe(hand, game):
+    """Can she actually take no tricks? Deals the opponent hands that fit the evidence and
+    solves each one for the fewest tricks she can be forced to take. Shape alone cannot answer
+    this: a rule built from spade counts and high cards fired on 3.5% of hands and made 12% of
+    them (_oneoff/nil_ab.py, 2026-09-08), and a failed nil costs 100. This is only ever called
+    after that cheap shape filter passes, so the solving cost lands on ~3% of hands."""
+    leader = 0 if game.get('first_leader', game.get('trick_leader')) == 'computer' else 1
+    m = sum(1 << _code(c) for c in hand)
+    # Deal the sample from a side stream: asking the question must not change the cards that
+    # come next, or a seeded game stops replaying the same way and every A/B drifts.
+    saved = random.getstate()
+    try:
+        worlds = _sample_worlds(game, hand, NIL_WORLDS)
+    finally:
+        random.setstate(saved)
+    if not worlds:
+        return False
+    ctx = _Ctx(game, time.perf_counter() + MAX_BUDGET_MS / 1000.0, tricks_only=True)
+    clean = total = 0.0
+    for p, w in worlds:
+        try:
+            if _count(m, p, leader, ctx, {}) == 0:
+                clean += w
+        except _Budget:
+            break
+        total += w
+    if total < 4:
+        return False
+    return clean / total >= NIL_CONFIDENCE
+
+
 def think_bid(hand, player_bid, game):
     """Bid = the tricks she can force in BID_PERCENTILE of the worlds she dealt, less
     BID_DISCOUNT. Nil when she takes none in 70% of them. Never None once a world can be dealt."""
