@@ -233,8 +233,8 @@ def get_player_achievements() -> Dict[str, Any]:
                     ge.hand_number,
                     (ge.event_data->'final_scores'->>'player_score')::int -
                     (ge.event_data->'final_scores'->>'computer_score')::int as deficit
-                FROM twomanspades.game_events ge
-                WHERE ge.event_type = 'hand_scoring'
+                FROM twomanspades.vw_hand_scoring ge
+                WHERE TRUE
             ),
             worst_deficits AS (
                 SELECT hand_id, MIN(deficit) as worst_deficit
@@ -500,8 +500,8 @@ def get_per_hand_stats() -> Dict[str, Any]:
                     (ge.event_data->'final_scores'->>'player_score')::int as cumulative_score,
                     LAG((ge.event_data->'final_scores'->>'player_score')::int)
                         OVER (PARTITION BY ge.hand_id ORDER BY ge.hand_number) as prev_score
-                FROM twomanspades.game_events ge
-                WHERE ge.event_type = 'hand_scoring'
+                FROM twomanspades.vw_hand_scoring ge
+                WHERE TRUE
             )
             SELECT
                 v.player_name as player,

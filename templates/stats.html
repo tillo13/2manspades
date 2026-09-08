@@ -158,7 +158,49 @@
         </div>
         {% endif %}
 
-<!-- 3. Playing styles: each person next to the bots as the control -->
+        <!-- Advanced: opponent-adjusted, par-adjusted, and split by whether the game was live -->
+        {% if advanced and advanced.wao %}
+        <div class="stats-section">
+            <div class="section-title">Advanced</div>
+            <p class="section-blurb">Three stats that try to be honest rather than flattering. Every one carries the
+                number of games or hands it rests on, because a hot split over ten games is not a fact.</p>
+            <div class="achievements-grid">
+                {% call card('Wins Above Otto') %}
+                    <p class="card-note">Your wins minus the wins easy Otto would expect against the same mix of Marta
+                        levels. Otto is replacement level: the house algorithm playing itself, measured
+                        <a href="/referee#the-dial">at every rung</a>.</p>
+                    {% for r in advanced.wao %}
+                        {% set detail %}{{ r.wins }} wins vs {{ r.expected }} expected ·
+                            <a href="/player/{{ r.player }}" class="player-link">{{ r.games }} games</a> ·
+                            hardest {{ r.hardest }}{% endset %}
+                        {{ row(r.player, ('+' ~ r.wao) if r.wao >= 0 else r.wao, detail, 'streak-value' if r.wao >= 0 else 'loss-value') }}
+                    {% endfor %}
+                {% endcall %}
+                {% if advanced.par %}{% call card('Bid vs Par') %}
+                    <p class="card-note">Par is what the hand was actually worth against perfect play, solved from the
+                        cards both seats were dealt. Bidding your par is skill; making a bid on a hand worth three more
+                        is luck. Solved for {{ "{:,}".format(advanced.coverage.solved) }} hands.</p>
+                    {% for r in advanced.par %}
+                        {% set detail %}bids {{ r.bias }} off par on average · hits par {{ r.par_exact_pct }}% ·
+                            hits their own bid {{ r.exact_pct }}% · {{ "{:,}".format(r.hands) }} hands{% endset %}
+                        {{ row(r.player, r.avg_miss ~ ' off', detail, 'streak-value' if r.avg_miss < 1.4 else '') }}
+                    {% endfor %}
+                {% endcall %}{% endif %}
+                {% if advanced.clutch %}{% call card('Clutch') %}
+                    <p class="card-note">Bidding accuracy once someone is within 100 of winning, against every other
+                        hand. A swing near zero means the pressure changes nothing, which is what the numbers say.</p>
+                    {% for r in advanced.clutch %}
+                        {% set detail %}with it live {{ r.tight_exact }}% ({{ r.tight_hands }} hands) ·
+                            otherwise {{ r.rest_exact }}% ({{ r.rest_hands }}){% endset %}
+                        {{ row(r.player, (('+' ~ r.swing) if r.swing > 0 else r.swing) ~ ' pts', detail,
+                               'streak-value' if r.swing > 0 else 'loss-value') }}
+                    {% endfor %}
+                {% endcall %}{% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 3. Playing styles: each person next to the bots as the control -->
         {% if styles %}
         <div class="stats-section">
             <div class="section-title">Playing Styles</div>

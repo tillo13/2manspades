@@ -29,6 +29,9 @@ def _build_payload():
     from utilities.jukebox import jukebox_stats
     from .robots import robot_league
     from .career import career_stats
+    from .sabermetrics import advanced_stats
+    from .par import fill_par
+    fill_par(limit=300, verbose=False)      # solve any hands played since the last rebuild
     data = {
         'google_leaders': get_unified_leaderboard(),
         'fun_stats': get_fun_stats(),
@@ -40,6 +43,7 @@ def _build_payload():
         'robots': robot_league(),
         'marta_levels': get_marta_levels(),
         'career': career_stats(),
+        'advanced': advanced_stats(),
     }
     data['styles'] = player_styles(data['google_leaders'], data['achievements'],
                                    data['per_hand_stats'], data['robots'])
@@ -543,8 +547,8 @@ def get_fun_stats() -> Dict[str, Any]:
                     hand_number,
                     timestamp as end_time,
                     LAG(timestamp) OVER (PARTITION BY hand_id ORDER BY hand_number) as prev_time
-                FROM twomanspades.game_events
-                WHERE event_type = 'hand_scoring'
+                FROM twomanspades.vw_hand_scoring
+                WHERE TRUE
                 AND hand_id IN (
                     SELECT hand_id FROM twomanspades.game_events
                     WHERE event_type = 'game_completed'
