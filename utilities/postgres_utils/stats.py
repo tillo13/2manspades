@@ -621,28 +621,20 @@ def get_overall_game_stats() -> Dict[str, Any]:
         tricks = cur.fetchone()['count']
         stats['total_cards_played'] = tricks * 2  # 2 cards per trick
 
-        # Nil attempts and success rate overall - must join by hand_number
+        # Nil attempts and success rate, over hands that were actually PLAYED OUT. Counting a
+        # nil as made because no trick was won reads every abandoned hand as a success: of 181
+        # hands where someone bid nil, 79 were walked away from part-way, and all 79 were being
+        # scored as made. That is where "100/181, 55%" came from; it is 42/103 (2026-09-08).
         cur.execute('''
-            WITH nil_bids AS (
-                SELECT ge.hand_id, ge.hand_number
-                FROM twomanspades.game_events ge
-                WHERE ge.event_type = 'action_regular_bid' AND ge.player = 'player'
-                AND (ge.event_data->'action_data'->>'bid_amount') = '0'
-                AND ge.hand_number IS NOT NULL
-            ),
-            nil_results AS (
-                SELECT n.hand_id, n.hand_number, COALESCE(COUNT(t.*), 0) as tricks_taken
-                FROM nil_bids n
-                LEFT JOIN twomanspades.game_events t ON n.hand_id = t.hand_id
-                    AND n.hand_number = t.hand_number
-                    AND t.event_type = 'trick_completed' AND t.event_data->>'winner' = 'player'
-                GROUP BY n.hand_id, n.hand_number
-            )
-            SELECT
-                COUNT(*) as total_nil_attempts,
-                SUM(CASE WHEN tricks_taken = 0 THEN 1 ELSE 0 END) as successful_nils,
-                ROUND(100.0 * SUM(CASE WHEN tricks_taken = 0 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) as nil_success_rate
-            FROM nil_results
+            SELECT COUNT(*) AS total_nil_attempts,
+                   COUNT(*) FILTER (WHERE took = 0) AS successful_nils,
+                   ROUND(100.0 * COUNT(*) FILTER (WHERE took = 0) / NULLIF(COUNT(*), 0), 1) AS nil_success_rate
+              FROM (SELECT DISTINCT ON (hand_id, hand_number)
+                           (event_data->>'player_tricks')::int AS took
+                      FROM twomanspades.game_events
+                     WHERE event_type = 'hand_completed' AND hand_number IS NOT NULL
+                       AND (event_data->>'player_bid')::int = 0
+                     ORDER BY hand_id, hand_number, timestamp) n
         ''')
         nil = dict(cur.fetchone())
         stats['total_nil_attempts'] = nil['total_nil_attempts'] or 0
