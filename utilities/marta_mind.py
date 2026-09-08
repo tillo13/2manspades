@@ -20,6 +20,7 @@ from .gameplay_logic import create_deck
 SUITS = ('♣', '♦', '♥', '♠')
 SPADE = 3
 THINK_FROM = 60                 # strength at which thinking begins
+THINK_FULL = 80                 # strength at which she thinks EVERY hand (and the ladder takes over)
 MAX_BUDGET_MS = 150             # per decision at strength 100
 MIN_WORLDS = 4
 MAX_WORLDS = 400
@@ -46,8 +47,13 @@ PEEK = False                    # measurement only (_oneoff/peek_think.py): she 
 # evidence, so it is pinned into every world she deals and the rest is sampled as before. Ten
 # cards pinned is one world, which is exact play. LADDER=False turns the whole thing off and
 # leaves the thinking Marta measured at 80%.
+# The ladder starts at THREE cards, not one. Measured on 200 identical deals at each count
+# (_oneoff/ladder_curve.py, 2026-09-08): 0 cards 77.0%, 2 cards 78.0%, 4 cards 81.0%, 6 cards
+# 87.0%, 8 cards 90.5%, 10 cards 96.0%. One or two cards out of ten barely narrow what she is
+# already inferring, so rungs there would be decoration; the climb is in the back half.
 LADDER = True
 PEEK_FROM = 80
+PEEK_MIN_CARDS = 3
 PEEK_MAX_CARDS = 10
 
 
@@ -59,18 +65,23 @@ def peek_cards(strength):
         s = float(strength)
     except (TypeError, ValueError):
         return 0
-    if s < PEEK_FROM:
+    if s <= PEEK_FROM:
         return 0
-    return min(PEEK_MAX_CARDS, int((s - PEEK_FROM) / (100 - PEEK_FROM) * PEEK_MAX_CARDS + 1e-9))
+    span = PEEK_MAX_CARDS - PEEK_MIN_CARDS
+    return min(PEEK_MAX_CARDS, PEEK_MIN_CARDS + int((s - PEEK_FROM) / (100 - PEEK_FROM) * span + 0.5))
 
 
 def think_share(strength):
-    """Share of hands she thinks through at this strength (0 below THINK_FROM, 1 at 100)."""
+    """Share of hands she thinks through: 0 at THINK_FROM, 1 by THINK_FULL. The two halves of the
+    top of the dial do separate work — 60 to 80 buys how OFTEN she thinks, 80 to 100 buys how much
+    she is shown while doing it. (It used to ramp to 1 only at 100, which left 60-80 nearly flat:
+    the sweep read 64.9% at 60 and 66.7% at 80, because at 80 she was still thinking every other
+    hand. Measured 2026-09-08.)"""
     try:
         s = float(strength)
     except (TypeError, ValueError):
         return 0.0
-    return max(0.0, min(1.0, (s - THINK_FROM) / (100 - THINK_FROM)))
+    return max(0.0, min(1.0, (s - THINK_FROM) / (THINK_FULL - THINK_FROM)))
 
 
 def _code(card):

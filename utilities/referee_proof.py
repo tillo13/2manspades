@@ -109,6 +109,27 @@ def curate(calls, seed=1):
     return out
 
 
+def _curve_one(args):
+    k, n = args
+    from utilities import marta_mind as mm
+    from utilities import otto
+    mm.LADDER = True
+    mm.peek_cards = lambda strength, _k=k: _k          # every hand gets exactly k cards
+    w = m = 0
+    for seed in range(n):
+        r = otto.play_game(seed=seed, marta_difficulty=100)
+        w += r['winner'] == 'otto'; m += r['winner'] == 'marta'
+    return {'cards': k, 'games': n, 'otto': w, 'marta': m, 'marta_pct': round(100.0 * m / n, 1)}
+
+
+def card_curve(n, counts=(0, 2, 4, 6, 8, 10)):
+    """What each card she is shown is worth: easy Otto vs a thinking Marta handed exactly k of
+    his ten cards, the same n deals at every k. This is what places the ladder's rungs."""
+    from multiprocessing import Pool
+    with Pool(len(counts)) as pool:
+        return sorted(pool.map(_curve_one, [(k, n) for k in counts]), key=lambda r: r['cards'])
+
+
 def _sweep_one(args):
     s, n = args
     from utilities import otto
@@ -136,6 +157,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     summary, calls, diff = run_proof(a.games)
     summary['strength_sweep'] = strength_sweep(a.sweep)
+    summary['card_curve'] = card_curve(a.sweep)
     json.dump({'summary': summary, 'calls': curate(calls)}, open(a.out, 'w'), ensure_ascii=False)
     print(json.dumps(summary))
     for s in diff[:3]:

@@ -104,7 +104,8 @@ class DialTests(unittest.TestCase):
     def test_share(self):
         self.assertEqual(mm.think_share(0), 0)
         self.assertEqual(mm.think_share(60), 0)
-        self.assertAlmostEqual(mm.think_share(80), 0.5)
+        self.assertAlmostEqual(mm.think_share(70), 0.5)
+        self.assertEqual(mm.think_share(80), 1)       # thinks every hand from here; the ladder takes over
         self.assertEqual(mm.think_share(100), 1)
         self.assertEqual(mm.think_share('ruthless'), 0)   # names are resolved before this; a name is not a number
 
@@ -195,7 +196,11 @@ class LadderTests(unittest.TestCase):
                 'trick_history': [], 'first_leader': 'player'}
 
     def test_cards_by_strength(self):
-        self.assertEqual([mm.peek_cards(s) for s in (0, 60, 79, 80, 82, 90, 98, 100)], [0, 0, 0, 0, 1, 5, 9, 10])
+        # nothing at or below 80, then three (one and two were measured to be worth nothing), to ten
+        self.assertEqual([mm.peek_cards(s) for s in (0, 60, 79, 80, 81, 84, 90, 96, 100)],
+                         [0, 0, 0, 0, 3, 4, 7, 9, 10])
+        self.assertEqual([mm.peek_cards(s) for s in range(81, 101)],
+                         sorted(mm.peek_cards(s) for s in range(81, 101)), 'the ladder must never step down')
 
     def test_switch_turns_it_off(self):
         mm.LADDER = False
@@ -210,7 +215,7 @@ class LadderTests(unittest.TestCase):
     def test_shown_cards_are_pinned_into_every_world(self):
         g = self._game(2, 90)
         mm.roll_thinking(g)
-        self.assertEqual(len(g['marta_sees']), 5)
+        self.assertEqual(len(g['marta_sees']), 7)
         shown = set(g['marta_sees'])
         self.assertTrue(shown <= {mm._key(c) for c in g['player_hand']}, 'she was shown a card he does not hold')
         worlds = mm._sample_worlds(g, g['computer_hand'], 20)

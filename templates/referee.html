@@ -47,10 +47,11 @@
         gives are the ones you can check against your own cards.</p>
 
     <h2 id="how-she-plays">How Marta thinks as she climbs</h2>
-    <p>Marta's strength is one number, 0 to 100, and the ratchet moves it after each of your games. Up to 60 the number
-        turns her old habits up: she bids closer to her hand, leads high while she owes tricks, plays to set a nil,
-        remembers more of the cards that have gone by. From 60 to 100 a different Marta takes over, and the share of hands
-        she plays this way rises from none to all of them.</p>
+    <p>Marta's strength is one number, 0 to 100, and the ratchet moves it after each of your games. It buys three
+        different things as it climbs. Up to 60 it turns her old habits up: she bids closer to her hand, leads high while
+        she owes tricks, plays to set a nil, remembers more of the cards that have gone by. From 60 to 80 a different
+        Marta takes over, and the share of hands she thinks all the way through rises from none to every one of them.
+        From 80 to 100 she thinks every hand and the card ladder below decides how much she is shown while doing it.</p>
     <p><b>She never sees your cards.</b> She knows what anyone at the table knows: her hand, both discards, every trick
         played, the suits you have failed to follow, your bid, and, if you have a record here, how your bids compare with
         what you take. From that she deals you a few hundred hands you could be holding, throws out the ones you would not
@@ -97,6 +98,16 @@
     <p>Your game-over screen says how many cards she is being shown, and the number is on this page rather than hidden in
         the code, because a disclosed advantage is a challenge and a hidden one is a cheat.</p>
 
+    {% if S.card_curve %}
+    <p>What each card is worth was measured before the rungs were placed, on
+        {{ '{:,}'.format(S.card_curve[0].games) }} identical deals at each count. One or two cards barely narrow what she
+        is already working out for herself, so the ladder starts at three and the climb is in the back half.</p>
+    <table class="sweep"><thead><tr><th>Cards she is shown</th><th>Marta won</th><th>Otto won</th><th>Marta win rate</th></tr></thead><tbody>
+        {% for r in S.card_curve %}<tr><td>{{ r.cards }} of 10</td><td>{{ '{:,}'.format(r.marta) }}</td><td>{{ '{:,}'.format(r.otto) }}</td>
+            <td><div class="sweep-bar"><span style="width: {{ r.marta_pct }}%"></span></div>{{ r.marta_pct }}%</td></tr>{% endfor %}
+    </tbody></table>
+    {% endif %}
+
     {% if S.strength_sweep %}
     <h2 id="the-dial">Marta's dial, measured</h2>
     <p>Marta's strength (0 to 100) is the number the ratchet moves after each of your games. This is the proof that a higher
@@ -106,10 +117,10 @@
         {% for r in S.strength_sweep %}<tr><td>{{ r.strength }}</td><td>{{ '{:,}'.format(r.marta) }}</td><td>{{ '{:,}'.format(r.otto) }}</td>
             <td><div class="sweep-bar"><span style="width: {{ r.marta_pct }}%"></span></div>{{ r.marta_pct }}%</td></tr>{% endfor %}
     </tbody></table>
-    {% if S.strength_sweep|map(attribute='strength')|max < 70 %}
-    <p class="foot">The thinking band above 60 is being re-measured and will appear here when it is done. What she does
-        there is described above; the numbers in that section are from 200 identical deals.</p>
-    {% endif %}
+    <p class="foot">The rows up to 60 are {{ '{:,}'.format(S.strength_sweep[0].games) }} deals each. The thinking rows
+        above it are {{ '{:,}'.format(S.strength_sweep[-1].games) }} deals, which carries about four points either way,
+        so a single step that dips is the sample and not a weaker Marta. The climb across the band is far bigger than
+        that: she takes about two games in three at 60 and nineteen in twenty at 100.</p>
     {% endif %}
 
     <h2>Forty calls, played out</h2>
