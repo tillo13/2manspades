@@ -261,9 +261,11 @@ def get_player_games(player_name: str, only: str = None) -> Optional[Dict[str, A
                     v.hands_played,
                     ge.timestamp as game_time,
                     v.game_end_reason,
+                    h.first_leader,
                     false as is_abandoned
                 FROM twomanspades.vw_player_games v
                 JOIN twomanspades.vw_game_completion ge ON v.hand_id = ge.hand_id
+                JOIN twomanspades.hands h ON h.hand_id = v.hand_id
                 WHERE v.player_name = %s
             ),
             abandoned_games AS (
@@ -278,6 +280,7 @@ def get_player_games(player_name: str, only: str = None) -> Optional[Dict[str, A
                      WHERE hand_id = h.hand_id AND event_type = 'hand_completed') as hands_played,
                     h.started_at as game_time,
                     'abandoned' as game_end_reason,
+                    h.first_leader,
                     true as is_abandoned
                 FROM twomanspades.hands h
                 JOIN twomanspades.vw_player_identity v ON h.hand_id = v.hand_id
@@ -310,8 +313,8 @@ def get_player_games(player_name: str, only: str = None) -> Optional[Dict[str, A
         summary['abandoned'] = abandoned_count
 
         shown = None
-        if only in ('streak', 'best'):
-            games, shown = _run_of_games(games, only)
+        if only:
+            games, shown = filter_games(games, only)
 
         return {
             'player_name': player_name,
@@ -328,10 +331,54 @@ def get_player_games(player_name: str, only: str = None) -> Optional[Dict[str, A
             return_db_connection(conn)
 
 
+# Every stat on the stats page links here with one of these, so a number can always be checked
+# against the games behind it (Andy, 2026-09-08: "make all them click through to prove they're
+# right always"). Each is (label, predicate) over the rows get_player_games already fetched.
+_PART = {'latenight': ('late at night', range(0, 6)), 'morning': ('in the morning', range(6, 12)),
+         'afternoon': ('in the afternoon', range(12, 18)), 'evening': ('in the evening', range(18, 24))}
+
+FILTERS = {
+    'wins':      ('every win', lambda g: g['won'] is True),
+    'losses':    ('every loss', lambda g: g['won'] is False),
+    'close':     ('every game decided by 50 or less', lambda g: g['won'] is not None and abs(g['margin'] or 0) <= 50),
+    'blowout':   ('every game decided by 200 or more', lambda g: g['won'] is not None and abs(g['margin'] or 0) >= 200),
+    'bags':      ('every game finished carrying 5 or more bags', lambda g: (g.get('player_bags') or 0) >= 5),
+    'long':      ('every game that went 15 hands or more', lambda g: (g.get('hands_played') or 0) >= 15),
+    'abandoned': ('every game walked away from', lambda g: bool(g.get('is_abandoned'))),
+    'led':       ('every game they led first', lambda g: g.get('first_leader') == 'player'),
+    'martaled':  ('every game Marta led first', lambda g: g.get('first_leader') not in (None, 'player')),
+}
+
+
+def filter_games(games, only):
+    """(games, a line saying what is on screen) for one of FILTERS, a run, or a part of the day.
+    An unknown filter shows everything rather than an empty page."""
+    if only in ('streak', 'best', 'worst'):
+        return _run_of_games(games, only)
+    if only in _PART:
+        label, hours = _PART[only]
+        keep = [g for g in games if g['game_time'] and g['game_time'].hour in hours]
+        return keep, f"every game played {label} ({_record(keep)})"
+    if only in FILTERS:
+        label, keep_it = FILTERS[only]
+        keep = [g for g in games if keep_it(g)]
+        return keep, f"{label} ({_record(keep)})"
+    return games, None
+
+
+def _record(games):
+    n = f"{len(games)} game" + ('' if len(games) == 1 else 's')
+    played = [g for g in games if g.get('won') is not None]
+    if not played:
+        return n
+    w = sum(1 for g in played if g['won'])
+    return f"{n}, {w}-{len(played) - w}"
+
+
 def _run_of_games(games, which):
     """The games behind a streak stat, newest first, plus a line saying what is on screen.
-    which='streak' is the run still going; 'best' is the longest winning run ever. Abandoned
-    games have no result, so they are skipped rather than counted as a loss."""
+    'streak' is the run still going, 'best' the longest winning run ever, 'worst' the longest
+    losing one. Abandoned games have no result, so they are skipped rather than counted."""
     played = [g for g in games if g.get('won') is not None]
     if not played:
         return games, None
@@ -342,16 +389,18 @@ def _run_of_games(games, which):
         cur.append(g)
     if cur:
         runs.append(cur)
-    if which == 'best':
-        wins = [r for r in runs if r[0]['won']]
-        if not wins:
-            return [], 'no wins on record yet'
-        run = max(wins, key=len)
+    if which in ('best', 'worst'):
+        want = which == 'best'
+        side = [r for r in runs if r[0]['won'] is want]
+        if not side:
+            return [], f"no {'wins' if want else 'losses'} on record yet"
+        run = max(side, key=len)
         when = run[0]['game_time'].strftime('%B %-d, %Y')
-        return run, f"the best run on record: {len(run)} wins in a row, ending {when}"
+        word = 'wins' if want else 'losses'
+        return run, f"the {'best' if want else 'longest losing'} run on record: {len(run)} {word} in a row, ending {when}"
     run = runs[0]
     kind = run[0]['won']
-    word = 'wins' if kind else 'losses'
+    word = ('win' if kind else 'loss') + ('' if len(run) == 1 else ('s' if kind else 'es'))
     after = played[len(run):]
     tail = (f", back to the last {'loss' if kind else 'win'} on "
             f"{after[0]['game_time'].strftime('%B %-d, %Y')}") if after else ", every game on record"

@@ -54,5 +54,47 @@ class RunOfGamesTests(unittest.TestCase):
         self.assertEqual(_run_of_games(games, 'streak'), (games, None))
 
 
+
+class FilterTests(unittest.TestCase):
+    def _game(self, **kw):
+        g = {'won': True, 'game_time': datetime.datetime(2026, 1, 5, 20), 'margin': 100,
+             'player_bags': 0, 'hands_played': 8, 'first_leader': 'player', 'is_abandoned': False}
+        g.update(kw)
+        return g
+
+    def test_every_filter_is_reachable_and_describes_itself(self):
+        from utilities.postgres_utils.records import filter_games, FILTERS, _PART
+        games = [self._game(), self._game(won=False, margin=-20, first_leader='computer', player_bags=6),
+                 self._game(won=None, is_abandoned=True, hands_played=16,
+                            game_time=datetime.datetime(2026, 1, 5, 8))]
+        for key in list(FILTERS) + list(_PART) + ['streak', 'best', 'worst']:
+            kept, shown = filter_games(games, key)
+            self.assertIsNotNone(shown, key)
+            self.assertIsInstance(kept, list, key)
+
+    def test_filters_pick_the_right_games(self):
+        from utilities.postgres_utils.records import filter_games
+        games = [self._game(), self._game(won=False, margin=-20, first_leader='computer', player_bags=6)]
+        self.assertEqual(len(filter_games(games, 'wins')[0]), 1)
+        self.assertEqual(len(filter_games(games, 'losses')[0]), 1)
+        self.assertEqual(len(filter_games(games, 'close')[0]), 1)     # the 20-point loss
+        self.assertEqual(len(filter_games(games, 'bags')[0]), 1)
+        self.assertEqual(len(filter_games(games, 'led')[0]), 1)
+        self.assertEqual(len(filter_games(games, 'martaled')[0]), 1)
+        self.assertEqual(len(filter_games(games, 'evening')[0]), 2)
+        self.assertEqual(len(filter_games(games, 'morning')[0]), 0)
+
+    def test_unknown_filter_shows_everything(self):
+        from utilities.postgres_utils.records import filter_games
+        games = [self._game()]
+        self.assertEqual(filter_games(games, 'made-up'), (games, None))
+
+    def test_one_game_reads_as_one_game(self):
+        from utilities.postgres_utils.records import filter_games
+        _kept, shown = filter_games([self._game()], 'wins')
+        self.assertIn('1 game,', shown)
+        self.assertNotIn('1 games', shown)
+
+
 if __name__ == '__main__':
     unittest.main()
