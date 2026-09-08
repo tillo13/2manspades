@@ -201,6 +201,10 @@ function renderGameOver() {
             [move, `at most ${mv.cap} a game ${r.games < 60 ? `until 60 games on record (you have ${r.games})` : 'now that your record is long'}`],
         ];
         if (r.peak) lines.push([`Your best ever: ${cap(r.peak.level)} ${r.peak.strength}`, r.peak.at || '']);
+        if (r.sees || r.saw) {
+            lines.push([r.sees ? `She is now shown ${r.sees} of your 10 cards each hand` : 'She is no longer shown any of your cards',
+                        r.sees && r.saw !== r.sees ? `was ${r.saw}; drawn at the deal, the same ones all hand` : 'drawn at the deal, the same ones all hand']);
+        }
         lines.push([`Marta at ${r.after}`, 'HOW_SHE_PLAYS']);
         const why = document.getElementById('goRatchetWhy');
         why.innerHTML = '';

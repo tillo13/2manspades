@@ -40,6 +40,29 @@ THINK_BID = True
 THINK_PLAY = True
 PEEK = False                    # measurement only (_oneoff/peek_think.py): she sees the real hand, one world, exact play
 
+# The card ladder (Andy, 2026-09-08). Above PEEK_FROM she is shown some of the opponent's cards
+# at the deal, one more per rung, all ten at 100 — a disclosed advantage, written on the referee
+# page, not a hidden one. It rides the same machinery: a card she has been shown is simply
+# evidence, so it is pinned into every world she deals and the rest is sampled as before. Ten
+# cards pinned is one world, which is exact play. LADDER=False turns the whole thing off and
+# leaves the thinking Marta measured at 80%.
+LADDER = True
+PEEK_FROM = 80
+PEEK_MAX_CARDS = 10
+
+
+def peek_cards(strength):
+    """How many of the opponent's ten cards she is shown at this strength."""
+    if not LADDER:
+        return 0
+    try:
+        s = float(strength)
+    except (TypeError, ValueError):
+        return 0
+    if s < PEEK_FROM:
+        return 0
+    return min(PEEK_MAX_CARDS, int((s - PEEK_FROM) / (100 - PEEK_FROM) * PEEK_MAX_CARDS + 1e-9))
+
 
 def think_share(strength):
     """Share of hands she thinks through at this strength (0 below THINK_FROM, 1 at 100)."""
@@ -52,6 +75,10 @@ def think_share(strength):
 
 def _code(card):
     return SUITS.index(card['suit']) * 16 + card['value']
+
+
+def _key(card):
+    return f"{card['rank']}{card['suit']}"
 
 
 def _suit(code):
@@ -237,14 +264,23 @@ def _sample_worlds(game, hand, n, on_table=None):
     evidence too: hands that person would have bid the way they did count in full, hands a
     trick off count a third, further off are dropped."""
     pool, _void = _public(game, hand)
-    need = len(hand) - (1 if on_table else 0)
-    if need > len(pool):
+    # Cards she was shown at the deal (the ladder) are evidence, not a guess: pin the ones still
+    # in his hand into every world and sample only the rest.
+    shown = set(game.get('marta_sees') or [])
+    known = [c for c in (game.get('player_hand') or []) if _key(c) in shown
+             and not (on_table and _key(c) == _key(on_table))]
+    if known:
+        pool = [c for c in pool if _key(c) not in {_key(k) for k in known}]
+    need = len(hand) - (1 if on_table else 0) - len(known)
+    if need < 0 or need > len(pool):
         return []
+    if need == 0:                       # every card known: one world, and it is the real hand
+        return [(sum(1 << _code(c) for c in known), 1.0)]
     pbid = game.get('player_bid')
     worlds, tries = [], 0
-    while len(worlds) < n and tries < n * 4:
+    while len(worlds) < n and tries < max(4, n * 4):
         tries += 1
-        cards = random.sample(pool, need)
+        cards = random.sample(pool, need) + known
         w = 1.0
         if pbid is not None and game.get('phase') == 'playing':
             full = cards + ([on_table] if on_table else [])
@@ -268,9 +304,16 @@ def thinks_this_hand(game):
 
 
 def roll_thinking(game):
+    """Rolled once per hand: whether she thinks it through, and which of the opponent's cards
+    she is shown for the whole hand (the same ones at the bid and at every play, so what she
+    knows never jumps mid-hand)."""
     share = think_share(game.get('difficulty', 0))
     game['marta_thinks'] = share > 0 and (share >= 1 or random.random() < share)
+    n = peek_cards(game.get('difficulty', 0)) if game['marta_thinks'] else 0
+    opp = game.get('player_hand') or []
+    game['marta_sees'] = [_key(c) for c in random.sample(opp, min(n, len(opp)))] if n else []
     return game['marta_thinks']
+
 
 
 def think_bid(hand, player_bid, game):

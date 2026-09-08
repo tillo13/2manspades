@@ -183,5 +183,70 @@ class MirrorTests(unittest.TestCase):
         self.assertTrue(_mirror(g, 100)['marta_thinks'])     # a strong Otto thinks on his own account
 
 
+
+class LadderTests(unittest.TestCase):
+    """The card ladder: above PEEK_FROM she is shown some of the opponent's cards at the deal."""
+
+    def _game(self, seed, strength):
+        mh, ph, rest = _deal(seed, 10)
+        return {'computer_hand': mh, 'player_hand': ph, 'player_discarded': rest[0], 'computer_discarded': rest[1],
+                'phase': 'playing', 'difficulty': strength, 'computer_bid': 3, 'player_bid': 4, 'computer_tricks': 0,
+                'player_tricks': 0, 'computer_bags': 0, 'player_bags': 0, 'spades_broken': False,
+                'trick_history': [], 'first_leader': 'player'}
+
+    def test_cards_by_strength(self):
+        self.assertEqual([mm.peek_cards(s) for s in (0, 60, 79, 80, 82, 90, 98, 100)], [0, 0, 0, 0, 1, 5, 9, 10])
+
+    def test_switch_turns_it_off(self):
+        mm.LADDER = False
+        try:
+            self.assertEqual(mm.peek_cards(100), 0)
+            g = self._game(1, 100)
+            mm.roll_thinking(g)
+            self.assertEqual(g['marta_sees'], [])
+        finally:
+            mm.LADDER = True
+
+    def test_shown_cards_are_pinned_into_every_world(self):
+        g = self._game(2, 90)
+        mm.roll_thinking(g)
+        self.assertEqual(len(g['marta_sees']), 5)
+        shown = set(g['marta_sees'])
+        self.assertTrue(shown <= {mm._key(c) for c in g['player_hand']}, 'she was shown a card he does not hold')
+        worlds = mm._sample_worlds(g, g['computer_hand'], 20)
+        self.assertTrue(worlds)
+        for mask, _w in worlds:
+            self.assertEqual(bin(mask).count('1'), 10)
+            for c in g['player_hand']:
+                if mm._key(c) in shown:
+                    self.assertTrue((mask >> mm._code(c)) & 1, 'a shown card is missing from a world')
+
+    def test_all_ten_is_one_world_and_the_real_hand(self):
+        g = self._game(3, 100)
+        mm.roll_thinking(g)
+        worlds = mm._sample_worlds(g, g['computer_hand'], 50)
+        self.assertEqual(len(worlds), 1)
+        self.assertEqual(worlds[0][0], sum(1 << mm._code(c) for c in g['player_hand']))
+
+    def test_a_shown_card_on_the_table_is_not_pinned_back_into_his_hand(self):
+        g = self._game(4, 100)
+        mm.roll_thinking(g)
+        led = g['player_hand'][0]
+        g['player_hand'] = g['player_hand'][1:]      # he has led it
+        worlds = mm._sample_worlds(g, g['computer_hand'], 10, on_table=led)
+        self.assertTrue(worlds)
+        for mask, _w in worlds:
+            self.assertFalse((mask >> mm._code(led)) & 1, 'the led card is still in his hand')
+            self.assertEqual(bin(mask).count('1'), 9)
+
+    def test_below_the_ladder_she_is_shown_nothing(self):
+        # 60-80 is the thinking band with no cards; whether she thinks a given hand is a roll
+        for strength in (61, 70, 79):
+            for _ in range(20):
+                g = self._game(5, strength)
+                mm.roll_thinking(g)
+                self.assertEqual(g['marta_sees'], [], strength)
+
+
 if __name__ == '__main__':
     unittest.main()

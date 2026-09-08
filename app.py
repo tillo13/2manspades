@@ -573,7 +573,9 @@ def _ratchet_after_game(game):
     peak = get_user_peak(who['email'], who['ip'])
     # Data only: the final screen draws it. (It used to be appended to the message as a
     # sentence, which put the same fact in two shapes and got the string rendered twice.)
+    from utilities.marta_mind import peek_cards
     game['ratchet'] = {'before': before, 'after': after, 'from_level': level_name(before), 'level': level_name(after),
+                       'sees': peek_cards(after), 'saw': peek_cards(before),
                        'won': won, 'margin': margin, 'games': games, 'move': move,
                        'peak': {'strength': peak[0], 'level': level_name(peak[0]),
                                 'at': peak[1].strftime('%b %-d, %Y') if peak[1] else None} if peak else None}

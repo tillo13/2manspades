@@ -85,6 +85,18 @@
     <p class="dist">Called with this many cards left:
         {% for k, v in S.by_cards_left.items() %}<span><b>{{ k }}</b> {{ '{:,}'.format(v) }}</span>{% endfor %}</p>
 
+    <h2 id="the-ladder">The card ladder, above 80</h2>
+    <p>Thinking alone takes her to about 80% against the practice-table bot, and everything up to that point she does on
+        public information. Above 80 the ratchet starts handing her something she has not earned at the table: at 82 she
+        is shown one of your ten cards, at 84 two, and so on to all ten at 100. The cards are drawn at random when the
+        hand is dealt and stay the same for that whole hand, her bid included, so what she knows never jumps mid-hand.</p>
+    <p>It rides the same machinery as her thinking rather than sitting beside it. A card she has been shown is simply
+        evidence, so it is pinned into every hand she deals you and the rest is sampled as before. That is why the top of
+        the dial is not a different Marta but the same one with less to guess about, and why all ten cards means exactly
+        one possible hand, which is perfect play.</p>
+    <p>Your game-over screen says how many cards she is being shown, and the number is on this page rather than hidden in
+        the code, because a disclosed advantage is a challenge and a hidden one is a cheat.</p>
+
     {% if S.strength_sweep %}
     <h2 id="the-dial">Marta's dial, measured</h2>
     <p>Marta's strength (0 to 100) is the number the ratchet moves after each of your games. This is the proof that a higher
@@ -94,6 +106,10 @@
         {% for r in S.strength_sweep %}<tr><td>{{ r.strength }}</td><td>{{ '{:,}'.format(r.marta) }}</td><td>{{ '{:,}'.format(r.otto) }}</td>
             <td><div class="sweep-bar"><span style="width: {{ r.marta_pct }}%"></span></div>{{ r.marta_pct }}%</td></tr>{% endfor %}
     </tbody></table>
+    {% if S.strength_sweep|map(attribute='strength')|max < 70 %}
+    <p class="foot">The thinking band above 60 is being re-measured and will appear here when it is done. What she does
+        there is described above; the numbers in that section are from 200 identical deals.</p>
+    {% endif %}
     {% endif %}
 
     <h2>Forty calls, played out</h2>
