@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from google.cloud import secretmanager
 from typing import Dict, Any, Optional, List
-from .connection import get_db_connection
+from .connection import get_db_connection, db_cursor
 from .connection import return_db_connection
 
 def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
@@ -477,6 +477,41 @@ def _refresh_bid_bias(key):
     finally:
         _BIAS_PENDING.pop(key, None)
     return True
+
+
+def warm_bid_bias():
+    """Price everyone who plays here, from the Otto cron, so no visitor ever sets it off.
+
+    A miss is answered instantly, but the refresh behind it still holds one of the app's two
+    connections for about four seconds — enough, on a cold instance, for the page request to
+    queue behind it for the other one. Warming on the cron means a person arriving finds the
+    number already in the cache.
+
+    Only stale keys are recomputed, so on a settled instance most ticks do no work at all: the
+    cron runs four times an hour against a one-hour TTL. Seven people play here, so a tick that
+    does refresh is seven queries, not a fleet-wide scan. Returns how many were priced."""
+    try:
+        with db_cursor() as cur:
+            cur.execute("""SELECT DISTINCT player_name FROM twomanspades.vw_player_identity
+                            WHERE player_name IS NOT NULL""")
+            names = [r[0] for r in cur.fetchall()]
+            cur.execute("""SELECT DISTINCT google_email FROM twomanspades.players
+                            WHERE google_email IS NOT NULL AND google_name IS NOT NULL""")
+            emails = [r[0] for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[BIAS] could not list players: {e}")
+        return 0
+    # Both shapes the ratchet asks for: signed-in people by email, the rest by name.
+    done = 0
+    for key in [(e, '') for e in emails] + [('', n) for n in names]:
+        cached = _BIAS_CACHE.get(key)
+        if cached and time.time() - cached[1] < _BIAS_TTL:
+            continue
+        _refresh_bid_bias(key)
+        done += 1
+    if done:
+        print(f"[BIAS] warmed {done} of {len(emails) + len(names)} players")
+    return done
 
 
 def get_player_record(google_email=None, player_name=None):

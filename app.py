@@ -332,6 +332,8 @@ def cron_otto():
     stats_payload()           # keeps this process's /stats cache warm between visitors
     from utilities.postgres_utils.rerolls import ensure_reroll_view
     ensure_reroll_view()      # one-time; a catalog SELECT on every tick after that
+    from utilities.postgres_utils import warm_bid_bias
+    result['bias_warmed'] = warm_bid_bias()   # so no visitor ever sets that query off
     return jsonify({'ok': True, **result})
 
 @app.route('/cron/andybot')
