@@ -189,15 +189,35 @@ function renderGameOver() {
         fill.className = 'go-bar-fill ' + (r.after >= r.before ? 'up' : 'down');
         document.getElementById('goBarBefore').style.left = r.before + '%';
         document.getElementById('goBarAfter').style.left = r.after + '%';
-        // the math, so the move is never a mystery: the server sends the factors (computer_logic.ratchet_move)
+        // Why she moved, a line each: the window she reads, the move it buys, and the record.
+        // (Margin used to lead this and read as the cause; it is not an input at all, and a
+        // loss inside a winning window kept looking like a bug. Andy, 2026-09-08.)
         const mv = r.move, d = mv.delta;
         const clamped = Math.abs(r.after - r.before) < Math.abs(d);
-        document.getElementById('goRatchetWhy').textContent =
-            `${r.won ? 'Won' : 'Lost'} by ${Math.abs(r.margin || 0)}. You've won ${mv.wins} of your last ${mv.window}` +
-            ` (Marta aims for you to win about 55%): ${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)}` +
-            `, at most ${mv.cap} a game ${r.games < 60 ? 'until 60 games on record' : 'now that your record is long'}` +
-            `${clamped ? `, held at the ${r.after >= r.before ? 'top' : 'bottom'} of the dial` : ''}.` +
-            (r.peak ? ` Your best ever: ${cap(r.peak.level)} ${r.peak.strength}${r.peak.at ? ` (${r.peak.at})` : ''}.` : '');
+        const move = d === 0 ? 'She holds where she is'
+            : `She ${d > 0 ? 'climbs' : 'drops'} ${Math.abs(d)}${clamped ? `, held at the ${d > 0 ? 'top' : 'bottom'} of the dial` : ''}`;
+        const lines = [
+            [`You've won ${mv.wins} of your last ${mv.window}`, `Marta aims for you to win about 55%`],
+            [move, `at most ${mv.cap} a game ${r.games < 60 ? `until 60 games on record (you have ${r.games})` : 'now that your record is long'}`],
+        ];
+        if (r.peak) lines.push([`Your best ever: ${cap(r.peak.level)} ${r.peak.strength}`, r.peak.at || '']);
+        lines.push([`Marta at ${r.after}`, 'HOW_SHE_PLAYS']);
+        const why = document.getElementById('goRatchetWhy');
+        why.innerHTML = '';
+        for (const [head, tail] of lines) {
+            const row = document.createElement('div');
+            row.className = 'go-why-line';
+            row.append(Object.assign(document.createElement('b'), { textContent: head }));
+            if (tail === 'HOW_SHE_PLAYS') {
+                const a = document.createElement('a');
+                a.href = '/referee#how-she-plays'; a.className = 'go-why-link';
+                a.textContent = 'what she can do at this number, and what it is measured to be worth';
+                row.append(a);
+            } else if (tail) {
+                row.append(Object.assign(document.createElement('span'), { textContent: tail }));
+            }
+            why.append(row);
+        }
     }
 
     const log = gameState.hand_log || [];

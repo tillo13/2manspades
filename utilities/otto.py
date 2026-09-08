@@ -64,6 +64,13 @@ def _mirror(game, difficulty):
     m['current_trick'] = [dict(p, player=_SEAT_FLIP.get(p.get('player'), p.get('player')))
                           for p in game.get('current_trick', [])]
     m['difficulty'] = difficulty
+    # Marta's thinking is rolled per hand onto the game; the mirror must not inherit it or Otto
+    # gets her solver too (every thinking measurement on 2026-09-07 was Marta-thinks vs
+    # Otto-thinks until this line). Otto thinks only if HIS setting says so.
+    m['marta_thinks'] = False
+    m.pop('_thought', None)
+    from utilities.marta_mind import roll_thinking
+    roll_thinking(m)
     return m
 
 

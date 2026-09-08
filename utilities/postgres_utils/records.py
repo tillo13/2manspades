@@ -321,6 +321,41 @@ def get_player_games(player_name: str) -> Optional[Dict[str, Any]]:
             return_db_connection(conn)
 
 
+def get_player_bid_bias(google_email=None, player_name=None):
+    """How this person bids against what they take: AVG(tricks taken - bid) over their hands,
+    for Marta's thinking (she deals them hands they would have bid the way they did). None for
+    strangers or under 10 hands."""
+    if not google_email and not player_name:
+        return None
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            WITH mine AS (
+                SELECT hand_id FROM twomanspades.vw_player_identity
+                 WHERE player_name = COALESCE(%s, (SELECT split_part(google_name, ' ', 1) FROM twomanspades.players
+                                                   WHERE google_email = %s AND google_name IS NOT NULL LIMIT 1))),
+            bids AS (
+                SELECT ge.hand_id, ge.hand_number, (ge.event_data->'action_data'->>'bid_amount')::int AS bid
+                  FROM twomanspades.game_events ge JOIN mine USING (hand_id)
+                 WHERE ge.player = 'player' AND ge.event_type IN ('action_regular_bid', 'action_blind_bid')),
+            taken AS (
+                SELECT hand_id, hand_number, COUNT(*) FILTER (WHERE event_data->>'winner' = 'player') AS taken
+                  FROM twomanspades.game_events WHERE event_type = 'trick_completed' GROUP BY 1, 2)
+            SELECT AVG(t.taken - b.bid), COUNT(*) FROM bids b JOIN taken t USING (hand_id, hand_number)
+        """, (player_name, google_email))
+        avg, n = cur.fetchone()
+        cur.close()
+        return round(float(avg), 2) if avg is not None and n >= 10 else None
+    except Exception as e:
+        print(f"[DB] Error getting bid bias: {e}")
+        return None
+    finally:
+        if conn is not None:
+            return_db_connection(conn)
+
+
 def get_player_record(google_email=None, player_name=None):
     """A person's whole history for the end-of-game screen: totals, win rate, current and best
     streaks, margins, per-rung record. Identity resolves the same way the ratchet does."""

@@ -293,7 +293,7 @@ def index():
             session['user'] = user
             session.permanent = True  # Keep them logged in
         session['difficulty'] = difficulty
-        session['game'] = initialize_new_game_session(request, difficulty)
+        session['game'] = _with_opp_model(initialize_new_game_session(request, difficulty))
 
         # ADD THIS: Trigger geolocation for new visitors
         client_info = track_request_session(session, request)
@@ -313,7 +313,7 @@ def index():
 
 @app.route('/new_game', methods=['POST'])
 def new_game():
-    session['game'] = process_new_game_request(session, request)
+    session['game'] = _with_opp_model(process_new_game_request(session, request))
     return jsonify({'success': True})
 
 @app.route('/cron/otto')
@@ -434,7 +434,7 @@ def get_state():
             print(f"  {ip}: {data['phase']}")
     
     if 'game' not in session:
-        session['game'] = initialize_new_game_session(request)
+        session['game'] = _with_opp_model(initialize_new_game_session(request))
     
     game = session['game']
     safe_state = build_safe_game_state(game, DEBUG_MODE)
@@ -513,6 +513,18 @@ def set_jukebox_pop():
         from utilities.postgres_utils import save_jukebox_pop
         save_jukebox_pop(email, on)
     return jsonify({'success': True, 'on': on})
+
+
+def _with_opp_model(game):
+    """What Marta's thinking knows about this person: how they bid against what they take
+    (utilities/marta_mind.py). Strangers get the default."""
+    who = _ratchet_identity() if IS_PRODUCTION else None
+    if who:
+        from utilities.postgres_utils import get_player_bid_bias
+        bias = get_player_bid_bias(who['email'], who['name'])
+        if bias is not None:
+            game['opp_model'] = {'bid_bias': bias}
+    return game
 
 
 def _ratchet_identity():

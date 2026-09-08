@@ -140,7 +140,13 @@
 .go-bar-mark.after { border-color: #667eea; background: #667eea; }
 .go-bar-rungs { display: flex; justify-content: space-between; font-size: 10px; color: #999; margin-top: 6px;
     text-transform: uppercase; letter-spacing: 0.04em; }
-.go-ratchet-why { font-size: 12px; color: #777; margin-top: 8px; line-height: 1.4; }
+.go-ratchet-why { font-size: 12px; color: #777; margin-top: 10px; line-height: 1.5; }
+.go-why-line { padding: 5px 0; text-align: left; }
+.go-why-line + .go-why-line { border-top: 1px solid #ececf2; }
+.go-why-line b { display: block; color: #444; font-weight: 600; }
+.go-why-line span { display: block; color: #999; }
+.go-why-link { display: block; color: #5a67d8; text-decoration: none; }
+.go-why-link:hover { text-decoration: underline; }
 .go-tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0 0; }
 .go-tile { background: #f8f9fa; border-radius: 8px; padding: 10px 4px; }
 .go-tile-v { font-size: 18px; font-weight: 700; color: #333; }

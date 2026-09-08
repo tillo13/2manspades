@@ -109,18 +109,23 @@ def curate(calls, seed=1):
     return out
 
 
+def _sweep_one(args):
+    s, n = args
+    from utilities import otto
+    w = m = 0
+    for seed in range(n):
+        r = otto.play_game(seed=seed, marta_difficulty=s)
+        w += r['winner'] == 'otto'; m += r['winner'] == 'marta'
+    return {'strength': s, 'games': n, 'otto': w, 'marta': m, 'marta_pct': round(100.0 * m / n, 1)}
+
+
 def strength_sweep(n, strengths=range(0, 101, 10)):
     """Easy Otto vs Marta at each strength, n seeded games each: the ratchet's promise that
-    a higher number is a harder Marta, measured (Andy, 2026-09-07). Same seeds at every strength."""
-    from utilities import otto
-    rows = []
-    for s in strengths:
-        w = m = 0
-        for seed in range(n):
-            r = otto.play_game(seed=seed, marta_difficulty=s)
-            w += r['winner'] == 'otto'; m += r['winner'] == 'marta'
-        rows.append({'strength': s, 'games': n, 'otto': w, 'marta': m, 'marta_pct': round(100.0 * m / n, 1)})
-    return rows
+    a higher number is a harder Marta, measured (Andy, 2026-09-07). Same seeds at every
+    strength; the strengths run in parallel (a thinking Marta takes ~17s a game)."""
+    from multiprocessing import Pool
+    with Pool(len(strengths)) as pool:
+        return sorted(pool.map(_sweep_one, [(s, n) for s in strengths]), key=lambda r: r['strength'])
 
 
 def main(argv=None):

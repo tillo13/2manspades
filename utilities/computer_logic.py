@@ -75,7 +75,7 @@ LEVEL_BLURBS = {
     'easy': 'The Marta the family grew up on. Bids a trick under her hand and leads low.',
     'medium': 'Bids a little closer to her hand; sometimes leads high when she still owes tricks.',
     'hard': 'Bids near her hand and usually leads high while tricks are owed.',
-    'ruthless': 'Bids to her hand and leads high whenever a trick is owed. Beats easy Marta 2 games in 3.',
+    'ruthless': 'Deals you every hand you could be holding, solves them all, and plays the line that wins the most of them.',
 }
 
 
@@ -485,6 +485,16 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
            'bags': computer_bags, 'difficulty': difficulty,
            'spades': sum(1 for c in computer_hand if c['suit'] == '♠')}
 
+    # The top of the dial: she deals the opponent every hand they could hold and solves them
+    # (utilities/marta_mind.py). Rolled once per hand here; the plays of the hand follow it.
+    from .marta_mind import roll_thinking, think_bid
+    if roll_thinking(game_state):
+        thought = think_bid(computer_hand, player_bid, game_state)
+        if thought:
+            bid, info = thought
+            _note('bid', dict(why, branch='think', bid=bid, **info))
+            return bid, False
+
     # Check for nil opportunity first
     if should_bid_nil(computer_hand, game_state):
         _note('bid', dict(why, branch='nil', bid=0))
@@ -552,6 +562,24 @@ def computer_bidding_brain(computer_hand, player_bid, game_state):
 
 # PLAYING STRATEGY
 
+def _thought_play(hand, trick, game_state):
+    """The card marta_mind picks for a hand she is thinking through, else None (the old
+    strategy plays it). One call per decision: the result is cached on the game for the trick."""
+    from .marta_mind import thinks_this_hand, think_play
+    if not thinks_this_hand(game_state):
+        return None
+    stamp = (len(hand), len(trick), len(game_state.get('trick_history', [])))
+    cached = game_state.get('_thought')
+    if cached and tuple(cached[0]) == stamp:
+        return cached[1]
+    r = think_play(hand, trick, game_state)
+    idx = r[0] if r else None
+    if r:
+        _note('think', dict(r[1], card=_c(hand[idx]), lead=_c(trick[0]['card']) if trick else None))
+    game_state['_thought'] = (stamp, idx)
+    return idx
+
+
 def computer_lead_strategy(computer_hand, spades_broken, game_state=None):
     """Lead a card; see _lead_impl. Reports the choice to the decision tap."""
     idx = _lead_impl(computer_hand, spades_broken, game_state)
@@ -569,7 +597,11 @@ def _lead_impl(computer_hand, spades_broken, game_state=None):
     """
     if not computer_hand:
         return None
-    
+    if game_state:
+        thought = _thought_play(computer_hand, [], game_state)
+        if thought is not None:
+            return thought
+
     # Import special card check
     from .custom_rules import is_special_card
     
@@ -641,6 +673,9 @@ def _follow_impl(computer_hand, current_trick, game_state):
     """
     if not current_trick or not computer_hand:
         return None
+    thought = _thought_play(computer_hand, current_trick, game_state)
+    if thought is not None:
+        return thought
 
     from .custom_rules import is_special_card
 

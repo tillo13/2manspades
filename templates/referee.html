@@ -46,6 +46,31 @@
         by leading a low spade, and playing the hand out proved it wrong. So the rule is the strict one, and the reasons the referee
         gives are the ones you can check against your own cards.</p>
 
+    <h2 id="how-she-plays">How Marta thinks as she climbs</h2>
+    <p>Marta's strength is one number, 0 to 100, and the ratchet moves it after each of your games. Up to 60 the number
+        turns her old habits up: she bids closer to her hand, leads high while she owes tricks, plays to set a nil,
+        remembers more of the cards that have gone by. From 60 to 100 a different Marta takes over, and the share of hands
+        she plays this way rises from none to all of them.</p>
+    <p><b>She never sees your cards.</b> She knows what anyone at the table knows: her hand, both discards, every trick
+        played, the suits you have failed to follow, your bid, and, if you have a record here, how your bids compare with
+        what you take. From that she deals you a few hundred hands you could be holding, throws out the ones you would not
+        have bid the way you did, and solves each of the rest to the end with both sides playing perfectly. Then she plays
+        the card that does best across all of them. She bids the same way: the count she makes in most of those worlds,
+        less one trick, because a hand solved as if she will know your cards runs about a trick optimistic. Once her bid
+        is safe the arithmetic turns on you, and the lines that leave you short of your bid, or hand you bags, are the
+        ones that score.</p>
+    <p>What it is worth, on 200 identical deals against the practice-table bot: the old ruthless Marta won 65.5% of them,
+        thinking in the play alone 78.0%, thinking in both the bid and the play 80.0%. Handed your actual cards she would
+        win 95.0%, which is the most perfect play is worth in this game and the reason there is still room above her.</p>
+    <p>The technique is called determinization, or Perfect Information Monte Carlo. It is how Matthew Ginsberg's GIB
+        played bridge at expert level, <a href="https://arxiv.org/abs/1106.0669">GIB: Imperfect Information in a
+        Computationally Challenging Game</a> (2001), and how later programs play Skat and Bridge,
+        <a href="https://arxiv.org/abs/2408.02380">Perfect Information Monte Carlo with Postponing Reasoning</a> (2024).
+        The solver under it is the lay-down referee's search carried to a whole hand: every legal line, scored the way the
+        hand will be scored, with bags, sets and nil. Her thinking clock is 150 milliseconds a card at 100 (less lower
+        down), so early in a hand she solves a handful of worlds and by the last few cards, hundreds. The code is
+        <code>utilities/marta_mind.py</code>.</p>
+
     <h2>The proof</h2>
     <p>Otto played Marta {{ '{:,}'.format(S.games) }} seeded games twice: once laying hands down when the referee called them, once
         playing every card to the end. Every hand's bids, tricks, scores and bags had to match between the two runs.</p>
@@ -61,7 +86,7 @@
         {% for k, v in S.by_cards_left.items() %}<span><b>{{ k }}</b> {{ '{:,}'.format(v) }}</span>{% endfor %}</p>
 
     {% if S.strength_sweep %}
-    <h2>Marta's dial, measured</h2>
+    <h2 id="the-dial">Marta's dial, measured</h2>
     <p>Marta's strength (0 to 100) is the number the ratchet moves after each of your games. This is the proof that a higher
         number is a harder Marta: easy Otto played her {{ '{:,}'.format(S.strength_sweep[0].games) }} seeded games at each
         setting, the same deals every time, so only Marta changed.</p>
