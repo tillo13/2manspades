@@ -289,15 +289,39 @@ class PersonaTests(unittest.TestCase):
             play_game(seed=12)
         q.assert_not_called()
 
-    def test_persona_plan_is_fixed_per_day_and_sparse(self):
+    def test_persona_plan_is_fixed_per_day_and_most_days(self):
         import datetime
         from utilities.otto import persona_plan
         days = [datetime.date(2026, 9, d) for d in range(1, 29)]
         plans = [persona_plan('andybot', d) for d in days]
         self.assertEqual(plans, [persona_plan('andybot', d) for d in days])
         playing = [p for p in plans if p]
-        self.assertTrue(6 <= len(playing) <= 18)                 # ~3 days a week over 4 weeks
-        self.assertTrue(all(1 <= len(p) <= 3 and all(9 <= h <= 21 for h in p) for p in playing))
+        self.assertTrue(14 <= len(playing) <= 26)                # ~5 days a week over 4 weeks
+        self.assertTrue(all(2 <= len(p) <= 4 and all(9 <= h <= 21 for h in p) for p in playing))
+        # spread, not one sitting: some day must have a gap between games
+        self.assertTrue(any(max(b - a for a, b in zip(p, p[1:])) > 1 for p in playing if len(p) > 1))
+
+    def test_tick_reads_the_clock_in_pacific_not_utc(self):
+        """cron.yaml fires on a Pacific schedule and persona_plan draws Pacific hours,
+        but App Engine runs UTC — datetime.now() made hours 9-15 unreachable and fired
+        the rest at the wrong time of day. No cron game persisted 09-06..09-09."""
+        import datetime
+        from utilities import otto
+        day = next(d for d in (datetime.date(2026, 9, n) for n in range(10, 40))
+                   if otto.persona_plan('andybot', d))
+        plan = otto.persona_plan('andybot', day)
+        planned = datetime.datetime(day.year, day.month, day.day, plan[0], 5, tzinfo=otto.PACIFIC)
+        off = planned.replace(hour=next(h for h in range(9, 22) if h not in plan))
+
+        with patch.object(otto, '_now_pt', return_value=off):
+            self.assertEqual(otto.play_persona_tick()['reason'], 'not this hour')
+
+        # A planned Pacific hour must MATCH — proven without playing a game by
+        # letting the already-played guard short-circuit it.
+        stamp = int(planned.strftime('%Y%m%d%H'))
+        with patch.object(otto, '_now_pt', return_value=planned), \
+             patch.object(otto, '_read_state', return_value=stamp):
+            self.assertEqual(otto.play_persona_tick()['reason'], 'already played this hour')
 
     def test_cron_route_requires_header(self):
         client = A.app.test_client()

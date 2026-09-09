@@ -301,13 +301,18 @@ def _open_persona_hand(game, persona):
 
 
 def persona_plan(persona_tag, day=None):
-    """Which hours (Pacific) the persona plays today, or [] on a day off. About three days a
-    week, 1-3 games on a playing day, fixed per date so every instance agrees."""
-    day = day or _dt.date.today()
+    """Which hours (Pacific) the persona plays today, or [] on a day off.
+
+    Most days rather than a fixed schedule: ~5 days in 7, 2-4 games at hours drawn
+    independently from across the whole 09:00-21:00 window, so they land spread
+    through the day instead of in one sitting. Seeded by the date, so every
+    instance agrees without coordinating (Andy, 2026-09-09).
+    """
+    day = day or _now_pt().date()
     rng = random.Random(f"{persona_tag}-{day.isoformat()}")
-    if rng.random() > 3 / 7:
+    if rng.random() > 5 / 7:
         return []
-    return sorted(rng.sample(range(9, 22), rng.randint(1, 3)))
+    return sorted(rng.sample(range(9, 22), rng.randint(2, 4)))
 
 
 def play_persona_tick(persona=ANDY):
@@ -315,7 +320,7 @@ def play_persona_tick(persona=ANDY):
     persona at their current ratcheted Marta and move the ratchet like a real result would."""
     from utilities.computer_logic import ratchet, level_name
     from utilities.postgres_utils import get_user_strength, save_user_strength
-    now = _dt.datetime.now()
+    now = _now_pt()
     plan = persona_plan(persona['tag'], now.date())
     if now.hour not in plan:
         return {'plan': plan, 'played': False, 'reason': 'not this hour'}
@@ -354,6 +359,21 @@ def _read_state(key):
 # Marta's strength against Otto moves with each result like it does for a person, so it
 # settles wherever Otto wins half the time — a live measure of how strong easy-Otto is.
 import datetime as _dt
+from zoneinfo import ZoneInfo
+
+# Every persona hour in this file is PACIFIC, because that is what cron.yaml
+# schedules against and what "plays during the day" means to a person here.
+# App Engine standard runs UTC and app.yaml sets no TZ, so datetime.now() was
+# eight hours off: persona_plan draws hours 9-21 meaning Pacific, the cron only
+# runs 16:00-04:00 UTC, so planned hours 9-15 could never fire at all and 16-21
+# fired at 09:00-14:00 PT. A game planned for 8pm played at 1pm, and the stand-in
+# never persisted a single cron game between 2026-09-06 and 2026-09-09.
+PACIFIC = ZoneInfo('America/Los_Angeles')
+
+
+def _now_pt():
+    return _dt.datetime.now(PACIFIC)
+
 
 CRON_TICKS_PER_DAY = 96          # cron.yaml: every 15 minutes
 

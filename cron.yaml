@@ -9,8 +9,10 @@ cron:
     url: /cron/otto
     schedule: every 15 minutes
     timezone: America/Los_Angeles
-  # Andy's stand-in (Andy, 2026-09-06): about three days a week, 1-3 games at random daytime
-  # hours, logged as Andy through the human path; hands.played_by = 'andybot' is the only mark.
+  # Andy's stand-in (Andy, 2026-09-09): most days, 2-4 games at random hours spread across
+  # this window — not a fixed time — logged as Andy through the human path; hands.played_by =
+  # 'andybot' is the only mark. The hours are Pacific and play_persona_tick now reads the clock
+  # in Pacific too; it used UTC until 09-09, which is why no cron game ever persisted.
   - description: Andy's stand-in plays Marta on planned hours
     url: /cron/andybot
     schedule: every 1 hours from 09:00 to 21:00
