@@ -153,5 +153,27 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(pool.putconn.call_count, 1)
 
 
+class ConnectGuardTests(unittest.TestCase):
+    """The guard in tests/__init__.py is the only thing standing between a
+    mispatched test and the shared Cloud SQL instance. A green suite is not
+    evidence it is armed — this is."""
+
+    def test_real_connect_is_blocked_and_uncatchable(self):
+        import psycopg2
+        import tests
+        with self.assertRaises(tests.RealDatabaseConnectionAttempted):
+            psycopg2.connect(host='127.0.0.1', dbname='x', user='y', password='z')
+
+        # Exception, not BaseException: the routes swallow the former, which is
+        # how 34 real connections per run stayed invisible until 2026-09-09.
+        self.assertNotIsInstance(tests.RealDatabaseConnectionAttempted(), Exception)
+        try:
+            psycopg2.connect(host='127.0.0.1')
+        except Exception:                       # noqa: BLE001 — the point of the test
+            self.fail('the guard was caught by a bare `except Exception`')
+        except tests.RealDatabaseConnectionAttempted:
+            pass
+
+
 if __name__ == '__main__':
     unittest.main()

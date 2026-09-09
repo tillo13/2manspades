@@ -17,7 +17,42 @@ def load_app():
     return app
 
 
+def offline_pool():
+    """A pool whose connections answer the ping and return nothing interesting.
+
+    isolate_services installs this so no route the suite exercises can reach the
+    driver. Patching Secret Manager is the wrong seam — it stubs where the
+    credentials come from and leaves psycopg2 free to dial out — so the seam is
+    the pool. Tests that care about pool behaviour patch _get_pool again with a
+    double of their own; the innermost patch wins.
+    """
+    from unittest.mock import MagicMock
+    conn = MagicMock()
+    conn.info.transaction_status = 0      # TRANSACTION_STATUS_IDLE, so the ping passes
+    conn.closed = 0
+    cur = conn.cursor.return_value
+    cur.__enter__.return_value = cur
+    cur.fetchone.return_value = (1,)
+    cur.fetchall.return_value = []
+    pool = MagicMock()
+    pool.getconn.return_value = conn
+    return pool
+
+
+def no_database(stack):
+    """Close the driver boundary for the life of `stack`.
+
+    Separate from isolate_services because a test class that patches its own
+    helpers still needs this: test_stats_cache patched the six helpers it counts
+    and left robot_league — reached through _build_payload — to open a real
+    connection on every run.
+    """
+    from utilities.postgres_utils import connection
+    stack.enter_context(patch.object(connection, '_get_pool', return_value=offline_pool()))
+
+
 def isolate_services(stack):
+    no_database(stack)
     from utilities import logging_utils
     for name in ('LOGGING_ENABLED', 'LOG_TO_FILE', 'LOG_TO_CONSOLE'):
         stack.enter_context(patch.object(logging_utils, name, False))

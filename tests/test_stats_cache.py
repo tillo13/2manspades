@@ -4,7 +4,7 @@ from io import StringIO
 import unittest
 from unittest.mock import patch
 
-from tests.support import load_app
+from tests.support import load_app, no_database
 
 A = load_app()
 from utilities.postgres_utils import stats as S
@@ -32,6 +32,7 @@ class StatsCacheTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(redirect_stdout(StringIO()))
+        no_database(self.stack)   # robot_league is not in HELPERS and reaches the driver
         self.calls = {}
         for name in HELPERS:
             self.calls[name] = self.stack.enter_context(patch.object(S, name, return_value={} if 'leaderboard' not in name else []))
