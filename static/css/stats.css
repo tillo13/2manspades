@@ -64,6 +64,17 @@ body {
     box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
+/* /stats is the only page with two of these. Both were .back-button, so both
+   pinned to top:15/left:15 and the referee link — second in the DOM — painted
+   over "Back to Game" and made the way out of /stats unclickable. The modifier
+   class existed in stats.html from 2026-09-06 but was never given a rule.
+   Anchored right rather than offset by a guessed pixel width, so it cannot
+   collide again if either label changes. */
+.referee-link {
+    left: auto;
+    right: 15px;
+}
+
 .stats-section {
     background: var(--surface-2);
     border-radius: 10px;
@@ -576,6 +587,14 @@ body {
         left: 10px;
         padding: 8px 12px;
         font-size: 12px;
+    }
+
+    /* Side by side would be ~300px of button on a 320px phone. Stack instead:
+       no width assumption, so it holds whatever the labels say. */
+    .referee-link {
+        top: 48px;
+        left: 10px;
+        right: auto;
     }
 
     .player-stats {
