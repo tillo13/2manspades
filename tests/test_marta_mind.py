@@ -327,5 +327,34 @@ class NilTests(unittest.TestCase):
         self.assertEqual(seen, [], f'the playout reported {len(seen)} phantom decisions')
 
 
+class RefereePageMatchesTheLadder(unittest.TestCase):
+    """The referee page is the disclosure of the card ladder (marta_mind.py:44 says so).
+    It carried a flat 'She never sees your cards.' for a day after the ladder landed, which
+    the paragraph directly above it already contradicted. A player reads that page to know
+    what he is up against, so it has to track the constants, not a memory of them."""
+
+    @staticmethod
+    def _page():
+        from pathlib import Path
+        return (Path(__file__).resolve().parent.parent / 'templates' / 'referee.html').read_text()
+
+    def test_no_unqualified_never_claim(self):
+        page = self._page()
+        self.assertNotIn('She never sees your cards', page,
+                         'unqualified: above %d she is shown %d-%d of them'
+                         % (mm.PEEK_FROM, mm.PEEK_MIN_CARDS, mm.PEEK_MAX_CARDS))
+
+    def test_page_states_the_real_threshold_and_counts(self):
+        page = self._page()
+        for value in (mm.PEEK_FROM, mm.PEEK_MIN_CARDS, mm.PEEK_MAX_CARDS):
+            self.assertIn(str(value), page,
+                          f'{value} is a ladder constant the page never mentions')
+
+    def test_the_threshold_is_where_peeking_actually_starts(self):
+        self.assertEqual(mm.peek_cards(mm.PEEK_FROM), 0)
+        self.assertEqual(mm.peek_cards(mm.PEEK_FROM + 1), mm.PEEK_MIN_CARDS)
+        self.assertEqual(mm.peek_cards(100), mm.PEEK_MAX_CARDS)
+
+
 if __name__ == '__main__':
     unittest.main()
