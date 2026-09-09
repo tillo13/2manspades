@@ -27,7 +27,7 @@ import random
 import time
 import uuid
 
-from .gameplay_logic import init_game, init_new_hand, is_valid_play
+from .gameplay_logic import init_game, init_new_hand, is_valid_play, log_hand_dealt
 from .custom_rules import assign_even_odd_at_game_start, get_display_score
 from .computer_logic import (computer_bidding_brain, computer_discard_strategy, computer_lead_strategy,
                              computer_follow_strategy, should_bid_blind, set_decision_sink, set_decision_seat,
@@ -113,7 +113,8 @@ def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persis
                                                    'google_id': persona.get('google_id'),
                                                    'picture': None}}
             sess = {'game': game}
-            _open_persona_hand(game, persona)
+            _open_persona_hand(game, persona)   # writes the hands row
+            log_hand_dealt(game)                # ...so these can reference it
         else:
             game['_no_log'] = True
             sess = {}   # no 'game' key: hand_flow's logging paths see nothing to log
@@ -131,7 +132,8 @@ def play_game(seed=None, otto_difficulty='easy', marta_difficulty='easy', persis
                 game['hand_number'] += 1
                 init_new_hand(game)
                 if persona:
-                    _open_persona_hand(game, persona)
+                    _open_persona_hand(game, persona)   # writes the hands row
+                    log_hand_dealt(game)                # ...so these can reference it
         finally:
             set_decision_sink(None)
 

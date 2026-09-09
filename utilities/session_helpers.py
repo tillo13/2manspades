@@ -9,7 +9,8 @@ from .custom_rules import (
     get_player_names_with_parity, check_special_cards_in_discard,
     check_blind_bidding_eligibility, get_display_score
 )
-from .gameplay_logic import determine_trick_winner, init_game, init_new_hand, check_game_over
+from .gameplay_logic import (determine_trick_winner, init_game, init_new_hand,
+                             check_game_over, log_hand_dealt)
 from .computer_logic import (
     computer_follow_strategy, computer_lead_strategy, computer_bidding_brain,
     computer_discard_strategy, autoplay_remaining_cards
@@ -291,6 +292,17 @@ def process_new_game_request(session, request):
     if client_info and client_info.get('ip_address'):
         process_ip_geolocation(client_info['ip_address'])
     
+    # The hands row for hand 1, queued BEFORE any event that references it.
+    # /new_game never created one, so both hand_dealt events for the opening hand
+    # of every game failed game_events_game_id_fkey; /deal created it for hands
+    # 2..N, which is why only the first hand of each game was affected.
+    from .logging_utils import queue_db_operation, IS_PRODUCTION
+    from .postgres_utils import create_hand_with_player
+    if IS_PRODUCTION:
+        queue_db_operation(create_hand_with_player, game, client_info)
+    else:
+        create_hand_with_player(game, client_info)
+
     log_game_event(
         event_type='new_game_started',
         event_data={
@@ -300,7 +312,8 @@ def process_new_game_request(session, request):
         },
         session={'game': game}
     )
-    
+    log_hand_dealt(game)
+
     return game
 
 

@@ -153,6 +153,33 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(pool.putconn.call_count, 1)
 
 
+class HandEventOrderingTests(unittest.TestCase):
+    """game_events.hand_id references hands(hand_id), and both writes go through
+    the one FIFO worker in logging_utils — so whoever creates the hands row must
+    be queued first. init_game and init_new_hand used to log hand_dealt inline,
+    which put both events ahead of their parent and failed the key every time."""
+
+    def test_dealing_does_not_log_hand_dealt(self):
+        from utilities import gameplay_logic as gl
+        seen = []
+        with patch('utilities.logging_utils.log_game_event',
+                   side_effect=lambda **k: seen.append(k['event_type'])):
+            game = gl.init_game()
+            self.assertEqual(seen, [], 'init_game logged before any hands row could exist')
+            game['hand_number'] = 2
+            gl.init_new_hand(game)
+            self.assertEqual(seen, [], 'init_new_hand logged before the caller queued the hands row')
+
+    def test_log_hand_dealt_emits_one_event_per_seat(self):
+        from utilities import gameplay_logic as gl
+        game = gl.init_game()
+        seats = []
+        with patch('utilities.logging_utils.log_game_event',
+                   side_effect=lambda **k: seats.append(k['event_data']['player'])):
+            gl.log_hand_dealt(game)
+        self.assertEqual(seats, ['player', 'computer'])
+
+
 class ConnectGuardTests(unittest.TestCase):
     """The guard in tests/__init__.py is the only thing standing between a
     mispatched test and the shared Cloud SQL instance. A green suite is not

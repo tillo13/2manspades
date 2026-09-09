@@ -82,36 +82,34 @@ def init_game(player_parity='even', computer_parity='odd', first_leader='player'
         'trick_history': []  # Track all tricks played this hand
     }
     
-    # Log initial hands dealt for first hand
-    from .logging_utils import log_game_event
-    
-    # Log player's starting hand
-    player_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['player_hand']]
-    log_game_event(
-        event_type='hand_dealt',
-        event_data={
-            'hand_number': game['hand_number'],
-            'player': 'player',
-            'cards': player_hand_cards,
-            'card_count': len(player_hand_cards)
-        },
-        session={'game': game}
-    )
-    
-    # Log computer's starting hand
-    computer_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['computer_hand']]
-    log_game_event(
-        event_type='hand_dealt',
-        event_data={
-            'hand_number': game['hand_number'],
-            'player': 'computer',
-            'cards': computer_hand_cards,
-            'card_count': len(computer_hand_cards)
-        },
-        session={'game': game}
-    )
-    
+    # hand_dealt is the caller's job — see log_hand_dealt. Logging it here fired
+    # with a hardcoded session={'game': game}, which ignored Otto's _no_log/sess={}
+    # contract and emitted two events for bot games that have no hands row at all.
     return game
+
+
+def log_hand_dealt(game):
+    """The two hand_dealt events for the current hand, one per seat.
+
+    Separate from the deal itself because game_events.hand_id has a foreign key
+    to hands(hand_id) and every write here goes through the single FIFO worker
+    in logging_utils: whoever creates the hands row has to be queued FIRST or
+    both of these fail. init_new_hand mints the id and deals; the caller queues
+    the hands row and then calls this.
+    """
+    from .logging_utils import log_game_event
+    for seat, key in (('player', 'player_hand'), ('computer', 'computer_hand')):
+        cards = [f"{card['rank']}{card['suit']}" for card in game[key]]
+        log_game_event(
+            event_type='hand_dealt',
+            event_data={
+                'hand_number': game['hand_number'],
+                'player': seat,
+                'cards': cards,
+                'card_count': len(cards)
+            },
+            session={'game': game}
+        )
 
 
 def init_new_hand(game):
@@ -179,34 +177,11 @@ def init_new_hand(game):
         'trick_history': []
     })
     
-    # Log starting hands for this new hand
-    from .logging_utils import log_game_event
-    
-    # Log player's starting hand
-    player_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['player_hand']]
-    log_game_event(
-        event_type='hand_dealt',
-        event_data={
-            'hand_number': game['hand_number'],
-            'player': 'player',
-            'cards': player_hand_cards,
-            'card_count': len(player_hand_cards)
-        },
-        session={'game': game}
-    )
-    
-    # Log computer's starting hand
-    computer_hand_cards = [f"{card['rank']}{card['suit']}" for card in game['computer_hand']]
-    log_game_event(
-        event_type='hand_dealt',
-        event_data={
-            'hand_number': game['hand_number'],
-            'player': 'computer',
-            'cards': computer_hand_cards,
-            'card_count': len(computer_hand_cards)
-        },
-        session={'game': game}
-    )
+    # hand_dealt is deliberately NOT logged here — the caller queues the hands
+    # row first, then calls log_hand_dealt. Logging inline put both events ahead
+    # of their parent in the FIFO worker and failed the foreign key every deal.
+    return game
+
 
 def is_valid_play(card, hand, trick, spades_broken):
     """Check if a card play is valid according to Spades rules"""

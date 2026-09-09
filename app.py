@@ -19,7 +19,7 @@ from utilities.app_helpers import (
     process_hand_completion, process_auto_resolution,
     start_development_server, process_ip_geolocation
 )
-from utilities.gameplay_logic import is_valid_play, init_new_hand
+from utilities.gameplay_logic import is_valid_play, init_new_hand, log_hand_dealt
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
 from utilities.postgres_utils import get_suspected_player_from_ip, get_user_difficulty, save_user_difficulty
 from utilities.gmail_utils import send_simple_email
@@ -902,7 +902,13 @@ def next_hand():
     else:
         # Synchronous in development for easier debugging
         create_hand_with_player(game, client_info)
-    
+
+    # AFTER the hands row: game_events.hand_id references hands(hand_id) and both
+    # go through one FIFO worker, so logging these first meant the foreign key
+    # rejected every one — 2 per deal, silently, since the worker drops the
+    # return value (38 in the 24h to 2026-09-09).
+    log_hand_dealt(game)
+
     session.modified = True
     return jsonify({'success': True})
 
