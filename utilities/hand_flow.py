@@ -700,6 +700,11 @@ def _complete_hand(game, session, auto_explanation=None):
 
     # The middle can be thrown back on a game-deciding hand (family rule, 2026-09-06)
     kept_alive = apply_keep_alive(game, hand_discard)
+    # the middle's points per side, shown in the hand's score math; a keep-alive turns the winner's add into the loser's subtract
+    middle = {seat: (hand_discard or {}).get(f'{seat}_bonus', 0) for seat in ('player', 'computer')}
+    if kept_alive:
+        pts = max(middle.values())
+        middle = {seat: middle[seat] - pts for seat in middle}
     if kept_alive:
         game['discard_bonus_explanation'] = (game.get('discard_bonus_explanation') or '') + ' → ' + kept_alive
 
@@ -750,6 +755,7 @@ def _complete_hand(game, session, auto_explanation=None):
         'computer_specials': specials['computer'],
         'player_score': player_display_score, 'computer_score': computer_display_score,
         'player_points': game['player_score'] - base_before['player'], 'computer_points': game['computer_score'] - base_before['computer'],
+        'player_middle': middle['player'], 'computer_middle': middle['computer'],
         'player_bags': game.get('player_bags', 0), 'computer_bags': game.get('computer_bags', 0),
         'middle': {'player': _card(game.get('player_discarded')), 'computer': _card(game.get('computer_discarded')),
                    'winner': hand_discard.get('winner') if hand_discard else None},

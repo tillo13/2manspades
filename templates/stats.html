@@ -15,8 +15,8 @@
     <meta name="twitter:description" content="Two-Man Spades leaderboard and player statistics. See win rates, playing styles, records and the Robot League.">
 {% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats_sections.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats_sections.css', v=asset_v) }}">
 {% endblock %}
 
 {# One row shape for every card: name | value | detail. A game link when there is one. #}
@@ -480,5 +480,5 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/stats.js', v=asset_v) }}"></script>
 {% endblock %}

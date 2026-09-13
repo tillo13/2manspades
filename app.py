@@ -30,6 +30,12 @@ from utilities.google_auth_utils import SimpleGoogleAuth
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+
+@app.context_processor
+def _asset_version():
+    # App Engine sets GAE_VERSION per deploy; static files cache for 10 minutes, so stamp the URL
+    return {'asset_v': os.environ.get('GAE_VERSION', 'dev')}
 try:
     from utilities.visitor_logging import install_middleware as _install_visitor_logging
     _install_visitor_logging(app, 'twomanspades')

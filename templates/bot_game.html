@@ -2,9 +2,9 @@
 {% block title %}Otto vs Marta, {{ g.played_at.strftime('%b %-d %H:%M') }} | Two-Man Spades{% endblock %}
 {% block meta %}<meta name="robots" content="noindex">{% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats_sections.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/referee.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats_sections.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/referee.css', v=asset_v) }}">
 {% endblock %}
 {% block content %}
     <a href="/stats#marta" class="back-button">&larr; Back to the Robot League</a>

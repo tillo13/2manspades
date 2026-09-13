@@ -51,9 +51,9 @@
     <meta name="apple-mobile-web-app-title" content="Two-Man Spades">
 {% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css', v=asset_v) }}">
 {% endblock %}
 {% block content %}
     <h1 class="sr-only">Two-Man Spades - Free Online 2-Player Card Game</h1>
@@ -331,6 +331,6 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game.js', v=asset_v) }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js', v=asset_v) }}"></script>
 {% endblock %}

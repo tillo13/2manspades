@@ -15,8 +15,8 @@
     <meta name="twitter:description" content="{{ player.player_name }}'s game history and stats on Two-Man Spades.">
 {% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css', v=asset_v) }}">
 {% endblock %}
 {% block content %}
     <a href="/stats" class="back-button">&larr; Back to Stats</a>

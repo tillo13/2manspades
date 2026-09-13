@@ -13,8 +13,8 @@
     <meta name="twitter:description" content="Detailed hand-by-hand breakdown of a Two-Man Spades game.">
 {% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/game_detail.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/game_detail.css', v=asset_v) }}">
 {% endblock %}
 {% block content %}
     <a href="/stats" class="back-button">← Back to Stats</a>
@@ -245,5 +245,5 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/game_detail.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game_detail.js', v=asset_v) }}"></script>
 {% endblock %}

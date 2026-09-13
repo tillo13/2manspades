@@ -5,8 +5,8 @@
     <link rel="canonical" href="https://2manspades.com/referee">
 {% endblock %}
 {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/instructions.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/referee.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/instructions.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/referee.css', v=asset_v) }}">
 {% endblock %}
 {% block content %}
 {% set S = proof.summary %}

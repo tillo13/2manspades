@@ -621,14 +621,16 @@ function updateHandOver() {
     // The board number is tens = points, ones = bags (wrapping at 7 into -100). Never subtract two of
     // them: show the hand's points (base score movement) and the bag count as a movement, separately.
     const delta = n => (n >= 0 ? '+' : '') + n;
-    const scoreCell = (id, score, points, bags, hadBags) => {
+    const scoreCell = (id, score, points, middle, bags, hadBags) => {
         const el = document.getElementById(id);
+        const bid = Number.isInteger(points) ? points - (middle || 0) : null;   // bid points (and any -100 / +100) apart from the middle
         el.innerHTML = `${score}` +
-            (Number.isInteger(points) ? ` <small class="${points >= 0 ? 'up' : 'down'}">${delta(points)}</small>` : '') +
+            (bid !== null ? ` <small class="${bid >= 0 ? 'up' : 'down'}">${delta(bid)}</small>` : '') +
+            (middle ? ` <small class="${middle > 0 ? 'up' : 'down'}">${delta(middle)} middle</small>` : '') +
             (bags !== hadBags ? ` <small class="bags">bags ${hadBags} → ${bags}</small>` : '');
     };
-    scoreCell('hoYou', h.player_score ?? gameState.player_score, h.player_points, h.player_bags ?? 0, prev.player_bags ?? 0);
-    scoreCell('hoMarta', h.computer_score ?? gameState.computer_score, h.computer_points, h.computer_bags ?? 0, prev.computer_bags ?? 0);
+    scoreCell('hoYou', h.player_score ?? gameState.player_score, h.player_points, h.player_middle, h.player_bags ?? 0, prev.player_bags ?? 0);
+    scoreCell('hoMarta', h.computer_score ?? gameState.computer_score, h.computer_points, h.computer_middle, h.computer_bags ?? 0, prev.computer_bags ?? 0);
 
     // the middle: both cards, then the record's own line about who took it
     const cardEl = c => c ? `<div class="card ${getSuitClass(c.suit)}">${c.rank}${c.suit}</div>` : '<div class="card" style="opacity:.5">?</div>';

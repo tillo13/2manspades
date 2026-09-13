@@ -12,9 +12,9 @@
     {% block meta %}{% endblock %}
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-F5VP0CXERK"></script>
-    <script src="{{ url_for('static', filename='js/ga.js') }}"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sheet.css') }}">
+    <script src="{{ url_for('static', filename='js/ga.js', v=asset_v) }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v=asset_v) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sheet.css', v=asset_v) }}">
     {% block styles %}{% endblock %}
 </head>
 <body data-logged-in="{{ 'true' if session.get('user') else 'false' }}" data-jukebox-pop="{{ 'true' if session.get('jukebox_pop', True) else 'false' }}">
@@ -28,8 +28,8 @@
         <p>&copy; 2026 <a href="https://2manspades.com">2manspades.com</a></p>
     </footer>
 {% include '_table_sheet.html' %}
-    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat.js', v=asset_v) }}"></script>
 {% block scripts %}{% endblock %}
-    <script src="{{ url_for('static', filename='js/jukebox.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jukebox.js', v=asset_v) }}"></script>
 </body>
 </html>
