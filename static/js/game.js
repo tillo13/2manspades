@@ -635,19 +635,26 @@ function updateHandOver() {
     const info = (r.discard_info || '').replace(/^Discards:\s*/, '').replace(/(\S+[♥♦])/g, '<span class="heart">$1</span>');
     document.getElementById('hoMiddle').innerHTML = info;
 
-    // What the hand was worth against perfect play, next to what was bid. Everyone at this
-    // table bids about a trick under par, and until now nothing said so (Andy, 2026-09-08).
-    const par = document.getElementById('hoPar');
-    if (par) {
-        if (r.par && r.bids && r.bids.player !== null && r.bids.player !== undefined) {
-            const worth = r.par.player, bid = r.bids.player, off = bid - worth;
-            const verdict = off === 0 ? 'you bid it exactly'
-                : off < 0 ? `you bid ${-off} under it` : `you bid ${off} over it`;
-            par.innerHTML = `<b>This hand was worth ${worth}</b> against perfect play · ` +
-                `<span class="${off === 0 ? 'ho-par-on' : 'ho-par-off'}">${verdict}</span>`;
-            par.hidden = false;
+    const forecast = document.getElementById('hoForecast'), estimate = r.win_estimate;
+    const forecastKey = JSON.stringify([r.hand_number, estimate, !!gameState.game_over]);
+    if (forecast && forecast.dataset.key !== forecastKey) {
+        forecast.dataset.key = forecastKey;
+        if (!gameState.game_over && Number.isInteger(estimate?.percent) && estimate.percent > 0 && estimate.percent < 100) {
+            forecast.replaceChildren();
+            const headline = document.createElement('b');
+            headline.textContent = `You're estimated to win from here ~${estimate.percent}% of the time.`;
+            const context = document.createElement('div');
+            context.textContent = `Early estimate · ${estimate.level} Marta (${estimate.strength}/100)`;
+            const details = document.createElement('details'), summary = document.createElement('summary');
+            summary.textContent = 'How is this estimated?';
+            const explanation = document.createElement('div');
+            explanation.textContent = 'Uses the score, bags, next lead and Marta’s strength. Based on completed human and Otto games, with separate baselines for people and bots. This averages across players; higher levels have fewer recorded games. It estimates the game outcome, not the quality of your last play.';
+            details.append(summary, explanation);
+            forecast.append(headline, context, details);
+            forecast.hidden = false;
         } else {
-            par.hidden = true;
+            forecast.replaceChildren();
+            forecast.hidden = true;
         }
     }
 

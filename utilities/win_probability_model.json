@@ -1,0 +1,270 @@
+{
+  "version": "win-v1",
+  "trained_at": "2026-09-13T15:04:06.923098+00:00",
+  "features": [
+    "intercept",
+    "player_score",
+    "computer_score",
+    "player_close",
+    "computer_close",
+    "player_bags",
+    "computer_bags",
+    "strength",
+    "thinking",
+    "next_player",
+    "otto",
+    "persona"
+  ],
+  "coefficients": [
+    1.7841119503,
+    0.9088028248,
+    -0.8158878154,
+    1.0424438454,
+    -1.3777204813,
+    -1.2850368173,
+    1.0119037151,
+    -0.0188287085,
+    -1.4587521147,
+    0.0182033573,
+    -2.0275989201,
+    -2.3063413122
+  ],
+  "training": {
+    "positions": 7824,
+    "games": 1261,
+    "sources": {
+      "human": 4138,
+      "persona": 52,
+      "otto": 3634
+    },
+    "first": "2025-09-14 19:51:45.212126+00:00",
+    "last": "2026-09-13 14:37:01.244595+00:00"
+  },
+  "validation": {
+    "all": {
+      "games": 1261,
+      "positions": 7824,
+      "brier": 0.1429,
+      "baseline_brier": 0.1656,
+      "mean_predicted": 68.1,
+      "observed": 68.1,
+      "bins": [
+        {
+          "range": "0-20%",
+          "positions": 447,
+          "games": 231,
+          "predicted": 12.3,
+          "observed": 13.0
+        },
+        {
+          "range": "20-40%",
+          "positions": 1166,
+          "games": 404,
+          "predicted": 30.9,
+          "observed": 34.6
+        },
+        {
+          "range": "40-60%",
+          "positions": 1452,
+          "games": 480,
+          "predicted": 49.3,
+          "observed": 45.7
+        },
+        {
+          "range": "60-80%",
+          "positions": 885,
+          "games": 425,
+          "predicted": 70.2,
+          "observed": 69.4
+        },
+        {
+          "range": "80-100%",
+          "positions": 3874,
+          "games": 849,
+          "predicted": 92.3,
+          "observed": 92.6
+        }
+      ]
+    },
+    "human": {
+      "games": 770,
+      "positions": 4138,
+      "brier": 0.0803,
+      "baseline_brier": 0.091,
+      "mean_predicted": 89.8,
+      "observed": 89.9,
+      "bins": [
+        {
+          "range": "0-20%",
+          "positions": 11,
+          "games": 7,
+          "predicted": 14.2,
+          "observed": 27.3
+        },
+        {
+          "range": "20-40%",
+          "positions": 28,
+          "games": 19,
+          "predicted": 31.3,
+          "observed": 42.9
+        },
+        {
+          "range": "40-60%",
+          "positions": 77,
+          "games": 56,
+          "predicted": 50.8,
+          "observed": 48.1
+        },
+        {
+          "range": "60-80%",
+          "positions": 292,
+          "games": 156,
+          "predicted": 73.8,
+          "observed": 71.6
+        },
+        {
+          "range": "80-100%",
+          "positions": 3730,
+          "games": 751,
+          "predicted": 92.5,
+          "observed": 92.8
+        }
+      ]
+    },
+    "otto": {
+      "games": 481,
+      "positions": 3634,
+      "brier": 0.2147,
+      "baseline_brier": 0.2498,
+      "mean_predicted": 44.1,
+      "observed": 43.9,
+      "bins": [
+        {
+          "range": "0-20%",
+          "positions": 406,
+          "games": 216,
+          "predicted": 12.6,
+          "observed": 13.1
+        },
+        {
+          "range": "20-40%",
+          "positions": 1126,
+          "games": 379,
+          "predicted": 31.0,
+          "observed": 34.6
+        },
+        {
+          "range": "40-60%",
+          "positions": 1370,
+          "games": 421,
+          "predicted": 49.3,
+          "observed": 45.5
+        },
+        {
+          "range": "60-80%",
+          "positions": 589,
+          "games": 267,
+          "predicted": 68.5,
+          "observed": 68.3
+        },
+        {
+          "range": "80-100%",
+          "positions": 143,
+          "games": 97,
+          "predicted": 86.1,
+          "observed": 88.1
+        }
+      ]
+    },
+    "persona": {
+      "games": 10,
+      "positions": 52,
+      "brier": 0.1141,
+      "baseline_brier": 0.217,
+      "mean_predicted": 21.8,
+      "observed": 19.2,
+      "bins": [
+        {
+          "range": "0-20%",
+          "positions": 30,
+          "games": 8,
+          "predicted": 7.2,
+          "observed": 6.7
+        },
+        {
+          "range": "20-40%",
+          "positions": 12,
+          "games": 6,
+          "predicted": 25.4,
+          "observed": 16.7
+        },
+        {
+          "range": "40-60%",
+          "positions": 5,
+          "games": 3,
+          "predicted": 50.3,
+          "observed": 40.0
+        },
+        {
+          "range": "60-80%",
+          "positions": 4,
+          "games": 2,
+          "predicted": 69.0,
+          "observed": 75.0
+        },
+        {
+          "range": "80-100%",
+          "positions": 1,
+          "games": 1,
+          "predicted": 84.9,
+          "observed": 100.0
+        }
+      ]
+    },
+    "recent_human": {
+      "games": 35,
+      "positions": 212,
+      "brier": 0.1226,
+      "baseline_brier": 0.1879,
+      "mean_predicted": 80.1,
+      "observed": 77.8,
+      "bins": [
+        {
+          "range": "0-20%",
+          "positions": 9,
+          "games": 5,
+          "predicted": 13.5,
+          "observed": 22.2
+        },
+        {
+          "range": "20-40%",
+          "positions": 9,
+          "games": 5,
+          "predicted": 33.7,
+          "observed": 44.4
+        },
+        {
+          "range": "40-60%",
+          "positions": 19,
+          "games": 12,
+          "predicted": 49.7,
+          "observed": 42.1
+        },
+        {
+          "range": "60-80%",
+          "positions": 28,
+          "games": 14,
+          "predicted": 71.6,
+          "observed": 53.6
+        },
+        {
+          "range": "80-100%",
+          "positions": 147,
+          "games": 28,
+          "predicted": 92.6,
+          "observed": 92.5
+        }
+      ]
+    }
+  }
+}

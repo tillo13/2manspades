@@ -705,6 +705,7 @@ def _complete_hand(game, session, auto_explanation=None):
 
     player_display_score = get_display_score(game['player_score'], game.get('player_bags', 0))
     computer_display_score = get_display_score(game['computer_score'], game.get('computer_bags', 0))
+    from .win_probability import estimate_win
     hand_results = {
         'hand_number': game['hand_number'],
         'parity': {
@@ -713,6 +714,7 @@ def _complete_hand(game, session, auto_explanation=None):
         },
         'discard_info': game.get('discard_bonus_explanation', ''),
         'par': game.get('hand_par'),
+        'win_estimate': estimate_win(game) if not game.get('_no_log') else None,
         'bids': {'player': game.get('player_bid'), 'computer': game.get('computer_bid')},
         'scoring': scoring_result['explanation'],
         'trick_history': _tricks_with_leaders(game),
