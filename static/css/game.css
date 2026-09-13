@@ -629,6 +629,9 @@ button:disabled {
         max-width: 250px;
     }
 
+    /* the shared 6x2 nth-child placement above pins buttons 4-6 to columns 4-6 of a 3-column grid; let these flow */
+    .bid-buttons.blind-buttons .blind-bid-btn { grid-column: auto; grid-row: auto; }
+
     .blind-bid-btn {
         padding: 10px 4px;
         font-size: 11px;
