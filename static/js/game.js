@@ -941,6 +941,10 @@ async function makeBid(bidAmount) {
 }
 
 async function makeBlindBid(bidAmount) {
+    const section = document.getElementById('discardBlindBiddingSection');
+    const controls = section.querySelectorAll('.bid-buttons');
+    controls.forEach(el => el.hidden = true);
+    section.querySelector('.blind-warning').textContent = `You bid blind ${bidAmount}. Marta is thinking…`;
     try {
         const response = await fetch('/blind_bid', {
             method: 'POST',
@@ -958,6 +962,8 @@ async function makeBlindBid(bidAmount) {
     } catch (error) {
         console.error('Error making blind bid:', error);
         showMessage('Error making blind bid', 'error');
+    } finally {
+        controls.forEach(el => el.hidden = false);
     }
 }
 
