@@ -818,8 +818,9 @@ function selectBid(bidAmount) {
 function confirmSelectedBid() {
     if (selectedBid === null || !confirmingBid) return;
 
-    makeBid(selectedBid);
+    const bid = selectedBid;
     resetBiddingState();
+    makeBid(bid);
 }
 
 function cancelBidSelection() {
@@ -912,6 +913,11 @@ async function chooseNormalBidding() {
 }
 
 async function makeBid(bidAmount) {
+    // The bid is in: buttons go away at once, Marta's reply takes a moment
+    const section = document.getElementById('biddingSection');
+    const controls = section.querySelectorAll('.bid-buttons, .bid-confirmation-buttons');
+    controls.forEach(el => el.hidden = true);
+    section.querySelector('.bidding-prompt').textContent = `You bid ${bidAmount === 0 ? 'nil' : bidAmount}. Marta is thinking…`;
     try {
         const response = await fetch('/bid', {
             method: 'POST',
@@ -929,6 +935,8 @@ async function makeBid(bidAmount) {
     } catch (error) {
         console.error('Error making bid:', error);
         showMessage('Error making bid', 'error');
+    } finally {
+        controls.forEach(el => el.hidden = false);   // the section itself is hidden by phase once the bid lands
     }
 }
 

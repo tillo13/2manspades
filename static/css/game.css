@@ -397,6 +397,8 @@ button:disabled {
     line-height: 1.3;
 }
 
+.bid-buttons[hidden], .bid-confirmation-buttons[hidden] { display: none; }   /* the bid is in, Marta's turn */
+
 .bid-buttons {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
