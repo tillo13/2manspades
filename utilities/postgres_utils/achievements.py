@@ -489,36 +489,21 @@ def get_per_hand_stats() -> Dict[str, Any]:
         ''')
         stats['biggest_sets'] = [dict(row) for row in cur.fetchall()]
 
-        # Biggest single-hand point gains
-        # Note: We must exclude hands where prev_score IS NULL (first hand of game or missing earlier hands)
-        # to avoid showing cumulative scores as single-hand gains
+        # Biggest single-hand point gains: the tens-column points the scoring event records for the hand.
+        # Never a difference of two board numbers (tens = points, ones = bags), and hand_id is per hand
+        # now, so a LAG over it has nothing to look back at. Events before 2026-09-13 carry no hand_points.
         cur.execute('''
-            WITH hand_scores AS (
-                SELECT
-                    ge.hand_id,
-                    ge.hand_number,
-                    ge.timestamp as event_timestamp,
-                    (ge.event_data->'final_scores'->>'player_score')::int as cumulative_score,
-                    LAG((ge.event_data->'final_scores'->>'player_score')::int)
-                        OVER (PARTITION BY ge.hand_id ORDER BY ge.hand_number) as prev_score
-                FROM (SELECT DISTINCT ON (hand_id, hand_number) * FROM twomanspades.game_events
-                       WHERE event_type = 'hand_scoring'
-                       ORDER BY hand_id, hand_number, timestamp) ge
-                WHERE TRUE
-            )
-            SELECT
-                v.player_name as player,
-                hs.hand_id,
-                hs.cumulative_score - hs.prev_score as points_scored,
-                hs.hand_number,
-                COALESCE(v.completed_at, gc.timestamp, hs.event_timestamp) as completed_at
-            FROM hand_scores hs
-            JOIN twomanspades.vw_player_identity v ON hs.hand_id = v.hand_id
-            LEFT JOIN twomanspades.vw_game_completion gc ON hs.hand_id = gc.hand_id
-            WHERE v.player_name IS NOT NULL AND v.player_name != 'Other'
-            AND hs.prev_score IS NOT NULL
-            AND (hs.cumulative_score - hs.prev_score) > 0
-            ORDER BY (hs.cumulative_score - hs.prev_score) DESC
+            SELECT v.player_name as player, ge.hand_id,
+                   (ge.event_data->'hand_points'->>'player')::int as points_scored,
+                   ge.hand_number,
+                   COALESCE(v.completed_at, gc.timestamp, ge.timestamp) as completed_at
+            FROM twomanspades.game_events ge
+            JOIN twomanspades.vw_player_identity v ON ge.hand_id = v.hand_id
+            LEFT JOIN twomanspades.vw_game_completion gc ON ge.hand_id = gc.hand_id
+            WHERE ge.event_type = 'hand_scoring' AND ge.event_data ? 'hand_points'
+            AND v.player_name IS NOT NULL AND v.player_name != 'Other'
+            AND (ge.event_data->'hand_points'->>'player')::int > 0
+            ORDER BY points_scored DESC, ge.timestamp DESC
             LIMIT 5
         ''')
         stats['biggest_hand_points'] = [dict(row) for row in cur.fetchall()]

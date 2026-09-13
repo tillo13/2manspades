@@ -618,15 +618,17 @@ function updateHandOver() {
     document.getElementById('hoLine').textContent =
         `You ${took(h.player_bid, h.player_tricks, h.player_blind)} · Marta ${took(h.computer_bid, h.computer_tricks, h.computer_blind)}`;
 
+    // The board number is tens = points, ones = bags (wrapping at 7 into -100). Never subtract two of
+    // them: show the hand's points (base score movement) and the bag count as a movement, separately.
     const delta = n => (n >= 0 ? '+' : '') + n;
-    const scoreCell = (id, score, was, bags, hadBags) => {
+    const scoreCell = (id, score, points, bags, hadBags) => {
         const el = document.getElementById(id);
-        const d = score - was, db = bags - hadBags;
-        el.innerHTML = `${score} <small class="${d >= 0 ? 'up' : 'down'}">${delta(d)}</small>` +
-            (db ? ` <small class="bags">${delta(db)} bag${Math.abs(db) === 1 ? '' : 's'}</small>` : '');
+        el.innerHTML = `${score}` +
+            (Number.isInteger(points) ? ` <small class="${points >= 0 ? 'up' : 'down'}">${delta(points)}</small>` : '') +
+            (bags !== hadBags ? ` <small class="bags">bags ${hadBags} → ${bags}</small>` : '');
     };
-    scoreCell('hoYou', h.player_score ?? gameState.player_score, prev.player_score, h.player_bags ?? 0, prev.player_bags ?? 0);
-    scoreCell('hoMarta', h.computer_score ?? gameState.computer_score, prev.computer_score, h.computer_bags ?? 0, prev.computer_bags ?? 0);
+    scoreCell('hoYou', h.player_score ?? gameState.player_score, h.player_points, h.player_bags ?? 0, prev.player_bags ?? 0);
+    scoreCell('hoMarta', h.computer_score ?? gameState.computer_score, h.computer_points, h.computer_bags ?? 0, prev.computer_bags ?? 0);
 
     // the middle: both cards, then the record's own line about who took it
     const cardEl = c => c ? `<div class="card ${getSuitClass(c.suit)}">${c.rank}${c.suit}</div>` : '<div class="card" style="opacity:.5">?</div>';

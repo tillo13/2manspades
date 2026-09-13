@@ -678,6 +678,8 @@ def _complete_hand(game, session, auto_explanation=None):
     apply the middle, score with bags, keep-alive, build hand_results, log, and settle
     whether the game is over. Also appends the hand to game['hand_log'] for the final screen."""
     hand_discard = None
+    # tens column before this hand: the hand's points are the base score movement, never a diff of board numbers
+    base_before = {seat: game.get(f'{seat}_score', 0) for seat in ('player', 'computer')}
     if game.get('pending_discard_result'):
         discard_result = game['pending_discard_result']
         hand_discard = discard_result
@@ -693,6 +695,7 @@ def _complete_hand(game, session, auto_explanation=None):
                 game['discard_bonus_explanation'] += " | " + special['explanation']
     game.pop('pending_discard_result', None)
 
+    specials = {seat: game.get(f'{seat}_trick_special_cards', 0) for seat in ('player', 'computer')}   # scoring resets these
     scoring_result = calculate_hand_scores_with_bags(game)
 
     # The middle can be thrown back on a game-deciding hand (family rule, 2026-09-06)
@@ -743,9 +746,10 @@ def _complete_hand(game, session, auto_explanation=None):
         'hand': game['hand_number'],
         'player_bid': pb, 'player_tricks': game['player_tricks'], 'player_blind': game.get('blind_bid') is not None,
         'computer_bid': cb, 'computer_tricks': game['computer_tricks'], 'computer_blind': game.get('computer_blind_bid') is not None,
-        'player_specials': game.get('player_trick_special_cards', 0),
-        'computer_specials': game.get('computer_trick_special_cards', 0),
+        'player_specials': specials['player'],
+        'computer_specials': specials['computer'],
         'player_score': player_display_score, 'computer_score': computer_display_score,
+        'player_points': game['player_score'] - base_before['player'], 'computer_points': game['computer_score'] - base_before['computer'],
         'player_bags': game.get('player_bags', 0), 'computer_bags': game.get('computer_bags', 0),
         'middle': {'player': _card(game.get('player_discarded')), 'computer': _card(game.get('computer_discarded')),
                    'winner': hand_discard.get('winner') if hand_discard else None},
@@ -756,6 +760,7 @@ def _complete_hand(game, session, auto_explanation=None):
         event_type='hand_scoring',
         event_data={
             'scoring_explanation': scoring_result['explanation'],
+            'hand_points': {'player': game['hand_log'][-1]['player_points'], 'computer': game['hand_log'][-1]['computer_points']},
             'final_scores': {
                 'player_score': player_display_score,
                 'computer_score': computer_display_score
