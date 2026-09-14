@@ -1,5 +1,5 @@
 """Public database API; each responsibility lives in its own module."""
-from .connection import get_secret, get_db_connection, return_db_connection, test_connection, db_cursor
+from .connection import get_secret, get_db_connection, return_db_connection, test_connection, db_cursor, patient_pool
 from .stats import get_fun_stats, get_overall_game_stats, get_special_card_stats
 from .achievements import get_player_achievements, get_per_hand_stats
 from .records import (get_game_details, get_player_games, get_player_record, get_player_bid_bias,

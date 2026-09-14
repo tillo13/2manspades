@@ -21,7 +21,7 @@ from utilities.app_helpers import (
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand, log_hand_dealt
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
-from utilities.postgres_utils import get_suspected_player_from_ip, get_user_difficulty, save_user_difficulty
+from utilities.postgres_utils import get_suspected_player_from_ip, get_user_difficulty, save_user_difficulty, patient_pool
 from utilities.gmail_utils import send_simple_email
 
 from utilities.google_auth_utils import SimpleGoogleAuth
@@ -330,17 +330,19 @@ def cron_otto():
     header IS the auth. No LLM anywhere in a bot game: Marta's chat is never invoked."""
     if request.headers.get('X-Appengine-Cron') != 'true':
         abort(403)
-    from utilities.otto import play_cron_tick
-    result = play_cron_tick()
-    from utilities.postgres_utils.par import fill_par
-    result['par_solved'] = fill_par(limit=120)   # here, never on the page path: solving is slow
-    from utilities.postgres_utils.stats import stats_payload
-    stats_payload()           # keeps this process's /stats cache warm between visitors
-    from utilities.postgres_utils.rerolls import ensure_reroll_view
-    ensure_reroll_view()      # one-time; a catalog SELECT on every tick after that
-    from utilities.postgres_utils import warm_bid_bias
-    result['bias_warmed'] = warm_bid_bias()   # so no visitor ever sets that query off
-    return jsonify({'ok': True, **result})
+    # A cron can wait out a busy pool; a page request cannot (see patient_pool).
+    with patient_pool():
+        from utilities.otto import play_cron_tick
+        result = play_cron_tick()
+        from utilities.postgres_utils.par import fill_par
+        result['par_solved'] = fill_par(limit=120)   # here, never on the page path: solving is slow
+        from utilities.postgres_utils.stats import stats_payload
+        stats_payload()           # keeps this process's /stats cache warm between visitors
+        from utilities.postgres_utils.rerolls import ensure_reroll_view
+        ensure_reroll_view()      # one-time; a catalog SELECT on every tick after that
+        from utilities.postgres_utils import warm_bid_bias
+        result['bias_warmed'] = warm_bid_bias()   # so no visitor ever sets that query off
+        return jsonify({'ok': True, **result})
 
 @app.route('/cron/andybot')
 def cron_andybot():
@@ -348,8 +350,9 @@ def cron_andybot():
     (about three days a week, 1-3 games), logged as Andy; hands.played_by marks it."""
     if request.headers.get('X-Appengine-Cron') != 'true':
         abort(403)
-    from utilities.otto import play_persona_tick
-    return jsonify({'ok': True, **play_persona_tick()})
+    with patient_pool():
+        from utilities.otto import play_persona_tick
+        return jsonify({'ok': True, **play_persona_tick()})
 
 @app.route('/chat_response', methods=['POST'])
 def chat_response():

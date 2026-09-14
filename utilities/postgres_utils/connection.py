@@ -5,6 +5,7 @@ import psycopg2.pool
 import json
 import os
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from google.cloud import secretmanager
@@ -16,6 +17,31 @@ _secrets_cache = {}
 _sm_client = None
 _slots = threading.BoundedSemaphore(2)
 _checked_out = set()   # id(conn) of every conn currently handed out
+_patient = threading.local()   # per-thread retry policy, see patient_pool
+
+
+@contextmanager
+def patient_pool(waits=(2, 5, 10)):
+    """Crons and batch work wait for a busy pool instead of failing at once.
+
+    The pool is two slots on a Cloud SQL instance shared by 20+ apps. Any of
+    their batch jobs can slow it for a minute, and a request whose queries hit
+    the 30s statement timeout holds a slot the whole time. A cron tick that
+    lands in that minute used to raise PoolError on the first 10s wait and
+    email a stack trace (2026-09-10 and 2026-09-14, cron_andybot, both while
+    another project ran heavy reads). Cloud SQL's own guidance and every job
+    runner retry transient connection failures with backoff; this is that,
+    scoped to the thread so page requests keep failing fast.
+
+    waits: seconds to sleep between the 10s acquire attempts, so the default
+    is up to ~47s before giving up. Nest-safe: restores the previous policy.
+    """
+    prev = getattr(_patient, 'waits', None)
+    _patient.waits = tuple(waits)
+    try:
+        yield
+    finally:
+        _patient.waits = prev
 
 def get_secret(secret_id: str, project_id: str = "kumori-404602") -> str:
     """Get secret from Google Secret Manager (cached)"""
@@ -78,7 +104,15 @@ def get_db_connection():
     next request, which dies with OperationalError on its first execute.
     """
     if not _slots.acquire(timeout=10):
-        raise psycopg2.pool.PoolError('Database pool busy; retry shortly')
+        waited = 0
+        for wait in (getattr(_patient, 'waits', None) or ()):
+            time.sleep(wait)
+            waited += wait + 10
+            if _slots.acquire(timeout=10):
+                print(f"[POOL] busy, got a slot after ~{waited}s of waiting")
+                break
+        else:
+            raise psycopg2.pool.PoolError('Database pool busy; retry shortly')
     try:
         pool = _get_pool()
         conn = pool.getconn()
