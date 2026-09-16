@@ -354,6 +354,18 @@ def cron_andybot():
         from utilities.otto import play_persona_tick
         return jsonify({'ok': True, **play_persona_tick()})
 
+@app.route('/cron/prune-events')
+def cron_prune_events():
+    """Daily: move aged action_card_play rows out of game_events into the cold archive.
+    Nothing reads them, and they were 44% of the table's rows on a shared instance whose
+    128MB buffer cache all 17 apps compete for. See postgres_utils/retention.py."""
+    if request.headers.get('X-Appengine-Cron') != 'true':
+        abort(403)
+    with patient_pool():
+        from utilities.postgres_utils import prune_card_plays
+        return jsonify({'ok': True, **prune_card_plays()})
+
+
 @app.route('/chat_response', methods=['POST'])
 def chat_response():
     print("[CHAT] Received chat request")

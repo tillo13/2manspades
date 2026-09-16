@@ -17,3 +17,10 @@ cron:
     url: /cron/andybot
     schedule: every 1 hours from 09:00 to 21:00
     timezone: America/Los_Angeles
+  # game_events is the biggest table on the shared instance and action_card_play was 44%
+  # of its rows, written every card and read by nothing. Daily batch move to the cold
+  # archive keeps the hot table in the 128MB buffer cache the whole fleet shares.
+  - description: Archive aged action_card_play events out of the hot table
+    url: /cron/prune-events
+    schedule: every day 03:20
+    timezone: America/Los_Angeles
