@@ -32,6 +32,7 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
             INSERT INTO twomanspades.hands
             (hand_id, started_at, player_parity, computer_parity, first_leader, client_ip, user_agent, difficulty)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (hand_id) DO NOTHING
         """, (
             hand_data['hand_id'],
             datetime.fromtimestamp(hand_data['game_started_at']),  # Still using game_started_at from session
@@ -43,10 +44,17 @@ def insert_hand(hand_data: Dict[str, Any]) -> bool:
             _level(hand_data.get('difficulty', 'easy'))
         ))
         
+        # rowcount 0 means ON CONFLICT swallowed a duplicate hand_id: the caller
+        # retried an insert that already succeeded. That is a no-op, not a failure —
+        # raising it produced 6 'duplicate key value violates unique constraint
+        # "games_pkey"' errors in the 24h to 2026-09-16 (games_pkey is the PK on
+        # hands(hand_id); the name is left over from the games -> hands rename).
+        reinserted = cur.rowcount == 0
         conn.commit()
         cur.close()
         return_db_connection(conn)
-        print(f"Hand {hand_data.get('hand_id')} successfully inserted")
+        print(f"Hand {hand_data.get('hand_id')} "
+              f"{'already present (retry, no-op)' if reinserted else 'successfully inserted'}")
         return True
     except Exception as e:
         print(f"Failed to insert hand {hand_data.get('hand_id')}: {e}")
@@ -249,6 +257,7 @@ def create_hand_with_player(hand_data: Dict[str, Any], client_info: Dict[str, An
             (hand_id, started_at, player_parity, computer_parity, first_leader,
              client_ip, user_agent, player_id, google_email, google_id, difficulty)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (hand_id) DO NOTHING
         """, (
             hand_data['current_hand_id'],
             datetime.fromtimestamp(hand_data['game_started_at']),
