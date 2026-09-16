@@ -28,10 +28,25 @@ RETENTION_DAYS = 30
 BATCH = 5000
 
 
+_archive_ready = False
+
+
 def _ensure_archive(cur):
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS twomanspades.game_events_archive
-        (LIKE twomanspades.game_events INCLUDING DEFAULTS)""")
+    """Create the archive table once. Catalog SELECT first, never bare DDL — a
+    CREATE TABLE IF NOT EXISTS still takes a DDL lock on the shared instance every
+    time it runs, which is the thing the db-speed gate exists to stop. Same shape as
+    ensure_reroll_view(); see utilities/schema_guard.py for why it matters."""
+    global _archive_ready
+    if _archive_ready:
+        return
+    cur.execute("""SELECT 1 FROM information_schema.tables
+                    WHERE table_schema = 'twomanspades'
+                      AND table_name = 'game_events_archive'""")
+    if not cur.fetchone():
+        cur.execute("""CREATE TABLE twomanspades.game_events_archive
+                       (LIKE twomanspades.game_events INCLUDING DEFAULTS)""")
+        logger.info("retention: created twomanspades.game_events_archive")
+    _archive_ready = True
 
 
 def prune_card_plays(days: int = RETENTION_DAYS, limit: int = BATCH) -> dict:
