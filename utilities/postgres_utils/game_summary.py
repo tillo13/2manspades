@@ -1,4 +1,42 @@
 """Factual game totals, computed only from complete recorded hands."""
+import re
+
+# custom_rules.calculate_hand_scores_with_bags writes one per seat per hand, worded this way since 2025-08-30
+_BAG_PENALTY = re.compile(r'\b(You|Marta): BAG PENALTY! -(\d+)00 pts')
+SPECIAL_CARDS = ('10♣', '7♦')
+
+
+def _bags_and_specials(played, hands_played, player):
+    """Bag penalties per seat, read from each hand's scoring line, and who took 10♣ and 7♦, from
+    each hand's ten tricks plus the middle. Always shown; a hand without the record isn't counted,
+    and the row says how many hands it covers."""
+    seat = {'You': player, 'Marta': 'Marta', 'player': player, 'computer': 'Marta'}
+    penalties, scored = {player: 0, 'Marta': 0}, 0
+    taken = {card: {player: 0, 'Marta': 0} for card in SPECIAL_CARDS}
+    dealt = 0
+    for h in played:
+        text = (h.get('scoring') or {}).get('explanation')
+        if text is not None:
+            scored += 1
+            for who, hundreds in _BAG_PENALTY.findall(text):
+                penalties[seat[who]] += int(hundreds)
+        history, middle = h['trick_history'], h.get('middle') or {}
+        if h.get('trick_totals') is None or middle.get('winner') not in seat:
+            continue
+        dealt += 1
+        won = [(t['winner'], (t.get('player_card'), t.get('computer_card'))) for t in history]
+        won.append((seat[middle['winner']], (middle.get('player_card'), middle.get('computer_card'))))
+        for winner, cards in won:
+            for card in SPECIAL_CARDS:
+                if card in cards:
+                    taken[card][winner] += 1
+
+    def row(label, counts, covered):
+        of = '' if covered == hands_played else f' ({covered} of {hands_played} hands recorded)'
+        return dict(label=label + of, player=counts[player], computer=counts['Marta'])
+
+    return [row('Bag penalties (-100)', penalties, scored)] + \
+           [row(f'{card} taken', taken[card], dealt) for card in SPECIAL_CARDS]
 
 
 def summarize_game(hands, summary):
@@ -52,5 +90,6 @@ def summarize_game(hands, summary):
                 if any(totals[n][key + '_attempts'] for n in names):
                     values = [f"{totals[n][key + 's']} / {totals[n][key + '_attempts']}" for n in names]
                     rows.append(dict(label=label, player=values[0], computer=values[1]))
+    rows += _bags_and_specials(played, summary.get('hands_played') or len(played), player)
     levels = list(dict.fromkeys(h['difficulty'] for h in played if h.get('difficulty')))
     return dict(comparison=rows, progression=progression, difficulties=levels)

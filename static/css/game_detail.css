@@ -26,6 +26,7 @@
 .final-score .player-score { color: #667eea; font-weight: bold; }
 .final-score .computer-score { color: #fd7e14; font-weight: bold; }
 .game-meta a { color: #494fc0; font-weight: 600; }
+.game-time { color: #333; font-weight: 600; margin-bottom: 0.25rem; }
 .game-comparison { width: 100%; border-collapse: collapse; margin-top: 1rem; table-layout: fixed; font-size: 0.9rem; }
 .game-comparison caption { text-align: left; font-weight: 700; color: #333; padding-bottom: 0.6rem; }
 .game-comparison th, .game-comparison td { padding: 0.55rem 0.25rem; border-bottom: 1px solid #dee2e6; overflow-wrap: anywhere; }

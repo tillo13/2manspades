@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/game_detail.css', v=asset_v) }}">
 {% endblock %}
 {% block content %}
+    {% macro span(m) %}{% if m > 2880 %}{{ (m / 1440)|round(1) }} days{% elif m > 60 %}{{ (m / 60)|round(1) }} hours{% else %}{{ m|round(1) }} min{% endif %}{% endmacro %}
     <a href="/stats" class="back-button">← Back to Stats</a>
 
     <div class="container">
@@ -35,6 +36,11 @@
                 <span style="color: #999;"> - </span>
                 <span class="computer-score">{{ game.summary.final_computer_score }}</span>
             </div>
+            {% if game.summary.game_start %}
+            <div class="game-meta game-time">
+                Game time {{ span(game.summary.play_minutes) }}{% if game.summary.had_breaks %} playing · {{ span(game.summary.total_minutes or 0) }} start to finish{% endif %}
+            </div>
+            {% endif %}
             <div class="game-meta">
                 {{ game.summary.hands_played or game.hands|length }} hands played
                 {% if game.summary.player_bags is not none %}
@@ -62,20 +68,6 @@
                 <div class="timing-row">
                     <span class="timing-label">Ended:</span>
                     <span class="timing-value">{{ game.summary.game_end.strftime('%b %d, %Y at %I:%M:%S %p') }}</span>
-                </div>
-                <div class="timing-row">
-                    <span class="timing-label">Duration:</span>
-                    <span class="timing-value {% if game.summary.total_minutes and game.summary.total_minutes > 60 %}timing-highlight{% endif %}">
-                        {% if game.summary.total_minutes %}
-                            {% if game.summary.total_minutes > 1440 %}
-                                {{ (game.summary.total_minutes / 1440)|round(1) }} days ({{ game.summary.total_minutes|round(1) }} min)
-                            {% elif game.summary.total_minutes > 60 %}
-                                {{ (game.summary.total_minutes / 60)|round(1) }} hours ({{ game.summary.total_minutes|round(1) }} min)
-                            {% else %}
-                                {{ game.summary.total_minutes }} min
-                            {% endif %}
-                        {% endif %}
-                    </span>
                 </div>
             </div>
             {% endif %}

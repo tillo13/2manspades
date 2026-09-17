@@ -12,12 +12,28 @@ from typing import Dict, Any, Optional, List
 from .connection import get_db_connection, db_cursor
 from .connection import return_db_connection
 
+BREAK_MINUTES = 5   # a pause longer than this between two events is a break, not play (the page marks it too)
+_GAME_INDEX_OK = False
+
+
+def _ensure_game_index(conn, cur):
+    """Every hand of a game carries the game's started_at, so it is the game key; index it once."""
+    global _GAME_INDEX_OK
+    if _GAME_INDEX_OK:
+        return
+    from ..schema_guard import create_index_if_missing
+    if create_index_if_missing(cur, 'twomanspades', 'idx_hands_started_at', 'hands', '(started_at)'):
+        conn.commit()
+    _GAME_INDEX_OK = True
+
+
 def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
     """Get full game details for a specific hand_id including all events."""
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        _ensure_game_index(conn, cur)
 
         # Get game summary from vw_player_game_details
         cur.execute("""
@@ -33,9 +49,12 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             return None
 
         # Every hand of the game: each hand has its own hand_id, and the hands of one game share
-        # the player and the game's start time (the page used to read only the last hand's
-        # events and then call the game "older, incomplete logging", 2026-09-06). Identical
-        # rows are collapsed: events were being written twice.
+        # the game's start time (the page used to read only the last hand's events and then call
+        # the game "older, incomplete logging", 2026-09-06). Not the player too: player_id comes
+        # from a players row keyed by IP, so a game that outlived an IP change came back in two
+        # pieces (Andy's 33 hands on 2026-09-17 showed from hand 10; 16 of 934 games split). As of
+        # that day no started_at is shared by two games. Identical rows are collapsed: events
+        # were being written twice.
         cur.execute("""
             SELECT DISTINCT ON (e.hand_number, e.event_type, e.event_data::text)
                    e.event_type, e.hand_number, e.player, e.timestamp, e.event_data,
@@ -43,7 +62,7 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
               FROM twomanspades.game_events e
               JOIN twomanspades.hands h ON h.hand_id = e.hand_id
               JOIN twomanspades.hands me ON me.hand_id = %s
-             WHERE h.player_id = me.player_id AND h.started_at = me.started_at
+             WHERE h.started_at = me.started_at
              ORDER BY e.hand_number, e.event_type, e.event_data::text, e.timestamp
         """, (hand_id,))
         events = sorted(cur.fetchall(), key=lambda e: e['timestamp'])
@@ -152,6 +171,9 @@ def get_game_details(hand_id: str) -> Optional[Dict[str, Any]]:
             summary['game_start'] = game_start
             summary['game_end'] = game_end
             summary['total_minutes'] = round(total_minutes, 1) if total_minutes else None
+            gaps = [(b['timestamp'] - a['timestamp']).total_seconds() / 60 for a, b in zip(events, events[1:])]
+            summary['play_minutes'] = round(sum(g for g in gaps if g <= BREAK_MINUTES), 1)
+            summary['had_breaks'] = any(g > BREAK_MINUTES for g in gaps)
 
         # Per-hand timing from the same in-memory list (events sorted ascending,
         # so first/last occurrence per hand = min/max timestamp)

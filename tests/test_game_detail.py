@@ -1,6 +1,6 @@
 """Game records preserve the complete trick history and recorded play order."""
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from flask import Flask, render_template
 from pathlib import Path
@@ -58,12 +58,55 @@ class GameDetailTests(unittest.TestCase):
         self.assertEqual(old_game['hands'][0]['trick_history'][0]['leader'], 'Marta')
 
 
+class GameAssemblyTests(unittest.TestCase):
+    def load(self, events, summary=None):
+        summary = summary or dict(player_name='Andy', final_player_score=-31, final_computer_score=336,
+                                  won=False, hands_played=2, player_bags=1)
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        cur.fetchone.return_value = summary
+        cur.fetchall.return_value = events
+        with patch('utilities.postgres_utils.records.get_db_connection', return_value=conn), \
+             patch('utilities.postgres_utils.records.return_db_connection'):
+            return get_game_details('game'), [c.args[0] for c in cur.execute.call_args_list]
+
+    def test_hands_of_one_game_are_found_by_start_time_not_player(self):
+        """player_id is per IP: Andy's 2026-09-16/17 game had hands 1-9 on one id and 10-33 on another."""
+        _, sql = self.load([])
+        events_sql = next(q for q in sql if 'game_events' in q)
+        self.assertIn('h.started_at = me.started_at', events_sql)
+        self.assertNotIn('player_id', events_sql)
+
+    def test_game_time_leaves_out_breaks_and_sits_at_the_top(self):
+        t0 = datetime(2026, 9, 16, 13, 39, tzinfo=timezone.utc)
+        at = lambda minutes: t0 + timedelta(minutes=minutes)
+        events = [dict(hand_number=1, event_type='discard_scoring', timestamp=at(m),
+                       event_data=dict(player_card='2♥', computer_card='3♥', winner='player', n=m))
+                  for m in (0, 2, 4, 24 * 60, 24 * 60 + 3)]
+        game, _ = self.load(events)
+        self.assertEqual((game['summary']['play_minutes'], game['summary']['had_breaks']), (7.0, True))
+        app = Flask(__name__, template_folder=str(Path(__file__).resolve().parents[1] / 'templates'))
+        app.add_url_rule('/player/<name>', 'player_profile', lambda name: '')
+        with app.test_request_context('/'):
+            html = render_template('game_detail.html', game=game)
+        header = html.split('Hand by Hand')[0]
+        self.assertIn('Game time 7.0 min playing · 24.1 hours start to finish', ' '.join(header.split()))
+        self.assertLess(header.index('Game time'), header.index('hands played'))
+        self.assertIn('Bag penalties (-100)', header)
+        self.assertNotIn('Duration:', html)
+
+
 class FactualSummaryTests(unittest.TestCase):
     def hand(self, number=1):
         return dict(hand_number=number, difficulty='easy', bids=[], auto_tricks=3,
                     final_bids=dict(player_bid=0, computer_bid=3, player_blind=False, computer_blind=False),
-                    scoring=dict(player_score=200, computer_score=46),
-                    trick_history=[dict(number=n, winner='Marta') for n in range(1, 11)])
+                    scoring=dict(player_score=200, computer_score=46, explanation='You: NIL SUCCESS! 0 bid, 0 tricks (+200 pts)'),
+                    middle=dict(player_card='3♥', computer_card='4♠', winner='player'),
+                    trick_history=[dict(number=n, winner='Marta', player_card=f'{n}♥', computer_card='A♠')
+                                   for n in range(1, 11)])
+
+    def rows(self, result, *labels):
+        return [r for r in result['comparison'] if r['label'].startswith(labels)]
 
     def test_totals_from_complete_history_and_final_bids(self):
         from utilities.postgres_utils.game_summary import summarize_game
@@ -71,7 +114,7 @@ class FactualSummaryTests(unittest.TestCase):
         hands[1]['final_bids'].update(computer_bid=5, computer_blind=True)
         hands[1]['scoring'].update(player_score=410, computer_score=44)
         result = summarize_game(hands, dict(player_name='Andy', hands_played=2))
-        self.assertEqual(result['comparison'], [
+        self.assertEqual(self.rows(result, 'Tricks', 'Nils', 'Blinds'), [
             dict(label='Tricks taken', player=0, computer=20),
             dict(label='Nils made / bid', player='2 / 2', computer='0 / 0'),
             dict(label='Blinds made / bid', player='0 / 0', computer='1 / 1')])
@@ -99,12 +142,35 @@ class FactualSummaryTests(unittest.TestCase):
         from utilities.postgres_utils.game_summary import summarize_game
         hand = self.hand()
         hand['trick_history'].pop()
-        self.assertEqual(summarize_game([hand], dict(player_name='Andy', hands_played=1))['comparison'], [])
-        self.assertEqual(summarize_game([self.hand()], dict(player_name='Andy', hands_played=2))['comparison'], [])
+        totals = ('Tricks', 'Nils', 'Blinds')
+        self.assertEqual(self.rows(summarize_game([hand], dict(player_name='Andy', hands_played=1)), *totals), [])
+        self.assertEqual(self.rows(summarize_game([self.hand()], dict(player_name='Andy', hands_played=2)), *totals), [])
         hand = self.hand()
         hand.pop('final_bids')
         result = summarize_game([hand], dict(player_name='Andy', hands_played=1))
-        self.assertEqual(len(result['comparison']), 1)
+        self.assertEqual(len(self.rows(result, *totals)), 1)
+
+    def test_bag_penalties_and_special_cards_count_every_hand(self):
+        from utilities.postgres_utils.game_summary import summarize_game
+        hands = [self.hand(n) for n in (1, 2, 3)]
+        hands[0]['scoring']['explanation'] = 'You: 4 bid, 9 tricks (+5 bags) | You: BAG PENALTY! -100 pts | Bags: You 0/7, Marta 3/7'
+        hands[1]['scoring']['explanation'] = 'Marta: BAG PENALTY! -200 pts | You: BLIND 5 FAILED! 2 tricks (DOUBLE PENALTY: -100 pts)'
+        hands[0]['trick_history'][2].update(player_card='10♣', winner='Andy')     # Andy takes 10♣ in a trick
+        hands[0]['middle'].update(computer_card='7♦', winner='computer')          # Marta takes 7♦ in the middle
+        hands[1]['trick_history'][9].update(player_card='7♦', laid_down=True)     # laid down, still Marta's
+        hands[2]['middle'].update(player_card='10♣')                              # Andy takes 10♣ in the middle
+        result = summarize_game(hands, dict(player_name='Andy', hands_played=3))
+        self.assertEqual(self.rows(result, 'Bag', '10♣', '7♦'), [
+            dict(label='Bag penalties (-100)', player=1, computer=2),
+            dict(label='10♣ taken', player=2, computer=0),
+            dict(label='7♦ taken', player=0, computer=2)])
+        # a hand with no record isn't counted, and the row says so
+        hands[2].update(scoring=None, middle=None)
+        result = summarize_game(hands, dict(player_name='Andy', hands_played=3))
+        self.assertEqual(self.rows(result, 'Bag', '10♣', '7♦'), [
+            dict(label='Bag penalties (-100) (2 of 3 hands recorded)', player=1, computer=2),
+            dict(label='10♣ taken (2 of 3 hands recorded)', player=1, computer=0),
+            dict(label='7♦ taken (2 of 3 hands recorded)', player=0, computer=2)])
 
 
 if __name__ == '__main__':
