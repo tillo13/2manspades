@@ -1,7 +1,13 @@
 """Request/session side of the game: client tracking, IP geolocation, chat content filter,
-new-game setup, the safe (opponent-hand-free) state sent to the browser, and the dev server."""
-from flask import session
+new-game setup, the safe (opponent-hand-free) state sent to the browser, the dev server, and the
+cookie session guard."""
+from flask import session, request
+from flask.sessions import SecureCookieSessionInterface
+import json
 import time
+import zlib
+from .gmail_utils import send_simple_email
+from .hand_flow import hand_tally, cap_hand_log
 from .logging_utils import log_action, log_game_event, track_session_client, get_client_ip, IS_PRODUCTION
 from .custom_rules import (
     check_special_cards_in_trick, reduce_bags_safely, assign_even_odd_at_game_start,
@@ -379,6 +385,7 @@ def build_safe_game_state(game, debug_mode=False):
         'lay_down_offer': game.get('lay_down_offer'),
         'lay_down_predicted': game.get('lay_down_predicted'),
         'hand_log': game.get('hand_log', []),
+        'hand_tally': hand_tally(game),
         'game_id': game.get('current_hand_id') if game.get('game_over') else None,
     }
     
@@ -386,3 +393,50 @@ def build_safe_game_state(game, debug_mode=False):
         safe_state['computer_hand'] = game['computer_hand']
     
     return safe_state
+
+
+class SessionCookieTooLarge(Exception):
+    pass
+
+
+class CheckedCookieSession(SecureCookieSessionInterface):
+    """Flask's cookie session with the game's hand log capped on every save, and a cookie over
+    MAX_COOKIE_SIZE an error, not a warning.
+    A browser ignores a Set-Cookie over 4,093 bytes and keeps the old one, so the request looks fine
+    and the game rolls back to before it; werkzeug only prints a UserWarning, once an instance.
+    2026-09-17: /clear_trick answered 200 every 2.5s for a minute while the trick stayed on the
+    table. Now it is a 500 and one email an hour naming the biggest keys. The email goes out from
+    here because the session is saved after the view, where app.handle_error only ever sees a
+    generic InternalServerError and passes it through."""
+
+    def save_session(self, app, session, response):
+        if session.modified and 'game' in session:
+            cap_hand_log(session['game'])
+        super().save_session(app, session, response)
+        limit = app.config['MAX_COOKIE_SIZE']
+        name = self.get_cookie_name(app) + '='
+        size = max((len(h) for h in response.headers.getlist('Set-Cookie') if h.startswith(name)), default=0)
+        if size > limit:
+            _mail_oversize(session, size, limit)
+            raise SessionCookieTooLarge(f'session cookie is {size} bytes, over the {limit} a browser keeps')
+
+
+def _mail_oversize(session, size, limit):
+    from .error_alerts import record
+    send, held = record('SessionCookieTooLarge')
+    if not send:
+        return
+    weigh = lambda v: len(zlib.compress(json.dumps(v, default=str).encode()))
+    keys = [(k, weigh(v)) for k, v in session.items() if k != 'game']
+    keys += [(f'game.{k}', weigh(v)) for k, v in (session.get('game') or {}).items()]
+    biggest = '\n'.join(f'  {k}: {n}' for k, n in sorted(keys, key=lambda kv: -kv[1])[:12])
+    try:
+        send_simple_email(
+            subject='[2MANSPADES BUG] session cookie over the browser limit',
+            body=f"{request.method} {request.path} set a {size}-byte session cookie. Browsers drop anything "
+                 f"over {limit}, so this player's game is stuck at its state before the request.\n"
+                 f"Repeats: {held or 'first time this hour'}\n\n"
+                 f"Biggest keys (zlib bytes, before base64):\n{biggest}\n",
+            to_email='andy.tillo@gmail.com')
+    except Exception as e:
+        print(f'[ERROR EMAIL] Failed to send: {e}')

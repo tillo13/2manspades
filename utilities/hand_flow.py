@@ -673,6 +673,44 @@ def _tricks_with_leaders(game):
     return out
 
 
+# The game dict is the session cookie, and a browser drops a Set-Cookie over 4,093 bytes without a
+# word. A row per hand added ~50 bytes until hand 33 of one game (2026-09-17) made it 4,105 and the
+# game hung on a finished trick. The cookie keeps the last HAND_LOG_ROWS hands and folds older ones
+# into totals; /game/<id> has every hand. As of 2026-09-17, 15 rows show the whole game for 99% of
+# the 821 finished games (median 7 hands, p99 15, longest 25). The cap runs when the session is
+# saved (session_helpers.CheckedCookieSession), not when a hand ends: a game already over the limit
+# can't finish a hand to shrink.
+HAND_LOG_ROWS = 15
+_NO_HANDS = {'bids': 0, 'made': 0, 'bags': 0, 'blinds': 0, 'blinds_made': 0}
+
+
+def _fold_hand(totals, h):
+    t = dict(totals)
+    made = h['player_tricks'] >= h['player_bid']
+    if h['player_bid'] > 0:
+        t['bids'] += 1
+        t['made'] += made
+        t['bags'] += max(0, h['player_tricks'] - h['player_bid'])
+    if h['player_blind']:
+        t['blinds'] += 1
+        t['blinds_made'] += made
+    return t
+
+
+def cap_hand_log(game):
+    log = game.get('hand_log') or []
+    while len(log) > HAND_LOG_ROWS:
+        game['hand_log_folded'] = _fold_hand(game.get('hand_log_folded') or _NO_HANDS, log.pop(0))
+
+
+def hand_tally(game):
+    """The final screen's tiles over every hand of the game, folded rows included."""
+    t = game.get('hand_log_folded') or _NO_HANDS
+    for h in game.get('hand_log', []):
+        t = _fold_hand(t, h)
+    return t
+
+
 def _complete_hand(game, session, auto_explanation=None):
     """Shared tail of both completion paths (they were two 80-line copies until 2026-09-06):
     apply the middle, score with bags, keep-alive, build hand_results, log, and settle

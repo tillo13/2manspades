@@ -224,17 +224,15 @@ function renderGameOver() {
         }
     }
 
+    // the cookie carries only the last hands (HAND_LOG_ROWS in hand_flow.py); the tiles are the
+    // server's totals over every hand
     const log = gameState.hand_log || [];
-    const bid = log.filter(h => h.player_bid > 0);
-    const made = bid.filter(h => h.player_tricks >= h.player_bid).length;
-    const bags = bid.reduce((n, h) => n + Math.max(0, h.player_tricks - h.player_bid), 0);
-    const blinds = log.filter(h => h.player_blind);
-    const blindsMade = blinds.filter(h => h.player_tricks >= h.player_bid).length;
+    const t = gameState.hand_tally;
     const specials = log.length ? log[log.length - 1].player_specials : 0;
     const tiles = [
-        ['Bids made', `${made}/${bid.length}`],
-        ['Bags taken', bags],
-        ['Blinds', blinds.length ? `${blindsMade}/${blinds.length}` : '–'],
+        ['Bids made', `${t.made}/${t.bids}`],
+        ['Bags taken', t.bags],
+        ['Blinds', t.blinds ? `${t.blinds_made}/${t.blinds}` : '–'],
         ['Bags cut', specials],   // total the 7♦ / 10♣ took off, this game
     ];
     document.getElementById('goTally').innerHTML = tiles.map(([k, v]) =>
@@ -250,7 +248,9 @@ function renderGameOver() {
     const red = txt => (txt || '?').replace(/(\S+[♥♦])/g, '<span class="heart">$1</span>');
     const mid = m => !m ? '' : `${red(m.player)} · ${red(m.computer)}` +
         (m.winner ? ` <span class="go-mid-w">${m.winner === 'player' ? 'you' : 'Marta'}</span>` : '');
-    document.getElementById('goHands').innerHTML = `<table class="go-hands-table">
+    const trimmed = log.length && log[0].hand > 1
+        ? `<div class="go-hands-note">Last ${log.length} of ${log[log.length - 1].hand} hands. Full breakdown has every one.</div>` : '';
+    document.getElementById('goHands').innerHTML = trimmed + `<table class="go-hands-table">
         <thead><tr><th>Hand</th><th>You</th><th>Marta</th><th>Middle</th><th>Bags</th><th>Score</th></tr></thead><tbody>` +
         log.map(h => `<tr>
             <td>${h.hand}</td>

@@ -17,7 +17,7 @@ from utilities.app_helpers import (
     process_discard_phase, resolve_trick_with_delay,
     computer_follow_with_logging, computer_lead_with_logging,
     process_hand_completion, process_auto_resolution,
-    start_development_server, process_ip_geolocation
+    start_development_server, process_ip_geolocation, CheckedCookieSession
 )
 from utilities.gameplay_logic import is_valid_play, init_new_hand, log_hand_dealt
 from utilities.logging_utils import log_action, log_game_event, get_client_ip, start_async_db_logging, IS_PRODUCTION
@@ -73,6 +73,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 # read-only request in flight during a play (the /state poll, a jukebox beat, the next song's audio)
 # answered with the PRE-play game and rolled the card back: "I had to play my card twice" (2026-09-07).
 app.config['SESSION_REFRESH_EACH_REQUEST'] = False
+app.session_interface = CheckedCookieSession()   # an oversize cookie is a 500 and an email, never a silent rollback
 
 
 @app.route('/health')

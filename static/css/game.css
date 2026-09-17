@@ -152,6 +152,7 @@
 .go-tile-v { font-size: 18px; font-weight: 700; color: #333; }
 .go-tile-k { font-size: 10px; color: #888; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
 .go-hands { margin-top: 16px; overflow-x: auto; }
+.go-hands-note { font-size: 12px; color: #777; margin-bottom: 6px; }
 .go-hands-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .go-hands-table th { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; padding: 4px 6px; border-bottom: 1px solid #e9ecef; }
 .go-hands-table td { padding: 5px 6px; border-bottom: 1px solid #f1f3f5; color: #333; }
