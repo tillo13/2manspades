@@ -978,11 +978,13 @@ def player_profile(name):
     return render_template('player.html', player=player_data)
 
 
-@app.route('/bot/<game_id>')
+@app.route('/bot/<uuid:game_id>')
 def bot_game_detail(game_id):
     """One practice-table game, hand by hand. The Robot League list links here."""
+    # uuid converter: a scanner's /bot/.env used to reach Postgres and log
+    # 'invalid input syntax for type uuid' on the shared instance (2026-09-20).
     from utilities.postgres_utils import bot_game
-    game = bot_game(game_id)
+    game = bot_game(str(game_id))
     if not game:
         return render_template('404.html', message='No such practice game'), 404
     return render_template('bot_game.html', g=game)
