@@ -73,9 +73,9 @@ class OttoTests(unittest.TestCase):
         self.assertNotEqual(sorted({daily_target(datetime.date(2026, 9, i)) for i in range(1, 30)}), [t])
         noon = datetime.datetime(2026, 9, 6, 12, 0)
         self.assertEqual(games_due(100, 50, noon), 0)      # on pace
-        self.assertEqual(games_due(100, 40, noon), 2)      # behind: catch up two at a time
+        self.assertEqual(games_due(100, 40, noon), 3)      # behind: catch up three at a time
         self.assertEqual(games_due(1, 1, noon), 0)         # quota done
-        self.assertEqual(games_due(4, 0, datetime.datetime(2026, 9, 6, 23, 59)), 2)
+        self.assertEqual(games_due(4, 0, datetime.datetime(2026, 9, 6, 23, 59)), 3)
 
 
 

@@ -355,7 +355,7 @@ def _read_state(key):
 # ─── The daily drip (cron) ─────────────────────────────────────────────────────
 # Andy, 2026-09-06: "let it pick between 1-100 games a day at random to mix it up", and
 # "Otto should get ratcheted the same way when playing Marta". So: one quota per calendar
-# day drawn from the date (every instance agrees), spread across the 96 cron ticks; and
+# day drawn from the date (every instance agrees), spread across the 48 cron ticks; and
 # Marta's strength against Otto moves with each result like it does for a person, so it
 # settles wherever Otto wins half the time — a live measure of how strong easy-Otto is.
 import datetime as _dt
@@ -375,7 +375,8 @@ def _now_pt():
     return _dt.datetime.now(PACIFIC)
 
 
-CRON_TICKS_PER_DAY = 96          # cron.yaml: every 15 minutes
+CRON_TICKS_PER_DAY = 48          # cron.yaml: every 30 minutes
+MAX_GAMES_PER_TICK = 3           # 48 x 3 = 144/day, room over the 100-game top quota
 
 
 def daily_target(day=None):
@@ -385,11 +386,11 @@ def daily_target(day=None):
 
 
 def games_due(target, played_today, now=None):
-    """How many games this tick should play so the day's quota lands evenly: 0, 1 or 2."""
+    """How many games this tick should play so the day's quota lands evenly: 0 to MAX_GAMES_PER_TICK."""
     now = now or _dt.datetime.now()
     frac = (now.hour * 60 + now.minute + 1) / (24 * 60)
     behind = int(round(target * frac)) - played_today
-    return max(0, min(2, behind))
+    return max(0, min(MAX_GAMES_PER_TICK, behind))
 
 
 def play_cron_tick():

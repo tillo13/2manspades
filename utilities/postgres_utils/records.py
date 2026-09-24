@@ -510,7 +510,7 @@ def warm_bid_bias():
     number already in the cache.
 
     Only stale keys are recomputed, so on a settled instance most ticks do no work at all: the
-    cron runs four times an hour against a one-hour TTL. Seven people play here, so a tick that
+    cron runs twice an hour against a one-hour TTL. Seven people play here, so a tick that
     does refresh is seven queries, not a fleet-wide scan. Returns how many were priced."""
     try:
         with db_cursor() as cur:

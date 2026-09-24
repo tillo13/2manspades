@@ -326,7 +326,7 @@ def new_game():
 
 @app.route('/cron/otto')
 def cron_otto():
-    """Otto plays Marta one full game (cron.yaml, every 15 min = 96/day) and files it in the
+    """Otto plays Marta one full game (cron.yaml, every 30 min = 48/day) and files it in the
     Robot League tables. App Engine strips X-Appengine-Cron from outside traffic, so the
     header IS the auth. No LLM anywhere in a bot game: Marta's chat is never invoked."""
     if request.headers.get('X-Appengine-Cron') != 'true':

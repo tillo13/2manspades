@@ -1,13 +1,15 @@
 cron:
-  # Otto vs Marta. A tick every 15 minutes (96/day); each tick plays 0-2 games so the day's
-  # quota lands evenly. The quota itself is drawn fresh per calendar day, 1 to 100 games
+  # Otto vs Marta. A tick every 30 minutes at :07 and :37 (48/day); each tick plays 0-3 games
+  # so the day's quota lands evenly. Was every 15 minutes until 2026-09-24: each tick re-warms
+  # the whole /stats payload and bid bias, and those ticks were the ~28K-read spike on the
+  # shared instance at every quarter hour, where the rest of the fleet's crons also land. The quota itself is drawn fresh per calendar day, 1 to 100 games
   # (Andy, 2026-09-06: "let it pick between 1-100 games a day at random"). Marta ratchets
   # against Otto after every game like she does against a person. Thousand-game analysis runs
   # still happen on a laptop (python -m utilities.otto), never here. Needs the Cloud Scheduler
   # API enabled on the project (done 2026-09-06); cron.yaml jobs are not billed as Scheduler jobs.
   - description: Otto plays Marta for the Robot League
     url: /cron/otto
-    schedule: every 15 minutes
+    schedule: every 30 minutes from 00:07 to 23:37
     timezone: America/Los_Angeles
   # Andy's stand-in (Andy, 2026-09-09): most days, 2-4 games at random hours spread across
   # this window — not a fixed time — logged as Andy through the human path; hands.played_by =
