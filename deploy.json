@@ -26,6 +26,10 @@
     {
       "src": "gtag/gtag.py",
       "dst": "utilities/gtag.py"
+    },
+    {
+      "src": "kumori/utilities/postgres_utils/connection.py",
+      "dst": "utilities/kumori_db.py"
     }
   ],
   "cron_yaml": true,

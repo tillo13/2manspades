@@ -15,6 +15,9 @@ automatic_scaling:
 env_variables:
   FLASK_ENV: "production"
   GOOGLE_CLOUD_PROJECT: "twomanspades"
+  # Cloud SQL IAM login as twomanspades@appspot, runs as twomanspades_app; no DB password read.
+  # The IAM pool comes from kumori's canonical module (utilities/kumori_db.py, vendored on deploy).
+  KUMORI_DB_AUTH: iam
 
 beta_settings:
   cloud_sql_instances: "kumori-404602:us-central1:kumori"

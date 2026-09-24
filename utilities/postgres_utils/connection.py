@@ -75,6 +75,24 @@ def _get_pool():
                     if host not in ('127.0.0.1', 'localhost', '::1'):
                         raise ValueError('Local database access must use a loopback Cloud SQL Auth Proxy')
                 dbname = get_secret('TWOMANSPADES_POSTGRES_DB_NAME')
+                # Cloud SQL IAM login (#170): on GCP with KUMORI_DB_AUTH=iam the app logs in as
+                # twomanspades@appspot with a one-hour token and runs as twomanspades_app; no DB
+                # password read. The IAM pool is kumori's canonical one (utilities/kumori_db.py,
+                # vendored on deploy); this module keeps its own checkout gate. search_path is
+                # passed per connection because the role's own setting only applies to its login.
+                if is_gcp and os.environ.get('KUMORI_DB_AUTH') == 'iam':
+                    try:
+                        from utilities.kumori_db import _IAMConnectionPool, _iam_db_user
+                        _pool = _IAMConnectionPool(
+                            1, 2, host=host, database=dbname, user=_iam_db_user(), password='',
+                            port=5432, application_name='twomanspades', connect_timeout=10,
+                            options='-c statement_timeout=30000 '
+                                    '-c idle_in_transaction_session_timeout=120000 '
+                                    '-c role=twomanspades_app -c search_path=twomanspades,public')
+                        print('[POOL] Created IAM-auth connection pool as twomanspades_app')
+                        return _pool
+                    except Exception as e:
+                        print(f'[POOL] IAM DB auth failed, falling back to password login: {e}')
                 user = get_secret('TWOMANSPADES_POSTGRES_USERNAME')
                 password = get_secret('TWOMANSPADES_POSTGRES_PASSWORD')
                 if user == 'postgres':
