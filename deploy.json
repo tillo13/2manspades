@@ -30,6 +30,10 @@
     {
       "src": "kumori/utilities/postgres_utils/connection.py",
       "dst": "utilities/kumori_db.py"
+    },
+    {
+      "src": "kumori/utilities/mail_guard.py",
+      "dst": "utilities/mail_guard.py"
     }
   ],
   "cron_yaml": true,

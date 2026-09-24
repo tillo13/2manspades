@@ -64,6 +64,11 @@ def send_email(
     Returns:
         bool: True if email sent successfully, False otherwise
     """
+    # Shared-sender guard (kumori task #34): every app mails as kumoridotai, so a repeat
+    # or a burst here is refused and logged, never queued. Canonical: kumori/utilities/mail_guard.py.
+    from utilities.mail_guard import admit
+    if not admit('twomanspades', ','.join(sorted(to_emails)), subject)[0]:
+        return False
     if from_name is None:
         from_name = EMAIL_DEFAULTS["default_from_name"]
     
