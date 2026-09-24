@@ -337,8 +337,12 @@ def cron_otto():
         result = play_cron_tick()
         from utilities.postgres_utils.par import fill_par
         result['par_solved'] = fill_par(limit=120)   # here, never on the page path: solving is slow
-        from utilities.postgres_utils.stats import stats_payload
-        stats_payload()           # keeps this process's /stats cache warm between visitors
+        from utilities.postgres_utils.stats import warm_stats_cache
+        # Builds /stats only on a process with nothing cached. Calling stats_payload() here
+        # rebuilt the whole payload every tick (300s TTL < cron interval), the quarter-hour
+        # read spike on the shared instance (2026-09-23); a stale payload is refreshed in the
+        # background by the next visitor, who is served the cached one meanwhile.
+        warm_stats_cache()
         from utilities.postgres_utils.rerolls import ensure_reroll_view
         ensure_reroll_view()      # one-time; a catalog SELECT on every tick after that
         from utilities.postgres_utils import warm_bid_bias
