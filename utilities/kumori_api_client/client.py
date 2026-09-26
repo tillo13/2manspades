@@ -168,12 +168,15 @@ def _backoff_sleep(response):
     return delay
 
 
-def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
+def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True,
+             extra_headers=None, accepted_ok=False):
     """Generic kumori API call. Returns parsed JSON dict on success, raises
     KumoriAPIError on failure.
 
     timeout: (connect, read) tuple. Default 5s connect / 60s read.
     retry_on_5xx: one retry on 5xx, ConnectionError, Timeout.
+    extra_headers: merged into the request headers (e.g. Prefer: respond-async).
+    accepted_ok: treat 202 Accepted as success (async job submit / still running).
     """
     key = _api_key()
     if not key:
@@ -182,7 +185,7 @@ def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
             'api_key_name=...) or set KUMORI_API_KEY env var'
         )
     url = f'{KUMORI_BASE}{path}'
-    headers = {'X-API-Key': key, 'Content-Type': 'application/json'}
+    headers = {'X-API-Key': key, 'Content-Type': 'application/json', **(extra_headers or {})}
 
     import time as _time
     last_exc = None
@@ -230,7 +233,7 @@ def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
                 'ms': ms,
                 'timestamp': _time.time(),
             })
-        if r.status_code == 200:
+        if r.status_code == 200 or (accepted_ok and r.status_code == 202):
             return data
         # Server-declared recovery clock: Retry-After header, else
         # retry_after_s / reset_in_s in the body (kumori gate contract).
@@ -405,14 +408,17 @@ def llm_chat_resilient(backends=None, messages=None, max_tokens=500, temperature
 
 
 def llm_chat_reserve(messages, system=None, max_tokens=300, temperature=0.7,
-                     auth_sub=None, app_name=None, timeout=(5, 30)):
+                     auth_sub=None, app_name=None, timeout=(5, 30), openrouter_first=False):
     """Reserve tier — paid Claude (kumori's MODEL_TIERS['sonnet']) for this APP's
     users. The grant is the `llm.reserve` scope on your key; spend is bounded by
     the key's daily cap. auth_sub (your login's Google `sub`) is optional and
     only tags usage for attribution. Raises KumoriAPIError on 403 (no scope),
     429 (cap) or 5xx — catch it and fall back to llm_chat_resilient. Returns
-    (text, backend). No client-side retry: a paid call is never doubled."""
+    (text, backend). No client-side retry: a paid call is never doubled.
+    openrouter_first=True tries kumori's capped paid OpenRouter hop ($1/day) before Claude."""
     body = {'messages': messages, 'max_tokens': max_tokens, 'temperature': temperature}
+    if openrouter_first:
+        body['openrouter_first'] = True
     if auth_sub:
         body['auth_sub'] = auth_sub
     if system:
@@ -647,7 +653,7 @@ def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
                 width=1024, height=1024, app_name=None, character=None,
                 ref_filename=None, debug=False,
                 feature=None, verbiage=None, caller_user_id=None, tags=None,
-                provider=None):
+                provider=None, wait_s=600):
     """Image+text → image edit. Default routes through Cloudflare flux-2-klein-4b;
     pass `provider=` to target a specific edit endpoint:
       - 'cloudflare_flux2_klein_edit' (default, 4 refs max, 60/day combined w/ _2)
@@ -682,7 +688,22 @@ def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
     if caller_user_id: body['caller_user_id'] = caller_user_id
     if tags: body['tags'] = tags
     if provider: body['provider'] = provider
-    data = _request('POST', '/api/v1/imggen/edit', body, timeout=(5, 300))
+    # Async (2026-09-26): kumori.ai is behind Cloudflare, which cuts any request at 100 s, and an
+    # edit can take 150-250 s. Submit as a job, then poll; the final poll returns exactly what the
+    # synchronous call returned (and raises the same KumoriAPIError on failure). A kumori without
+    # job support just answers synchronously, which is returned as before.
+    import time as _time
+    data = _request('POST', '/api/v1/imggen/edit', body, timeout=(5, 90),
+                    extra_headers={'Prefer': 'respond-async'}, accepted_ok=True)
+    job = data.get('job_id') if data.get('status') in ('queued', 'running') else None
+    deadline = _time.time() + wait_s
+    while job:
+        _time.sleep(min(max(float(data.get('retry_after_s') or 5), 2), 15))
+        if _time.time() > deadline:
+            raise KumoriAPIError(f'kumori imggen edit job {job} still running after {wait_s}s')
+        data = _request('GET', f'/api/v1/imggen/jobs/{job}', timeout=(5, 30), accepted_ok=True)
+        if data.get('status') not in ('queued', 'running'):
+            job = None
     return data
 
 

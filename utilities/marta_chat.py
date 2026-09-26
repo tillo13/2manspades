@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 APP_NAME = 'twomanspades'
 
-# Reserve tier (Claude Sonnet via kumori) for every table, 2026-09-05. The grant is
+# Reserve fallback (Claude Sonnet via kumori). The grant is
 # the llm.reserve scope on this app's kumori key, bounded by that key's daily cap.
 # A 403 means the scope was pulled: stop asking for the life of this process.
 _RESERVE_DISABLED = {'flag': False}
@@ -147,10 +147,18 @@ class MartaChat:
             
             print(f"[MARTA] Prompt length: {len(user_prompt)} chars")
             text, backend, attempts = None, None, []
-            if not _RESERVE_DISABLED['flag']:
-                # Reserve first: Sonnet knew the Hoyt Axton catalog cold in testing (6/8 right,
-                # 0 invented, ~1.3 s) where every free lane invented a duet partner. Any failure
-                # falls to the free arm.
+            try:
+                text, backend, attempts, _ = llm_chat_resilient(
+                    messages=[{"role": "user", "content": user_prompt}],
+                    system=self.system_prompt,
+                    max_tokens=self.max_tokens, temperature=self.temperature,
+                    min_quality_tier=self.min_quality_tier, allow_degrade=True,
+                    budget_ms=self.budget_ms, min_chars=5, app_name=APP_NAME,
+                    retry_on_5xx=False,
+                )
+            except Exception as e:
+                print(f"[MARTA] free pool failed: {e} — trying Reserve fallback")
+            if not (text or '').strip() and not _RESERVE_DISABLED['flag']:
                 try:
                     text, backend = llm_chat_reserve(
                         messages=[{"role": "user", "content": user_prompt}],
@@ -163,19 +171,9 @@ class MartaChat:
                         _RESERVE_DISABLED['flag'] = True
                         print(f"[MARTA] reserve: scope missing on this key, free arm from now on")
                     else:
-                        print(f"[MARTA] reserve failed ({e.status_code}): {e} — falling back to free arm")
+                        print(f"[MARTA] reserve failed ({e.status_code}): {e}")
                 except Exception as e:
-                    print(f"[MARTA] reserve error: {e} — falling back to free arm")
-            if not (text or '').strip():
-                print(f"[MARTA] kumori llm_chat_resilient tier={self.min_quality_tier}")
-                text, backend, attempts, _ = llm_chat_resilient(
-                    messages=[{"role": "user", "content": user_prompt}],
-                    system=self.system_prompt,
-                    max_tokens=self.max_tokens, temperature=self.temperature,
-                    min_quality_tier=self.min_quality_tier, allow_degrade=True,
-                    budget_ms=self.budget_ms, min_chars=5, app_name=APP_NAME,
-                    retry_on_5xx=False,   # router already cascaded; a second try only doubles the stall
-                )
+                    print(f"[MARTA] reserve error: {e}")
             print(f"[MARTA] backend={backend} attempts={len(attempts or [])}")
             api_response = (text or '').strip()
             print(f"[MARTA] Raw API response: '{api_response}'")
@@ -186,6 +184,8 @@ class MartaChat:
             
             if not api_response:
                 print(f"[MARTA] WARNING: Empty response from API")
+                if now_playing and now_playing.get('title'):
+                    return "__RETRY__"
                 return self._fallback_marta_response(game_context)
 
             api_response = _finish_sentence(api_response)
