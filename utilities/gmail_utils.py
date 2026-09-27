@@ -35,7 +35,7 @@ def get_gmail_credentials() -> Dict[str, str]:
     """Get Gmail credentials from Google Cloud Secret Manager."""
     return {
         'user': get_secret(GMAIL_USERNAME_SECRET_ID, project_id=PROJECT_ID),
-        'password': get_secret(GMAIL_APP_PASSWORD_SECRET_ID, project_id=PROJECT_ID),
+        'password': None,  # Gmail API send since 2026-09-27; the app password is retired
     }
 
 def send_email(
