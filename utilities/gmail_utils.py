@@ -126,9 +126,13 @@ def send_email(
         smtp_port = EMAIL_DEFAULTS["smtp_port"]
         timeout = EMAIL_DEFAULTS["timeout_seconds"]
         
-        with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=timeout) as server:
-            server.login(gmail_user, gmail_password)
-            server.send_message(message, to_addrs=all_recipients)
+        # Gmail API through kumori's canonical sender (vendored as utilities/kumori_gmail.py): Google
+        # refuses the SMTP app-password login as of 2026-09-27 (connection dropped at login). The same
+        # MIME message goes out; Gmail delivers To, Cc and Bcc from its headers.
+        import base64
+        from utilities.kumori_gmail import _get_service
+        _get_service().users().messages().send(
+            userId='me', body={'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}).execute()
             
         logging.info('Email sent successfully')
         print('Email sent successfully')

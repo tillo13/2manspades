@@ -34,6 +34,10 @@
     {
       "src": "kumori/utilities/mail_guard.py",
       "dst": "utilities/mail_guard.py"
+    },
+    {
+      "src": "kumori/utilities/gmail_utils.py",
+      "dst": "utilities/kumori_gmail.py"
     }
   ],
   "cron_yaml": true,
