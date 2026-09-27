@@ -323,7 +323,8 @@ def _chat_recoverable(body, request_id, timeout):
 
 
 def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=None,
-             app_name=None, timeout=None, timeout_s=None, include_metadata=False, request_id=None):
+             app_name=None, timeout=None, timeout_s=None, include_metadata=False, request_id=None,
+             substitute=False, spread_key=None):
     """Pinned-backend multi-turn chat. Returns (text, backend_name).
 
     request_id: for calls that may outlast Cloudflare's 100 s cutoff (long proofs); 16-64 chars of
@@ -338,9 +339,19 @@ def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=Non
     lanes (e.g. probation-ward validation traffic); default (5, 60).
     include_metadata: opt in to (text, backend, inference_metadata); default
     stays the historical two-tuple. Older servers return an empty metadata dict.
+    substitute: when the named lane is unknown, paid, gated or benched, kumori answers from
+    a live free lane (same model, then family, then medium tier); the returned backend is the
+    lane that actually served, and backend_name may be empty to mean "any medium lane".
+    substitute='model' only accepts the same model from another provider's lane (experiments
+    where the agent IS its model); substitute='family' also accepts the same model family. When
+    nothing qualifies there is no answer, and the miss is counted for kumori's daily digest.
     """
-    body = {'backend': backend_name, 'messages': messages,
+    body = {'backend': backend_name or '', 'messages': messages,
             'max_tokens': max_tokens, 'temperature': temperature}
+    if substitute:
+        body['substitute'] = substitute if substitute in ('model', 'family') else True
+        if spread_key:
+            body['spread_key'] = str(spread_key)[:80]
     if system:
         body['system'] = system
     if app_name:
@@ -437,6 +448,13 @@ def llm_chat_eval(prompt, system=None, caller=None):
         body['system'] = system
     data = _request('POST', '/api/v1/llm/chat-eval', body)
     return data.get('text'), data.get('backend')
+
+
+def lane_status(names):
+    """{name: kumori lifecycle status} for named lanes, retired ones included; 'unknown' when
+    kumori has no such lane. For apps that pin lanes and must tell retired from paused."""
+    data = _request('POST', '/api/v1/llm/lane-status', {'names': list(names)})
+    return data.get('lanes', {})
 
 
 def llm_backends(modality=None):
