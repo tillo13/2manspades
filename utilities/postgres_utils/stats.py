@@ -205,10 +205,9 @@ def player_profiles():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            WITH hands AS (
-                SELECT h.hand_id, v.player_name
-                  FROM twomanspades.hands h
-                  JOIN twomanspades.vw_player_identity v ON v.hand_id = h.hand_id
+            WITH hands AS MATERIALIZED (
+                SELECT v.hand_id, v.player_name
+                  FROM twomanspades.vw_player_identity v
                  WHERE v.player_name IS NOT NULL AND v.player_name <> 'Other'),
             bids AS (
                 SELECT hand_id, hand_number, (event_data->'action_data'->>'bid_amount')::int AS bid,

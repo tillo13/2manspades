@@ -158,7 +158,8 @@ class _Ctx:
         return _points(self.mb, mt, self.mbags, self.mblind) - _points(self.pb, pt, self.pbags, self.pblind)
 
 
-INF = 10 ** 6
+INF = 10 ** 6                   # score scale only. Never a deadline: perf_counter() is seconds since boot
+                                # on macOS and passed 10**6 after 11.6 days up, so an INF deadline expired at once (2026-09-29)
 
 
 def _solve(m, p, leader, broken, mt, pt, ctx, memo, alpha=-INF, beta=INF):
@@ -446,7 +447,7 @@ def think_bid(hand, player_bid, game):
     leader = 0 if game.get('first_leader', game.get('trick_leader')) == 'computer' else 1
     m = sum(1 << _code(c) for c in hand)
     counts = []
-    ctx = _Ctx(game, INF, tricks_only=True)                  # every trick +1: how many can she force
+    ctx = _Ctx(game, float('inf'), tricks_only=True)                  # every trick +1: how many can she force
     worlds = [(sum(1 << _code(c) for c in game['player_hand']), 1.0)] if PEEK else _sample_worlds(game, hand, MAX_WORLDS)
     for p, w in worlds:
         try:
@@ -493,7 +494,7 @@ def think_play(hand, current_trick, game):
     options = _moves(m, m | worlds[0][0] | ((1 << led) if led is not None else 0), led=led, broken=broken)
     if len(options) == 1:
         return _index(hand, options[0]), {'worlds': 0, 'forced': True}
-    ctx = _Ctx(game, INF)                                    # the first few worlds are owed; the rest are on the clock
+    ctx = _Ctx(game, float('inf'))                                    # the first few worlds are owed; the rest are on the clock
     score = {c: 0.0 for c in options}
     scored, total_w = 0, 0.0
     for p, w in worlds:

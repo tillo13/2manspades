@@ -34,11 +34,13 @@ def career_stats() -> Dict[str, Any]:
                   JOIN twomanspades.vw_game_completion gc ON gc.hand_id = v.hand_id
                  WHERE v.player_name IS NOT NULL AND v.player_name <> 'Other'),
             tricks AS (
-                SELECT v.player_name, COUNT(*) AS tricks_won
-                  FROM twomanspades.game_events ge
+                SELECT v.player_name, SUM(ge.tricks_won) AS tricks_won
+                  FROM (SELECT hand_id, COUNT(*) AS tricks_won
+                          FROM twomanspades.game_events
+                         WHERE event_type = 'trick_completed' AND event_data->>'winner' = 'player'
+                         GROUP BY hand_id) ge
                   JOIN twomanspades.vw_player_identity v ON v.hand_id = ge.hand_id
-                 WHERE ge.event_type = 'trick_completed' AND ge.event_data->>'winner' = 'player'
-                   AND v.player_name IS NOT NULL AND v.player_name <> 'Other'
+                 WHERE v.player_name IS NOT NULL AND v.player_name <> 'Other'
                  GROUP BY 1)
             SELECT m.player_name AS player,
                    COUNT(*) AS games,
