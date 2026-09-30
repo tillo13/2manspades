@@ -53,15 +53,19 @@ class OttoTests(unittest.TestCase):
         self.assertEqual(s['otto'] + s['marta'] + s['tie'], 3)
         self.assertEqual({x['seat'] for x in s['seats']}, {'Otto', 'Marta'})
 
-    def test_cron_route_requires_appengine_header(self):
+    def test_web_cron_only_warms_and_never_plays(self):
+        # Games run as the twomanspades-crons Cloud Run job since 2026-09-30; the web tick warms.
         client = A.app.test_client()
-        self.assertEqual(client.get('/cron/otto').status_code, 403)
-        with patch('utilities.otto.play_cron_tick', return_value={'target_today': 42, 'played_now': 3,
-                                                                    'games': []}) as tick:
-            r = client.get('/cron/otto', headers={'X-Appengine-Cron': 'true'})
+        self.assertEqual(client.get('/cron/warm').status_code, 403)
+        self.assertEqual(client.get('/cron/otto', headers={'X-Appengine-Cron': 'true'}).status_code, 404)
+        with patch('utilities.otto.play_cron_tick', side_effect=AssertionError('the web tier must not play')), \
+             patch('utilities.postgres_utils.stats.warm_stats_cache') as stats, \
+             patch('utilities.postgres_utils.rerolls.ensure_reroll_view'), \
+             patch('utilities.postgres_utils.warm_bid_bias', return_value=7):
+            r = client.get('/cron/warm', headers={'X-Appengine-Cron': 'true'})
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.get_json()['target_today'], 42)
-        tick.assert_called_once_with()
+        self.assertEqual(r.get_json(), {'ok': True, 'bias_warmed': 7})
+        stats.assert_called_once_with()
 
     def test_daily_quota_is_fixed_per_day_and_spread(self):
         import datetime
@@ -322,12 +326,6 @@ class PersonaTests(unittest.TestCase):
         with patch.object(otto, '_now_pt', return_value=planned), \
              patch.object(otto, '_read_state', return_value=stamp):
             self.assertEqual(otto.play_persona_tick()['reason'], 'already played this hour')
-
-    def test_cron_route_requires_header(self):
-        client = A.app.test_client()
-        self.assertEqual(client.get('/cron/andybot').status_code, 403)
-        with patch('utilities.otto.play_persona_tick', return_value={'plan': [], 'played': False, 'reason': 'x'}):
-            self.assertEqual(client.get('/cron/andybot', headers={'X-Appengine-Cron': 'true'}).status_code, 200)
 
 
 class BotStateTests(unittest.TestCase):

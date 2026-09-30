@@ -1,28 +1,21 @@
 cron:
-  # Otto vs Marta. A tick every 30 minutes at :07 and :37 (48/day); each tick plays 0-3 games
-  # so the day's quota lands evenly. Was every 15 minutes until 2026-09-24: each tick re-warms
-  # the whole /stats payload and bid bias, and those ticks were the ~28K-read spike on the
-  # shared instance at every quarter hour, where the rest of the fleet's crons also land. The quota itself is drawn fresh per calendar day, 1 to 100 games
-  # (Andy, 2026-09-06: "let it pick between 1-100 games a day at random"). Marta ratchets
-  # against Otto after every game like she does against a person. Thousand-game analysis runs
-  # still happen on a laptop (python -m utilities.otto), never here. Needs the Cloud Scheduler
-  # API enabled on the project (done 2026-09-06); cron.yaml jobs are not billed as Scheduler jobs.
-  - description: Otto plays Marta for the Robot League
-    url: /cron/otto
+  # The web process's own warm-up: /stats payload, reroll view, bid bias. It stays on App Engine
+  # because it fills this process's memory. Every 30 min at :07 and :37 as before; the stats
+  # build only runs on a process with nothing cached (the 2026-09-24 quarter-hour read spike).
+  - description: Keep the web process's /stats and bid bias warm
+    url: /cron/warm
     schedule: every 30 minutes from 00:07 to 23:37
     timezone: America/Los_Angeles
-  # Andy's stand-in (Andy, 2026-09-09): most days, 2-4 games at random hours spread across
-  # this window — not a fixed time — logged as Andy through the human path; hands.played_by =
-  # 'andybot' is the only mark. The hours are Pacific and play_persona_tick now reads the clock
-  # in Pacific too; it used UTC until 09-09, which is why no cron game ever persisted.
-  - description: Andy's stand-in plays Marta on planned hours
-    url: /cron/andybot
-    schedule: every 1 hours from 09:00 to 21:00
-    timezone: America/Los_Angeles
-  # game_events is the biggest table on the shared instance and action_card_play was 44%
-  # of its rows, written every card and read by nothing. Daily batch move to the cold
-  # archive keeps the hot table in the 128MB buffer cache the whole fleet shares.
-  - description: Archive aged action_card_play events out of the hot table
-    url: /cron/prune-events
-    schedule: every day 03:20
-    timezone: America/Los_Angeles
+
+# The game-playing crons moved to the twomanspades-crons Cloud Run job on 2026-09-30
+# (tools/cloud_run_crons.py), started by Cloud Scheduler with the task as the container arg:
+#   twomanspades-otto          7,37 * * * *   Otto vs Marta; 0-3 games per tick so the day's quota
+#                                             (1-100, drawn per calendar day, Andy 2026-09-06) lands
+#                                             evenly. Marta ratchets against Otto after every game.
+#   twomanspades-andybot       0 9-21 * * *   Andy's stand-in (Andy, 2026-09-09): 2-4 games at random
+#                                             Pacific hours, logged as Andy; hands.played_by = 'andybot'.
+#   twomanspades-prune-events  20 3 * * *     Archive aged action_card_play rows (44% of game_events,
+#                                             read by nothing) out of the hot table.
+# Why: a ruthless Marta game is up to 27 s of pure-Python solving, and on the single-worker F1 it
+# slowed every page in the process (fleet isolation graded /cron/otto critical, worst tick 53.9 s).
+# Thousand-game analysis runs still happen on a laptop (python -m utilities.otto), never here.

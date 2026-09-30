@@ -7,7 +7,8 @@ routes use, so every rule, special card and scoring quirk is the live one. No LL
 Marta's chat is never invoked, so a bot game costs compute and rows only.
 
 Two consumers, one engine:
-  * /cron/otto (app.py, cron.yaml every 72 min): one game, persisted to twomanspades.bot_games
+  * the twomanspades-otto schedule (tools/cloud_run_crons.py on Cloud Run, every 30 min, 0-3 games
+    due per tick; App Engine /cron/otto until 2026-09-30): games persisted to twomanspades.bot_games
     + bot_decisions. Keeps the Robot League on /stats moving and catches a deploy that changes
     behaviour.
   * `python -m utilities.otto --games 2000 --seed 1` on a laptop: the analysis run. Same engine,

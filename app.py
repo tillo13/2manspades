@@ -324,19 +324,19 @@ def new_game():
     session['game'] = _with_opp_model(process_new_game_request(session, request))
     return jsonify({'success': True})
 
-@app.route('/cron/otto')
-def cron_otto():
-    """Otto plays Marta one full game (cron.yaml, every 30 min = 48/day) and files it in the
-    Robot League tables. App Engine strips X-Appengine-Cron from outside traffic, so the
-    header IS the auth. No LLM anywhere in a bot game: Marta's chat is never invoked."""
+@app.route('/cron/warm')
+def cron_warm():
+    """Every 30 min (cron.yaml): keep this web process's /stats payload and bid bias warm, so no
+    visitor ever sets those queries off. The games that shared this tick until 2026-09-30 (Otto
+    vs Marta, Andy's stand-in, the card-play archive) run as the twomanspades-crons Cloud Run job
+    (tools/cloud_run_crons.py): a ruthless Marta game is up to 27 s of pure-Python solving, and on
+    this single-worker F1 it slowed every page in the process. App Engine strips
+    X-Appengine-Cron from outside traffic, so the header IS the auth."""
     if request.headers.get('X-Appengine-Cron') != 'true':
         abort(403)
     # A cron can wait out a busy pool; a page request cannot (see patient_pool).
     with patient_pool():
-        from utilities.otto import play_cron_tick
-        result = play_cron_tick()
-        from utilities.postgres_utils.par import fill_par
-        result['par_solved'] = fill_par(limit=120)   # here, never on the page path: solving is slow
+        result = {}
         from utilities.postgres_utils.stats import warm_stats_cache
         # Builds /stats only on a process with nothing cached. Calling stats_payload() here
         # rebuilt the whole payload every tick (300s TTL < cron interval), the quarter-hour
@@ -348,27 +348,6 @@ def cron_otto():
         from utilities.postgres_utils import warm_bid_bias
         result['bias_warmed'] = warm_bid_bias()   # so no visitor ever sets that query off
         return jsonify({'ok': True, **result})
-
-@app.route('/cron/andybot')
-def cron_andybot():
-    """Hourly: Andy's stand-in plays Marta on the days and hours its date-seeded plan says
-    (about three days a week, 1-3 games), logged as Andy; hands.played_by marks it."""
-    if request.headers.get('X-Appengine-Cron') != 'true':
-        abort(403)
-    with patient_pool():
-        from utilities.otto import play_persona_tick
-        return jsonify({'ok': True, **play_persona_tick()})
-
-@app.route('/cron/prune-events')
-def cron_prune_events():
-    """Daily: move aged action_card_play rows out of game_events into the cold archive.
-    Nothing reads them, and they were 44% of the table's rows on a shared instance whose
-    128MB buffer cache all 17 apps compete for. See postgres_utils/retention.py."""
-    if request.headers.get('X-Appengine-Cron') != 'true':
-        abort(403)
-    with patient_pool():
-        from utilities.postgres_utils import prune_card_plays
-        return jsonify({'ok': True, **prune_card_plays()})
 
 
 @app.route('/chat_response', methods=['POST'])
