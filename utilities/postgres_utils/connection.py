@@ -66,7 +66,11 @@ def _get_pool():
     if _pool is None:
         with _pool_lock:
             if _pool is None:
-                is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
+                # The twomanspades-crons Cloud Run job (2026-09-30) reaches the instance through the
+                # same /cloudsql socket. It logs in as its own service account, so Postgres counts it
+                # against that login's cap, not the web tier's, and runs as twomanspades_app like the web.
+                is_gcp = (os.environ.get('GAE_ENV', '').startswith('standard')
+                          or bool(os.environ.get('CLOUD_RUN_JOB')))
                 if is_gcp:
                     connection_name = get_secret('TWOMANSPADES_POSTGRES_CONNECTION_NAME')
                     host = f"/cloudsql/{connection_name}"

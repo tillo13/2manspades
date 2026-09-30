@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY utilities/ utilities/
+COPY tools/cloud_run_crons.py tools/
+
+# Cloud SQL IAM login as the job's own service account: its own connection cap (never the web
+# login's, which is sized exactly to the web tier), running as twomanspades_app.
+# Connection name and database name are not secrets (app.yaml carries the first); setting them
+# here keeps the job off Secret Manager entirely.
+ENV KUMORI_DB_AUTH=iam \
+    TWOMANSPADES_POSTGRES_CONNECTION_NAME=kumori-404602:us-central1:kumori \
+    TWOMANSPADES_POSTGRES_DB_NAME=postgres \
+    PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["python", "tools/cloud_run_crons.py"]
+CMD ["otto"]

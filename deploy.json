@@ -41,6 +41,25 @@
     }
   ],
   "cron_yaml": true,
+  "cloud_run_jobs": [
+    {
+      "name": "twomanspades-crons",
+      "dockerfile": "Dockerfile.crons",
+      "timeout": "600s",
+      "memory": "1Gi",
+      "cpu": "1",
+      "cloudsql_instances": [
+        "kumori-404602:us-central1:kumori"
+      ],
+      "service_account": "twomanspades-crons@twomanspades.iam.gserviceaccount.com",
+      "files": [
+        "Dockerfile.crons",
+        "requirements.txt",
+        "utilities/",
+        "tools/cloud_run_crons.py"
+      ]
+    }
+  ],
   "pre_deploy_test": "venv_2man/bin/python -m unittest discover -s tests -q && /Users/at/Desktop/code/_local_infrastructure/anthropic_logger/check_violations.sh .",
   "post_deploy_test": "curl --fail --silent --show-error https://2manspades.com/health",
   "venv": "venv_2man"
