@@ -14,6 +14,9 @@ One structured log line per run; a failure logs at ERROR, which kumori's error s
 """
 import json
 import sys
+import time
+
+_T0 = time.time()   # process start: the log line's run_s separates container startup from the work
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -53,7 +56,8 @@ def main(argv):
         print(json.dumps({'severity': 'ERROR',
                           'message': f'twomanspades {task} failed: {type(e).__name__}: {e}'[:4000]}), flush=True)
         return 1
-    print(json.dumps({'severity': 'INFO', 'message': f'twomanspades {task} done', 'result': out},
+    print(json.dumps({'severity': 'INFO', 'message': f'twomanspades {task} done', 'result': out,
+                      'run_s': round(time.time() - _T0, 1)},
                      default=str)[:8000], flush=True)
     return 0
 
