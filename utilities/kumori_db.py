@@ -365,7 +365,7 @@ class PooledConnection:
         self.close()
         return False
 
-def get_admin_connection(gcp_project_id: str = 'kumori-404602', dbname: str = 'postgres'):
+def get_admin_connection(gcp_project_id: str = 'kumori-404602', dbname: str = 'postgres', as_role: str = None):
     """The ONE way to do role/DDL admin on the shared instance. Local machines only, never app code.
 
     Logs in as the gcloud-authenticated human through Cloud SQL IAM database authentication
@@ -377,6 +377,11 @@ def get_admin_connection(gcp_project_id: str = 'kumori-404602', dbname: str = 'p
     This replaced the stored `postgres` password: KUMORI_POSTGRES_SUPERUSER_PASSWORD stopped
     authenticating some time between 2026-08-21 and 2026-09-20, and a vault holding a dead
     superuser password was pushing sessions to improvise privileged logins instead.
+
+    as_role='ooqio_app' (any *_app role) acts as that app instead, to fix an app's own rows:
+    cloudsqlsuperuser is not a real superuser and owns none of the apps' tables. It works
+    through fleet_maint (NOLOGIN NOINHERIT, member of every *_app role, granted to
+    andy.tillo@gmail.com, 2026-10-03): no passive access, only this explicit SET ROLE.
     """
     import subprocess
     if on_gcp():
@@ -391,7 +396,11 @@ def get_admin_connection(gcp_project_id: str = 'kumori-404602', dbname: str = 'p
     conn = psycopg2.connect(host=host, port=port, dbname=dbname,
                             user=account, password=token, sslmode=ssl, connect_timeout=15)
     with conn.cursor() as cur:
-        cur.execute('SET ROLE cloudsqlsuperuser')
+        if as_role:
+            from psycopg2 import sql
+            cur.execute(sql.SQL('SET ROLE {}').format(sql.Identifier(as_role)))
+        else:
+            cur.execute('SET ROLE cloudsqlsuperuser')
     conn.commit()   # SET ROLE is session-level; end the implicit transaction it opened
     return conn
 
