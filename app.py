@@ -29,6 +29,8 @@ from utilities.google_auth_utils import SimpleGoogleAuth
 
 
 app = Flask(__name__)
+from utilities.csrf_guard import install as install_csrf_guard
+install_csrf_guard(app)  # refuse cross-site POSTs; session cookie SameSite=Lax (audit 2026-10-14)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 

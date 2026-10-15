@@ -38,6 +38,10 @@
     {
       "src": "kumori/utilities/gmail_utils.py",
       "dst": "utilities/kumori_gmail.py"
+    },
+    {
+      "src": "spam_control/csrf_guard.py",
+      "dst": "utilities/csrf_guard.py"
     }
   ],
   "cron_yaml": true,
