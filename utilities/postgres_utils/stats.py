@@ -15,7 +15,7 @@ from .achievements import get_player_achievements, get_per_hand_stats
 from .players import get_unified_leaderboard
 
 # /stats is read-mostly and costs ~65 queries (measured 2026-09-05: 4–8 s server-side on the
-# shared micro instance). Stale-while-revalidate (2026-09-06): the last payload is served
+# shared instance, then db-f1-micro; db-custom-1-3840 since 2026-10-15, not re-timed). Stale-while-revalidate (2026-09-06): the last payload is served
 # instantly, always; once it is older than _PAYLOAD_TTL one background thread rebuilds it
 # for the next visitor. Only a cold process ever makes a visitor wait, and warm_stats_cache()
 # at boot plus the Otto cron touching /stats every 15 min keep processes warm.
